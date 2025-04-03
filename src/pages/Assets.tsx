@@ -37,10 +37,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Asset, assets } from "@/lib/data";
 import { csvToObjects, objectsToCSV, generateAssetImportTemplate } from "@/lib/csv-utils";
 import { useActivity } from "@/hooks/useActivity";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AssetForm } from "@/components/AssetForm";
 
 const Assets = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [assetsList, setAssetsList] = useState<Asset[]>(assets);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { logActivity } = useActivity();
@@ -154,6 +157,16 @@ const Assets = () => {
     link.click();
     document.body.removeChild(link);
   };
+
+  const handleAddAsset = (newAsset: Asset) => {
+    setAssetsList(prev => [...prev, newAsset]);
+    setIsAddDialogOpen(false);
+    
+    toast({
+      title: "Asset Created",
+      description: `${newAsset.name} has been added to the inventory`,
+    });
+  };
   
   return (
     <div className="animate-fade-in">
@@ -179,7 +192,7 @@ const Assets = () => {
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
-          <Button className="" size="sm">
+          <Button className="" size="sm" onClick={() => setIsAddDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Add Asset
           </Button>
@@ -281,6 +294,19 @@ const Assets = () => {
           </Table>
         </div>
       </div>
+
+      {/* Add Asset Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>Add New Asset</DialogTitle>
+          </DialogHeader>
+          <AssetForm 
+            onSubmit={handleAddAsset}
+            onCancel={() => setIsAddDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
