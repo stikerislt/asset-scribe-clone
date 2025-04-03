@@ -30,59 +30,47 @@ import {
   Search, 
   Edit, 
   Trash,
-  Tag
+  Users as UsersIcon,
+  UserPlus,
+  Mail,
+  ShieldCheck,
+  ShieldX
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-const Categories = () => {
+const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [categories, setCategories] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   
-  const filteredCategories = categories.filter(category => 
-    category?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    category?.type?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = users.filter(user => 
+    user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user?.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "asset":
-        return "bg-blue-100 text-blue-800 hover:bg-blue-100/80";
-      case "accessory":
-        return "bg-green-100 text-green-800 hover:bg-green-100/80";
-      case "component":
-        return "bg-purple-100 text-purple-800 hover:bg-purple-100/80";
-      case "consumable":
-        return "bg-amber-100 text-amber-800 hover:bg-amber-100/80";
-      case "license":
-        return "bg-indigo-100 text-indigo-800 hover:bg-indigo-100/80";
-      default:
-        return "bg-gray-100 text-gray-800 hover:bg-gray-100/80";
-    }
-  };
   
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Categories</h1>
-          <p className="text-muted-foreground mt-1">Organize your inventory with categories</p>
+          <h1 className="text-3xl font-bold">Users</h1>
+          <p className="text-muted-foreground mt-1">Manage user accounts and permissions</p>
         </div>
         <Button className="mt-4 sm:mt-0" size="sm">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Category
+          <UserPlus className="mr-2 h-4 w-4" />
+          Add User
         </Button>
       </div>
       
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Asset Categories</CardTitle>
+          <CardTitle>User Accounts</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search categories..."
+                placeholder="Search users..."
                 className="pl-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -95,34 +83,46 @@ const Categories = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Item Count</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCategories.length === 0 ? (
+                {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8">
+                    <TableCell colSpan={5} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
-                        <Tag className="h-12 w-12 mb-2 text-muted-foreground/50" />
-                        <p>No categories found. Click the Add Category button to get started.</p>
+                        <UsersIcon className="h-12 w-12 mb-2 text-muted-foreground/50" />
+                        <p>No users found. Click the Add User button to get started.</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredCategories.map((category) => (
-                    <TableRow key={category.id}>
-                      <TableCell className="font-medium">{category.name}</TableCell>
+                  filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>
-                        <Badge 
-                          variant="outline" 
-                          className={getTypeColor(category.type)}
-                        >
-                          {category.type?.charAt(0).toUpperCase() + category.type?.slice(1)}
-                        </Badge>
+                        <div className="flex items-center">
+                          <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
+                          {user.email}
+                        </div>
                       </TableCell>
-                      <TableCell>{category.count}</TableCell>
+                      <TableCell>{user.role}</TableCell>
+                      <TableCell>
+                        {user.active ? (
+                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80">
+                            <ShieldCheck className="h-3 w-3 mr-1" />
+                            Active
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-red-100 text-red-800 hover:bg-red-100/80">
+                            <ShieldX className="h-3 w-3 mr-1" />
+                            Inactive
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -136,6 +136,10 @@ const Categories = () => {
                             <DropdownMenuItem>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <ShieldCheck className="mr-2 h-4 w-4" />
+                              Change Role
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-red-600">
@@ -157,4 +161,4 @@ const Categories = () => {
   );
 };
 
-export default Categories;
+export default Users;

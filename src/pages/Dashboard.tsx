@@ -1,6 +1,7 @@
 
 import { Package, Users, Tag, Clock, AlertTriangle } from "lucide-react";
 import { StatsCard } from "@/components/StatsCard";
+import { Link } from "react-router-dom";
 
 const Dashboard = () => {
   return (
@@ -8,23 +9,29 @@ const Dashboard = () => {
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
-          title="Total Assets"
-          value="1,256"
-          icon={<Package className="h-5 w-5" />}
-          description="12 new assets this month"
-        />
-        <StatsCard
-          title="Users"
-          value="342"
-          icon={<Users className="h-5 w-5" />}
-          description="5 new users this month"
-        />
-        <StatsCard
-          title="Categories"
-          value="24"
-          icon={<Tag className="h-5 w-5" />}
-        />
+        <Link to="/assets" className="block">
+          <StatsCard
+            title="Total Assets"
+            value="1,256"
+            icon={<Package className="h-5 w-5" />}
+            description="12 new assets this month"
+          />
+        </Link>
+        <Link to="/users" className="block">
+          <StatsCard
+            title="Users"
+            value="342"
+            icon={<Users className="h-5 w-5" />}
+            description="5 new users this month"
+          />
+        </Link>
+        <Link to="/categories" className="block">
+          <StatsCard
+            title="Categories"
+            value="24"
+            icon={<Tag className="h-5 w-5" />}
+          />
+        </Link>
         <StatsCard
           title="Assets Due"
           value="8"

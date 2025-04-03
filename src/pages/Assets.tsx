@@ -1,6 +1,5 @@
 
 import { useState } from "react";
-import { assets } from "@/lib/data";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,18 +28,26 @@ import {
   Trash, 
   Download, 
   UserPlus,
-  Filter
+  Filter,
+  Upload
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Assets = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [assets, setAssets] = useState<any[]>([]);
   
   const filteredAssets = assets.filter(asset => 
-    asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    asset.tag.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    asset.category.toLowerCase().includes(searchTerm.toLowerCase())
+    asset?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    asset?.tag?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    asset?.category?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleImportClick = () => {
+    // This would typically trigger a file upload dialog or redirect to an import page
+    // For now it's just a placeholder
+    console.log("Import clicked");
+  };
   
   return (
     <div className="animate-fade-in">
@@ -49,10 +56,16 @@ const Assets = () => {
           <h1 className="text-3xl font-bold">Assets</h1>
           <p className="text-muted-foreground mt-1">Manage your hardware and device inventory</p>
         </div>
-        <Button className="mt-4 sm:mt-0" size="sm">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Asset
-        </Button>
+        <div className="flex gap-2 mt-4 sm:mt-0">
+          <Button className="" size="sm" onClick={handleImportClick}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import
+          </Button>
+          <Button className="" size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Asset
+          </Button>
+        </div>
       </div>
       
       <div className="bg-white rounded-lg shadow mb-8">
@@ -97,7 +110,7 @@ const Assets = () => {
                   <TableCell colSpan={7} className="text-center py-8">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <Package className="h-12 w-12 mb-2 text-muted-foreground/50" />
-                      <p>No assets found matching your search criteria</p>
+                      <p>No assets found. Click the Import or Add Asset button to get started.</p>
                     </div>
                   </TableCell>
                 </TableRow>

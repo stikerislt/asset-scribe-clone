@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Assets from "./pages/Assets";
 import AssetDetails from "./pages/AssetDetails";
 import Categories from "./pages/Categories";
+import Users from "./pages/Users";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,14 @@ const App = () => (
             element={
               <AppLayout>
                 <Categories />
+              </AppLayout>
+            } 
+          />
+          <Route 
+            path="/users" 
+            element={
+              <AppLayout>
+                <Users />
               </AppLayout>
             } 
           />
