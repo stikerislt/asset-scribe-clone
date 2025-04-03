@@ -24,6 +24,12 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { 
   Plus, 
   MoreHorizontal, 
@@ -37,16 +43,32 @@ import {
   ShieldX
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { UserForm, User } from "@/components/UserForm";
+import { logUserActivity } from "@/lib/data";
+import { useActivity } from "@/hooks/useActivity";
 
 const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const { logActivity } = useActivity();
   
   const filteredUsers = users.filter(user => 
     user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user?.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  const handleAddUser = (newUser: User) => {
+    // Add the new user to the state
+    setUsers(prev => [newUser, ...prev]);
+    
+    // Log the activity
+    logUserActivity("Created", newUser);
+    
+    // Close the dialog
+    setIsAddDialogOpen(false);
+  };
   
   return (
     <div className="animate-fade-in">
@@ -55,7 +77,11 @@ const Users = () => {
           <h1 className="text-3xl font-bold">Users</h1>
           <p className="text-muted-foreground mt-1">Manage user accounts and permissions</p>
         </div>
-        <Button className="mt-4 sm:mt-0" size="sm">
+        <Button 
+          className="mt-4 sm:mt-0" 
+          size="sm"
+          onClick={() => setIsAddDialogOpen(true)}
+        >
           <UserPlus className="mr-2 h-4 w-4" />
           Add User
         </Button>
@@ -157,6 +183,19 @@ const Users = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add User Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New User</DialogTitle>
+          </DialogHeader>
+          <UserForm 
+            onSubmit={handleAddUser}
+            onCancel={() => setIsAddDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

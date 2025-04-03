@@ -24,6 +24,12 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { 
   Plus, 
   MoreHorizontal, 
@@ -33,12 +39,17 @@ import {
   Tag
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { CategoryForm } from "@/components/CategoryForm";
+import { categories, Category, logCategoryActivity } from "@/lib/data";
+import { useActivity } from "@/hooks/useActivity";
 
 const Categories = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [categories, setCategories] = useState<any[]>([]);
-  
-  const filteredCategories = categories.filter(category => 
+  const [localCategories, setLocalCategories] = useState<Category[]>(categories);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const { logActivity } = useActivity();
+
+  const filteredCategories = localCategories.filter(category => 
     category?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     category?.type?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -59,6 +70,18 @@ const Categories = () => {
         return "bg-gray-100 text-gray-800 hover:bg-gray-100/80";
     }
   };
+
+  const handleAddCategory = (newCategory: Category) => {
+    // Add the new category to both the local state and the imported categories array
+    setLocalCategories(prev => [newCategory, ...prev]);
+    categories.unshift(newCategory);
+    
+    // Log the activity
+    logCategoryActivity("Created", newCategory);
+    
+    // Close the dialog
+    setIsAddDialogOpen(false);
+  };
   
   return (
     <div className="animate-fade-in">
@@ -67,7 +90,11 @@ const Categories = () => {
           <h1 className="text-3xl font-bold">Categories</h1>
           <p className="text-muted-foreground mt-1">Organize your inventory with categories</p>
         </div>
-        <Button className="mt-4 sm:mt-0" size="sm">
+        <Button 
+          className="mt-4 sm:mt-0" 
+          size="sm"
+          onClick={() => setIsAddDialogOpen(true)}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Add Category
         </Button>
@@ -153,6 +180,19 @@ const Categories = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Category Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Category</DialogTitle>
+          </DialogHeader>
+          <CategoryForm 
+            onSubmit={handleAddCategory}
+            onCancel={() => setIsAddDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
