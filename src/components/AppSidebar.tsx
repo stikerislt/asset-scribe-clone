@@ -12,15 +12,12 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { 
-  Home, 
+  LayoutDashboard, 
   Package, 
-  Layers, 
   Users, 
   Tag, 
   Settings, 
-  LogOut,
-  Clipboard,
-  LayoutDashboard 
+  LogOut 
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -34,21 +31,6 @@ const mainMenuItems = [
     title: "Assets",
     path: "/assets",
     icon: Package,
-  },
-  {
-    title: "Accessories",
-    path: "/accessories",
-    icon: Layers,
-  },
-  {
-    title: "Licenses",
-    path: "/licenses",
-    icon: Clipboard,
-  },
-  {
-    title: "Components",
-    path: "/components",
-    icon: Layers,
   },
   {
     title: "Users",
