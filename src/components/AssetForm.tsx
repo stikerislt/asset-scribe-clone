@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -18,16 +19,16 @@ const assetFormSchema = z.object({
   model: z.string().optional(),
   category: z.string().min(1, "Category is required"),
   status: z.enum(["ready", "assigned", "pending", "archived", "broken"]),
-  assignedTo: z.string().optional(),
+  assigned_to: z.string().optional(),
   location: z.string().optional(),
-  purchaseDate: z.string().optional(),
-  purchaseCost: z.string().optional(),
+  purchase_date: z.string().optional(),
+  purchase_cost: z.string().optional(),
 });
 
 type AssetFormValues = z.infer<typeof assetFormSchema>;
 
 interface AssetFormProps {
-  onSubmit: (data: Asset) => void;
+  onSubmit: (data: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => void;
   onCancel: () => void;
 }
 
@@ -46,19 +47,18 @@ export function AssetForm({ onSubmit, onCancel }: AssetFormProps) {
   });
 
   const handleSubmit = (values: AssetFormValues) => {
-    // Create a new asset with a unique ID - ensuring all required properties are present
-    const newAsset: Asset = {
-      id: crypto.randomUUID(),
+    // Create a new asset with form values
+    const newAsset = {
       name: values.name,
       tag: values.tag,
       status: values.status,
-      category: values.category || "Hardware",
-      serial: values.serial || "",
-      model: values.model || "",
-      location: values.location || "",
-      assignedTo: values.assignedTo,
-      purchaseDate: values.purchaseDate || "",
-      purchaseCost: values.purchaseCost || "",
+      category: values.category,
+      serial: values.serial || null,
+      model: values.model || null,
+      location: values.location || null,
+      assigned_to: values.assigned_to || null,
+      purchase_date: values.purchase_date ? new Date(values.purchase_date).toISOString() : null,
+      purchase_cost: values.purchase_cost ? parseFloat(values.purchase_cost) : null,
     };
 
     // Log the activity
@@ -191,7 +191,7 @@ export function AssetForm({ onSubmit, onCancel }: AssetFormProps) {
           
           <FormField
             control={form.control}
-            name="assignedTo"
+            name="assigned_to"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Assigned To</FormLabel>
@@ -219,7 +219,7 @@ export function AssetForm({ onSubmit, onCancel }: AssetFormProps) {
           
           <FormField
             control={form.control}
-            name="purchaseDate"
+            name="purchase_date"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Purchase Date</FormLabel>
@@ -233,7 +233,7 @@ export function AssetForm({ onSubmit, onCancel }: AssetFormProps) {
           
           <FormField
             control={form.control}
-            name="purchaseCost"
+            name="purchase_cost"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Purchase Cost</FormLabel>

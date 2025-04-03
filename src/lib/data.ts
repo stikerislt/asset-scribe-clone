@@ -1,19 +1,9 @@
 
 import { useActivity, getActivityIcon } from "@/hooks/useActivity";
+import { Database } from "@/integrations/supabase/types";
 
-export interface Asset {
-  id: string;
-  name: string;
-  tag: string;
-  serial: string;
-  model: string;
-  category: string;
-  status: "ready" | "assigned" | "pending" | "archived" | "broken";
-  assignedTo?: string;
-  purchaseDate: string;
-  purchaseCost: string;
-  location: string;
-}
+// Define Asset type based on Supabase schema
+export type Asset = Database['public']['Tables']['assets']['Row'];
 
 export interface Category {
   id: string;
