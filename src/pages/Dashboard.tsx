@@ -39,7 +39,7 @@ const Dashboard = () => {
           <div className="space-y-4">
             <ActivityItem
               title="New Laptop Assigned"
-              description="MacBook Pro 16" assigned to Sarah Johnson"
+              description="MacBook Pro 16\" assigned to Sarah Johnson"
               timestamp="10 minutes ago"
             />
             <ActivityItem
