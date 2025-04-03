@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -47,16 +46,20 @@ export function AssetForm({ onSubmit, onCancel }: AssetFormProps) {
   });
 
   const handleSubmit = (values: AssetFormValues) => {
-    // Create a new asset with a unique ID
+    // Create a new asset with a unique ID - ensuring all required properties are present
     const newAsset: Asset = {
       id: crypto.randomUUID(),
-      ...values,
-      purchaseDate: values.purchaseDate || "",
-      purchaseCost: values.purchaseCost || "",
+      name: values.name, // Explicitly provide required field
+      tag: values.tag,   // Explicitly provide required field
+      status: values.status, // Explicitly provide required field
+      category: values.category || "Hardware",
+      // Optional fields with fallbacks
       serial: values.serial || "",
       model: values.model || "",
-      category: values.category || "Hardware",
       location: values.location || "",
+      assignedTo: values.assignedTo,
+      purchaseDate: values.purchaseDate || "",
+      purchaseCost: values.purchaseCost || "",
     };
 
     // Log the activity
