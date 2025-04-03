@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
 import { Button } from "@/components/ui/button";
@@ -35,7 +34,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { Asset } from "@/lib/data";
+import { Asset, AssetStatus } from "@/lib/data";
 import { csvToObjects, objectsToCSV, generateAssetImportTemplate } from "@/lib/csv-utils";
 import { useActivity } from "@/hooks/useActivity";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -69,10 +68,15 @@ const Assets = () => {
   
   // Create asset mutation
   const createAssetMutation = useMutation({
-    mutationFn: async (newAsset: Omit<Asset, 'id'>) => {
+    mutationFn: async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
         .from('assets')
-        .insert([newAsset])
+        .insert([{
+          ...newAsset,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          user_id: null
+        }])
         .select()
         .single();
       
@@ -88,20 +92,9 @@ const Assets = () => {
   });
   
   // Handle asset form submission
-  const handleAddAsset = async (newAsset: Asset) => {
+  const handleAddAsset = async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
     try {
-      await createAssetMutation.mutateAsync({
-        name: newAsset.name,
-        tag: newAsset.tag,
-        serial: newAsset.serial || '',
-        model: newAsset.model || '',
-        category: newAsset.category,
-        status: newAsset.status,
-        assigned_to: newAsset.assignedTo,
-        purchase_date: newAsset.purchaseDate || null,
-        purchase_cost: newAsset.purchaseCost || null,
-        location: newAsset.location || '',
-      });
+      await createAssetMutation.mutateAsync(newAsset);
       
       setIsAddDialogOpen(false);
       
@@ -146,7 +139,18 @@ const Assets = () => {
     reader.onload = async (e) => {
       const csvContent = e.target?.result as string;
       try {
-        const importedAssets = csvToObjects<Asset>(csvContent);
+        const importedAssets = csvToObjects<{
+          name: string;
+          tag: string;
+          serial: string;
+          model: string;
+          category: string;
+          status: AssetStatus;
+          assigned_to: string;
+          location: string;
+          purchase_date: string;
+          purchase_cost: string;
+        }>(csvContent);
         
         // Validate imported assets
         const validAssets = importedAssets
@@ -170,11 +174,14 @@ const Assets = () => {
               serial: asset.serial || '',
               model: asset.model || '',
               category: asset.category,
-              status: asset.status,
-              assigned_to: asset.assignedTo,
-              purchase_date: asset.purchaseDate || null,
-              purchase_cost: asset.purchaseCost || null,
+              status: asset.status as AssetStatus,
+              assigned_to: asset.assigned_to || null,
+              purchase_date: asset.purchase_date ? new Date(asset.purchase_date).toISOString() : null,
+              purchase_cost: asset.purchase_cost ? parseFloat(asset.purchase_cost) : null,
               location: asset.location || '',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              user_id: null
             }]);
           } catch (error) {
             console.error('Error importing asset:', error);
@@ -229,10 +236,10 @@ const Assets = () => {
       model: asset.model || '',
       category: asset.category,
       status: asset.status,
-      assignedTo: asset.assigned_to || '',
+      assigned_to: asset.assigned_to || '',
       location: asset.location || '',
-      purchaseDate: asset.purchase_date || '',
-      purchaseCost: asset.purchase_cost || '',
+      purchase_date: asset.purchase_date || '',
+      purchase_cost: asset.purchase_cost || '',
     }));
     
     // Export current assets
@@ -372,7 +379,7 @@ const Assets = () => {
                     </TableCell>
                     <TableCell>{asset.category}</TableCell>
                     <TableCell>
-                      <AssetStatusBadge status={asset.status} />
+                      <AssetStatusBadge status={asset.status as AssetStatus} />
                     </TableCell>
                     <TableCell>
                       {asset.assigned_to || <span className="text-gray-400">—</span>}

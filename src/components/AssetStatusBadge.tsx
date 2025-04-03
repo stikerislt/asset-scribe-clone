@@ -1,8 +1,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-type AssetStatus = "ready" | "assigned" | "pending" | "archived" | "broken";
+import { AssetStatus } from "@/lib/data";
 
 interface AssetStatusBadgeProps {
   status: AssetStatus;

@@ -5,6 +5,9 @@ import { Database } from "@/integrations/supabase/types";
 // Define Asset type based on Supabase schema
 export type Asset = Database['public']['Tables']['assets']['Row'];
 
+// Define asset status type for type safety
+export type AssetStatus = "ready" | "assigned" | "pending" | "archived" | "broken";
+
 export interface Category {
   id: string;
   name: string;

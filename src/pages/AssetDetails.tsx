@@ -29,6 +29,7 @@ import { AssetStatusBadge } from "@/components/AssetStatusBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { formatDate } from "@/lib/utils";
+import { AssetStatus } from "@/lib/data";
 
 const AssetDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -150,7 +151,7 @@ const AssetDetails = () => {
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-1">Status</h4>
-                        <AssetStatusBadge status={asset.status} />
+                        <AssetStatusBadge status={asset.status as AssetStatus} />
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-1">Location</h4>
