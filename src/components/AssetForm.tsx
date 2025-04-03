@@ -49,11 +49,10 @@ export function AssetForm({ onSubmit, onCancel }: AssetFormProps) {
     // Create a new asset with a unique ID - ensuring all required properties are present
     const newAsset: Asset = {
       id: crypto.randomUUID(),
-      name: values.name, // Explicitly provide required field
-      tag: values.tag,   // Explicitly provide required field
-      status: values.status, // Explicitly provide required field
+      name: values.name,
+      tag: values.tag,
+      status: values.status,
       category: values.category || "Hardware",
-      // Optional fields with fallbacks
       serial: values.serial || "",
       model: values.model || "",
       location: values.location || "",

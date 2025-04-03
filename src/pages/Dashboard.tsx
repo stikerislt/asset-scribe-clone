@@ -2,30 +2,33 @@
 import { Package, Users, Tag, Clock } from "lucide-react";
 import { StatsCard } from "@/components/StatsCard";
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { Asset, Category } from "@/lib/data";
 import { useActivity } from "@/hooks/useActivity";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
-  const [assetCount, setAssetCount] = useState(0);
-  const [userCount, setUserCount] = useState(0);
-  const [categoryCount, setCategoryCount] = useState(0);
-  const [dueCount, setDueCount] = useState(0);
   const { activities } = useActivity();
+  
+  const { data: assetCount = 0 } = useQuery({
+    queryKey: ['asset-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('assets')
+        .select('*', { count: 'exact', head: true });
+      
+      if (error) {
+        console.error('Error fetching asset count:', error);
+        return 0;
+      }
+      
+      return count || 0;
+    }
+  });
 
-  // Simulate fetching statistics - in a real app, this would come from an API
-  useEffect(() => {
-    // This is where you would fetch real data from your backend
-    const fetchStats = async () => {
-      // Placeholder for real API calls
-      setAssetCount(0); // Start with zero instead of mock data
-      setUserCount(0);
-      setCategoryCount(0);
-      setDueCount(0);
-    };
-
-    fetchStats();
-  }, []);
+  // In a real app, these would also be from Supabase
+  const userCount = 0;
+  const categoryCount = 0;
+  const dueCount = 0;
 
   return (
     <div className="animate-fade-in">

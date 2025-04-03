@@ -1,5 +1,5 @@
+
 import { useParams, Link } from "react-router-dom";
-import { assets } from "@/lib/data";
 import { 
   ArrowLeft, 
   Download, 
@@ -13,7 +13,8 @@ import {
   Cpu,
   Smartphone,
   Clock,
-  Plus
+  Plus,
+  Loader,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -25,12 +26,43 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { formatDate } from "@/lib/utils";
 
 const AssetDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const asset = assets.find(a => a.id === id);
   
-  if (!asset) {
+  const { data: asset, isLoading, error } = useQuery({
+    queryKey: ['asset', id],
+    queryFn: async () => {
+      if (!id) return null;
+      
+      const { data, error } = await supabase
+        .from('assets')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      return data;
+    },
+    enabled: !!id,
+  });
+  
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh]">
+        <Loader className="h-8 w-8 animate-spin mb-4" />
+        <p>Loading asset details...</p>
+      </div>
+    );
+  }
+  
+  if (error || !asset) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh]">
         <h1 className="text-2xl font-bold mb-2">Asset Not Found</h1>
@@ -44,6 +76,17 @@ const AssetDetails = () => {
       </div>
     );
   }
+  
+  // Calculate warranty expiration if purchase date exists
+  const getWarrantyExpiration = () => {
+    if (!asset.purchase_date) return 'N/A';
+    
+    const purchaseDate = new Date(asset.purchase_date);
+    const expiryDate = new Date(purchaseDate);
+    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+    
+    return formatDate(expiryDate.toISOString());
+  };
   
   return (
     <div className="animate-fade-in">
@@ -99,7 +142,7 @@ const AssetDetails = () => {
                     <div className="space-y-4">
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-1">Model</h4>
-                        <p>{asset.model}</p>
+                        <p>{asset.model || 'N/A'}</p>
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-1">Category</h4>
@@ -111,26 +154,26 @@ const AssetDetails = () => {
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-1">Location</h4>
-                        <p>{asset.location}</p>
+                        <p>{asset.location || 'N/A'}</p>
                       </div>
                     </div>
                     <div className="space-y-4">
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-1">Purchase Date</h4>
-                        <p>{asset.purchaseDate}</p>
+                        <p>{asset.purchase_date ? formatDate(asset.purchase_date) : 'N/A'}</p>
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-1">Purchase Cost</h4>
-                        <p>{asset.purchaseCost}</p>
+                        <p>{asset.purchase_cost ? `$${asset.purchase_cost}` : 'N/A'}</p>
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-1">Warranty</h4>
-                        <p>12 months (expires on {new Date(new Date(asset.purchaseDate).setFullYear(new Date(asset.purchaseDate).getFullYear() + 1)).toLocaleDateString()})</p>
+                        <p>12 months (expires on {getWarrantyExpiration()})</p>
                       </div>
-                      {asset.assignedTo && (
+                      {asset.assigned_to && (
                         <div>
                           <h4 className="text-sm font-medium text-muted-foreground mb-1">Assigned To</h4>
-                          <p>{asset.assignedTo}</p>
+                          <p>{asset.assigned_to}</p>
                         </div>
                       )}
                     </div>
@@ -144,8 +187,10 @@ const AssetDetails = () => {
                         <User className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-medium">Assigned to {asset.assignedTo || "User"}</p>
-                        <p className="text-sm text-muted-foreground">2023-06-15 by Admin</p>
+                        <p className="font-medium">Assigned to {asset.assigned_to || "User"}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {asset.updated_at ? formatDate(asset.updated_at) : 'N/A'} by Admin
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3 pb-4 border-b">
@@ -153,8 +198,10 @@ const AssetDetails = () => {
                         <Tag className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-medium">Status changed to Ready</p>
-                        <p className="text-sm text-muted-foreground">2023-05-20 by System</p>
+                        <p className="font-medium">Status changed to {asset.status}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {asset.updated_at ? formatDate(asset.updated_at) : 'N/A'} by System
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
@@ -163,7 +210,9 @@ const AssetDetails = () => {
                       </div>
                       <div>
                         <p className="font-medium">Asset created</p>
-                        <p className="text-sm text-muted-foreground">{asset.purchaseDate} by Admin</p>
+                        <p className="text-sm text-muted-foreground">
+                          {asset.created_at ? formatDate(asset.created_at) : 'N/A'} by Admin
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -228,7 +277,7 @@ const AssetDetails = () => {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Model</p>
-                    <p className="font-medium">{asset.model}</p>
+                    <p className="font-medium">{asset.model || 'N/A'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -246,7 +295,9 @@ const AssetDetails = () => {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Purchase Date</p>
-                    <p className="font-medium">{asset.purchaseDate}</p>
+                    <p className="font-medium">
+                      {asset.purchase_date ? formatDate(asset.purchase_date) : 'N/A'}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -255,7 +306,9 @@ const AssetDetails = () => {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Purchase Cost</p>
-                    <p className="font-medium">{asset.purchaseCost}</p>
+                    <p className="font-medium">
+                      {asset.purchase_cost ? `$${asset.purchase_cost}` : 'N/A'}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -264,7 +317,7 @@ const AssetDetails = () => {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Location</p>
-                    <p className="font-medium">{asset.location}</p>
+                    <p className="font-medium">{asset.location || 'N/A'}</p>
                   </div>
                 </div>
               </div>

@@ -1,5 +1,5 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,54 +31,127 @@ import {
   Filter,
   Upload,
   Import,
+  Loader,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { Asset, assets } from "@/lib/data";
+import { Asset } from "@/lib/data";
 import { csvToObjects, objectsToCSV, generateAssetImportTemplate } from "@/lib/csv-utils";
 import { useActivity } from "@/hooks/useActivity";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AssetForm } from "@/components/AssetForm";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const Assets = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [assetsList, setAssetsList] = useState<Asset[]>(assets);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { logActivity } = useActivity();
+  const queryClient = useQueryClient();
   
-  const filteredAssets = assetsList.filter(asset => 
+  // Fetch assets from Supabase
+  const { data: assets = [], isLoading, error } = useQuery({
+    queryKey: ['assets'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('assets')
+        .select('*');
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      return data || [];
+    }
+  });
+  
+  // Create asset mutation
+  const createAssetMutation = useMutation({
+    mutationFn: async (newAsset: Omit<Asset, 'id'>) => {
+      const { data, error } = await supabase
+        .from('assets')
+        .insert([newAsset])
+        .select()
+        .single();
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+    }
+  });
+  
+  // Handle asset form submission
+  const handleAddAsset = async (newAsset: Asset) => {
+    try {
+      await createAssetMutation.mutateAsync({
+        name: newAsset.name,
+        tag: newAsset.tag,
+        serial: newAsset.serial || '',
+        model: newAsset.model || '',
+        category: newAsset.category,
+        status: newAsset.status,
+        assigned_to: newAsset.assignedTo,
+        purchase_date: newAsset.purchaseDate || null,
+        purchase_cost: newAsset.purchaseCost || null,
+        location: newAsset.location || '',
+      });
+      
+      setIsAddDialogOpen(false);
+      
+      toast({
+        title: "Asset Created",
+        description: `${newAsset.name} has been added to the inventory`,
+      });
+      
+      logActivity({
+        title: "Asset Created",
+        description: `${newAsset.name} added to inventory`,
+        category: 'asset',
+        icon: <Package className="h-5 w-5 text-blue-600" />
+      });
+    } catch (error) {
+      console.error('Error creating asset:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create asset. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const filteredAssets = assets.filter(asset => 
     asset?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     asset?.tag?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     asset?.category?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleImportClick = () => {
-    // Trigger file input click
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const csvContent = e.target?.result as string;
       try {
         const importedAssets = csvToObjects<Asset>(csvContent);
         
         // Validate imported assets
         const validAssets = importedAssets
-          .filter(asset => asset.name && asset.tag)
-          .map((asset, index) => ({
-            ...asset,
-            id: crypto.randomUUID(), // Generate unique IDs for new assets
-          }));
-
+          .filter(asset => asset.name && asset.tag);
+        
         if (validAssets.length === 0) {
           toast({
             title: "Import Failed",
@@ -88,8 +161,27 @@ const Assets = () => {
           return;
         }
 
-        // Update assets list
-        setAssetsList(prevAssets => [...prevAssets, ...validAssets]);
+        // Insert assets into Supabase
+        for (const asset of validAssets) {
+          try {
+            await supabase.from('assets').insert([{
+              name: asset.name,
+              tag: asset.tag,
+              serial: asset.serial || '',
+              model: asset.model || '',
+              category: asset.category,
+              status: asset.status,
+              assigned_to: asset.assignedTo,
+              purchase_date: asset.purchaseDate || null,
+              purchase_cost: asset.purchaseCost || null,
+              location: asset.location || '',
+            }]);
+          } catch (error) {
+            console.error('Error importing asset:', error);
+          }
+        }
+        
+        queryClient.invalidateQueries({ queryKey: ['assets'] });
         
         // Log activity
         logActivity({
@@ -120,7 +212,7 @@ const Assets = () => {
 
   const handleExportClick = () => {
     // If no assets, export template
-    if (assetsList.length === 0) {
+    if (assets.length === 0) {
       downloadCSV(generateAssetImportTemplate(), "assets-template.csv");
       toast({
         title: "Template Exported",
@@ -129,20 +221,34 @@ const Assets = () => {
       return;
     }
 
+    // Format assets for CSV export
+    const formattedAssets = assets.map(asset => ({
+      name: asset.name,
+      tag: asset.tag,
+      serial: asset.serial || '',
+      model: asset.model || '',
+      category: asset.category,
+      status: asset.status,
+      assignedTo: asset.assigned_to || '',
+      location: asset.location || '',
+      purchaseDate: asset.purchase_date || '',
+      purchaseCost: asset.purchase_cost || '',
+    }));
+    
     // Export current assets
-    const csv = objectsToCSV(assetsList);
+    const csv = objectsToCSV(formattedAssets);
     downloadCSV(csv, "assets-export.csv");
     
     logActivity({
       title: "Assets Exported",
-      description: `${assetsList.length} assets exported`,
+      description: `${assets.length} assets exported`,
       category: 'asset',
       icon: <Package className="h-5 w-5 text-blue-600" />
     });
 
     toast({
       title: "Export Successful",
-      description: `${assetsList.length} assets exported`,
+      description: `${assets.length} assets exported`,
     });
   };
 
@@ -157,16 +263,18 @@ const Assets = () => {
     link.click();
     document.body.removeChild(link);
   };
-
-  const handleAddAsset = (newAsset: Asset) => {
-    setAssetsList(prev => [...prev, newAsset]);
-    setIsAddDialogOpen(false);
-    
-    toast({
-      title: "Asset Created",
-      description: `${newAsset.name} has been added to the inventory`,
-    });
-  };
+  
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh]">
+        <h1 className="text-xl font-bold mb-2">Error Loading Assets</h1>
+        <p className="text-muted-foreground mb-4">Failed to load assets from the database.</p>
+        <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}>
+          Try Again
+        </Button>
+      </div>
+    );
+  }
   
   return (
     <div className="animate-fade-in">
@@ -232,7 +340,16 @@ const Assets = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAssets.length === 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <Loader className="h-8 w-8 animate-spin mb-2 text-muted-foreground/50" />
+                      <p>Loading assets...</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredAssets.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
@@ -258,7 +375,7 @@ const Assets = () => {
                       <AssetStatusBadge status={asset.status} />
                     </TableCell>
                     <TableCell>
-                      {asset.assignedTo || <span className="text-gray-400">—</span>}
+                      {asset.assigned_to || <span className="text-gray-400">—</span>}
                     </TableCell>
                     <TableCell>{asset.location}</TableCell>
                     <TableCell className="text-right">
