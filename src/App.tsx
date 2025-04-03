@@ -1,7 +1,6 @@
 
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
@@ -20,66 +19,64 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <ActivityProvider>
+    <ActivityProvider>
+      <BrowserRouter>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route 
-              path="/dashboard" 
-              element={
-                <AppLayout>
-                  <Dashboard />
-                </AppLayout>
-              } 
-            />
-            <Route 
-              path="/assets" 
-              element={
-                <AppLayout>
-                  <Assets />
-                </AppLayout>
-              } 
-            />
-            <Route 
-              path="/assets/:id" 
-              element={
-                <AppLayout>
-                  <AssetDetails />
-                </AppLayout>
-              } 
-            />
-            <Route 
-              path="/categories" 
-              element={
-                <AppLayout>
-                  <Categories />
-                </AppLayout>
-              } 
-            />
-            <Route 
-              path="/users" 
-              element={
-                <AppLayout>
-                  <Users />
-                </AppLayout>
-              } 
-            />
-            <Route 
-              path="/settings" 
-              element={
-                <AppLayout>
-                  <Settings />
-                </AppLayout>
-              } 
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </ActivityProvider>
-    </TooltipProvider>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <AppLayout>
+                <Dashboard />
+              </AppLayout>
+            } 
+          />
+          <Route 
+            path="/assets" 
+            element={
+              <AppLayout>
+                <Assets />
+              </AppLayout>
+            } 
+          />
+          <Route 
+            path="/assets/:id" 
+            element={
+              <AppLayout>
+                <AssetDetails />
+              </AppLayout>
+            } 
+          />
+          <Route 
+            path="/categories" 
+            element={
+              <AppLayout>
+                <Categories />
+              </AppLayout>
+            } 
+          />
+          <Route 
+            path="/users" 
+            element={
+              <AppLayout>
+                <Users />
+              </AppLayout>
+            } 
+          />
+          <Route 
+            path="/settings" 
+            element={
+              <AppLayout>
+                <Settings />
+              </AppLayout>
+            } 
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </ActivityProvider>
   </QueryClientProvider>
 );
 
