@@ -74,7 +74,7 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r">
       <SidebarHeader className="py-6 px-3 flex justify-center">
-        <h1 className="text-2xl font-bold text-white">AssetScribe</h1>
+        <h1 className="text-2xl font-bold text-white">AsvenX</h1>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
