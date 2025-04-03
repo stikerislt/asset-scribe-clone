@@ -75,7 +75,6 @@ const Assets = () => {
           ...newAsset,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          user_id: null
         }])
         .select()
         .single();
@@ -94,7 +93,10 @@ const Assets = () => {
   // Handle asset form submission
   const handleAddAsset = async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
     try {
-      await createAssetMutation.mutateAsync(newAsset);
+      await createAssetMutation.mutateAsync({
+        ...newAsset,
+        user_id: null
+      });
       
       setIsAddDialogOpen(false);
       
@@ -291,7 +293,6 @@ const Assets = () => {
           <p className="text-muted-foreground mt-1">Manage your hardware and device inventory</p>
         </div>
         <div className="flex gap-2 mt-4 sm:mt-0">
-          {/* Hidden file input for import */}
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -419,7 +420,6 @@ const Assets = () => {
         </div>
       </div>
 
-      {/* Add Asset Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
