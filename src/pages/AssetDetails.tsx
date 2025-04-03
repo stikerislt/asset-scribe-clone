@@ -1,4 +1,3 @@
-
 import { useParams, Link } from "react-router-dom";
 import { assets } from "@/lib/data";
 import { 
@@ -13,7 +12,8 @@ import {
   Tag,
   Cpu,
   Smartphone,
-  Clock
+  Clock,
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 

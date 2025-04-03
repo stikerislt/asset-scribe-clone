@@ -1,4 +1,6 @@
 
+import { useActivity, getActivityIcon } from "@/hooks/useActivity";
+
 export interface Asset {
   id: string;
   name: string;
@@ -23,3 +25,51 @@ export interface Category {
 // Empty arrays instead of sample data
 export const assets: Asset[] = [];
 export const categories: Category[] = [];
+
+// Helper to log asset activities
+export const logAssetActivity = (
+  action: string, 
+  asset: Partial<Asset>, 
+  useActivityHook = useActivity
+) => {
+  const { logActivity } = useActivityHook();
+  
+  logActivity({
+    title: action,
+    description: `${asset.name || 'Asset'} ${action.toLowerCase()}`,
+    category: 'asset',
+    icon: getActivityIcon('asset')
+  });
+};
+
+// Helper to log category activities
+export const logCategoryActivity = (
+  action: string, 
+  category: Partial<Category>,
+  useActivityHook = useActivity
+) => {
+  const { logActivity } = useActivityHook();
+  
+  logActivity({
+    title: `Category ${action}`,
+    description: `${category.name || 'Category'} ${action.toLowerCase()}`,
+    category: 'category',
+    icon: getActivityIcon('category')
+  });
+};
+
+// Helper to log user activities
+export const logUserActivity = (
+  action: string,
+  user: { name: string },
+  useActivityHook = useActivity
+) => {
+  const { logActivity } = useActivityHook();
+  
+  logActivity({
+    title: `User ${action}`,
+    description: `${user.name} ${action.toLowerCase()}`,
+    category: 'user',
+    icon: getActivityIcon('user')
+  });
+};

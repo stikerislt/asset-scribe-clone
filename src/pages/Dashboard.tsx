@@ -1,9 +1,32 @@
 
-import { Package, Users, Tag, Clock, AlertTriangle } from "lucide-react";
+import { Package, Users, Tag, Clock } from "lucide-react";
 import { StatsCard } from "@/components/StatsCard";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Asset, Category } from "@/lib/data";
+import { useActivity } from "@/hooks/useActivity";
 
 const Dashboard = () => {
+  const [assetCount, setAssetCount] = useState(0);
+  const [userCount, setUserCount] = useState(0);
+  const [categoryCount, setCategoryCount] = useState(0);
+  const [dueCount, setDueCount] = useState(0);
+  const { activities } = useActivity();
+
+  // Simulate fetching statistics - in a real app, this would come from an API
+  useEffect(() => {
+    // This is where you would fetch real data from your backend
+    const fetchStats = async () => {
+      // Placeholder for real API calls
+      setAssetCount(0); // Start with zero instead of mock data
+      setUserCount(0);
+      setCategoryCount(0);
+      setDueCount(0);
+    };
+
+    fetchStats();
+  }, []);
+
   return (
     <div className="animate-fade-in">
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
@@ -12,29 +35,29 @@ const Dashboard = () => {
         <Link to="/assets" className="block">
           <StatsCard
             title="Total Assets"
-            value="1,256"
+            value={assetCount.toString()}
             icon={<Package className="h-5 w-5" />}
-            description="12 new assets this month"
+            description={`${assetCount > 0 ? 'Manage your assets' : 'No assets yet'}`}
           />
         </Link>
         <Link to="/users" className="block">
           <StatsCard
             title="Users"
-            value="342"
+            value={userCount.toString()}
             icon={<Users className="h-5 w-5" />}
-            description="5 new users this month"
+            description={`${userCount > 0 ? 'Manage your users' : 'No users yet'}`}
           />
         </Link>
         <Link to="/categories" className="block">
           <StatsCard
             title="Categories"
-            value="24"
+            value={categoryCount.toString()}
             icon={<Tag className="h-5 w-5" />}
           />
         </Link>
         <StatsCard
           title="Assets Due"
-          value="8"
+          value={dueCount.toString()}
           icon={<Clock className="h-5 w-5" />}
           description="Assets due for check-in"
         />
@@ -42,31 +65,26 @@ const Dashboard = () => {
 
       <div className="mt-8">
         <h2 className="text-2xl font-bold mb-4">Recent Activity</h2>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="space-y-4">
-            <ActivityItem
-              title="New Laptop Assigned"
-              description={'MacBook Pro 16" assigned to Sarah Johnson'}
-              timestamp="10 minutes ago"
-            />
-            <ActivityItem
-              title="License Expired"
-              description="Adobe Creative Cloud license has expired"
-              timestamp="2 hours ago"
-              icon={<AlertTriangle className="h-5 w-5 text-amber-500" />}
-            />
-            <ActivityItem
-              title="Component Check-out"
-              description="8GB RAM module checked out by IT Department"
-              timestamp="Yesterday"
-            />
-            <ActivityItem
-              title="New Asset Added"
-              description="iPhone 14 Pro added to inventory"
-              timestamp="2 days ago"
-            />
+        {activities.length > 0 ? (
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="space-y-4">
+              {activities.map((activity) => (
+                <ActivityItem
+                  key={activity.id}
+                  title={activity.title}
+                  description={activity.description}
+                  timestamp={activity.timestamp}
+                  icon={activity.icon}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-white p-6 rounded-lg shadow text-center">
+            <p className="text-gray-500">No recent activity to display</p>
+            <p className="text-sm text-gray-400 mt-1">Activities will appear here as you make changes</p>
+          </div>
+        )}
       </div>
     </div>
   );

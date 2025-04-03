@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
+import { ActivityProvider } from "@/hooks/useActivity";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
@@ -19,54 +20,56 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route 
-            path="/dashboard" 
-            element={
-              <AppLayout>
-                <Dashboard />
-              </AppLayout>
-            } 
-          />
-          <Route 
-            path="/assets" 
-            element={
-              <AppLayout>
-                <Assets />
-              </AppLayout>
-            } 
-          />
-          <Route 
-            path="/assets/:id" 
-            element={
-              <AppLayout>
-                <AssetDetails />
-              </AppLayout>
-            } 
-          />
-          <Route 
-            path="/categories" 
-            element={
-              <AppLayout>
-                <Categories />
-              </AppLayout>
-            } 
-          />
-          <Route 
-            path="/users" 
-            element={
-              <AppLayout>
-                <Users />
-              </AppLayout>
-            } 
-          />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <ActivityProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route 
+              path="/dashboard" 
+              element={
+                <AppLayout>
+                  <Dashboard />
+                </AppLayout>
+              } 
+            />
+            <Route 
+              path="/assets" 
+              element={
+                <AppLayout>
+                  <Assets />
+                </AppLayout>
+              } 
+            />
+            <Route 
+              path="/assets/:id" 
+              element={
+                <AppLayout>
+                  <AssetDetails />
+                </AppLayout>
+              } 
+            />
+            <Route 
+              path="/categories" 
+              element={
+                <AppLayout>
+                  <Categories />
+                </AppLayout>
+              } 
+            />
+            <Route 
+              path="/users" 
+              element={
+                <AppLayout>
+                  <Users />
+                </AppLayout>
+              } 
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </ActivityProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
