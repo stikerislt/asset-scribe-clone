@@ -30,6 +30,7 @@ import {
   Filter,
   Import,
   Loader,
+  AlertCircle
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -40,6 +41,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AssetForm } from "@/components/AssetForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast as sonnerToast } from "sonner";
 
 const Assets = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -52,11 +54,17 @@ const Assets = () => {
   const { data: assets = [], isLoading, error } = useQuery({
     queryKey: ['assets'],
     queryFn: async () => {
+      console.log("Fetching assets");
       const { data, error } = await supabase
         .from('assets')
         .select('*');
       
+      console.log("Assets fetch result:", { data, error });
+      
       if (error) {
+        sonnerToast.error("Failed to load assets", {
+          description: error.message
+        });
         throw new Error(error.message);
       }
       
@@ -65,8 +73,11 @@ const Assets = () => {
         notes: asset.location
       })) || [];
       
+      console.log("Processed assets:", assetsWithNotes.length);
       return assetsWithNotes;
-    }
+    },
+    retry: 1,
+    refetchOnWindowFocus: false
   });
   
   const createAssetMutation = useMutation({
@@ -268,8 +279,9 @@ const Assets = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh]">
+        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
         <h1 className="text-xl font-bold mb-2">Error Loading Assets</h1>
-        <p className="text-muted-foreground mb-4">Failed to load assets from the database.</p>
+        <p className="text-muted-foreground mb-4">{(error as Error).message || 'Failed to load assets from the database.'}</p>
         <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}>
           Try Again
         </Button>
@@ -356,6 +368,14 @@ const Assets = () => {
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <Package className="h-12 w-12 mb-2 text-muted-foreground/50" />
                       <p>No assets found. Click the Import or Add Asset button to get started.</p>
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        onClick={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}
+                        className="mt-2"
+                      >
+                        Refresh Data
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
