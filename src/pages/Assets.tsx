@@ -133,7 +133,7 @@ const Assets = () => {
           ...newAsset,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          user_id: null
+          user_id: user?.id || null
         }])
         .select()
         .single();
@@ -322,9 +322,21 @@ const Assets = () => {
         return;
       }
 
+      if (!user?.id) {
+        toast({
+          title: "Import Failed",
+          description: "You must be logged in to import assets",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const importErrors = [];
+      const importSuccess = [];
+
       for (const asset of validAssets) {
         try {
-          await supabase.from('assets').insert([{
+          const { error } = await supabase.from('assets').insert([{
             name: asset.name,
             tag: asset.tag,
             serial: asset.serial || '',
@@ -337,10 +349,18 @@ const Assets = () => {
             location: asset.location || '',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            user_id: null
+            user_id: user.id
           }]);
+          
+          if (error) {
+            console.error('Error importing asset:', error);
+            importErrors.push(asset.name);
+          } else {
+            importSuccess.push(asset.name);
+          }
         } catch (error) {
           console.error('Error importing asset:', error);
+          importErrors.push(asset.name);
         }
       }
       
@@ -348,15 +368,23 @@ const Assets = () => {
       
       logActivity({
         title: `Assets Imported from ${importFileType.toUpperCase()}`,
-        description: `${validAssets.length} assets imported`,
+        description: `${importSuccess.length} assets imported successfully, ${importErrors.length} failed`,
         category: 'asset',
         icon: <Package className="h-5 w-5 text-blue-600" />
       });
 
-      toast({
-        title: "Import Successful",
-        description: `${validAssets.length} assets imported`,
-      });
+      if (importErrors.length > 0) {
+        toast({
+          title: "Import Partially Successful",
+          description: `${importSuccess.length} assets imported, ${importErrors.length} failed`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Import Successful",
+          description: `${importSuccess.length} assets imported`,
+        });
+      }
       
       setShowCSVPreview(false);
       setCsvContent(null);
@@ -365,7 +393,7 @@ const Assets = () => {
       console.error("Import error:", error);
       toast({
         title: "Import Failed",
-        description: "The file format is invalid",
+        description: "The file format is invalid or there was an error processing your request",
         variant: "destructive",
       });
     }

@@ -27,3 +27,16 @@ export const checkAuth = async () => {
   console.log("Current auth session:", data.session);
   return data.session;
 };
+
+// Check if there's any RLS policy issues with the current user and assets
+export const debugRlsAccess = async () => {
+  const { data: session } = await supabase.auth.getSession();
+  const { data: assets, error } = await supabase.from('assets').select('id').limit(1);
+  
+  return {
+    isAuthenticated: !!session?.session,
+    user: session?.session?.user,
+    assets: assets,
+    error: error
+  };
+};
