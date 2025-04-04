@@ -33,7 +33,10 @@ import {
   AlertCircle,
   RefreshCw,
   FileSpreadsheet,
-  AlertTriangle
+  AlertTriangle,
+  ArrowUpDown,
+  Check,
+  X
 } from "lucide-react";
 import { 
   Popover,
@@ -68,6 +71,17 @@ import { supabase, checkAuth, debugRlsAccess } from "@/integrations/supabase/cli
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast as sonnerToast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+
+type Filters = {
+  tag: string[];
+  name: string[];
+  assignedTo: string[];
+  purchaseDate: string[];
+  wear: string[];
+  purchaseCost: string[];
+}
 
 const Assets = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,6 +96,15 @@ const Assets = () => {
   const [deleteAllConfirmText, setDeleteAllConfirmText] = useState("");
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<Filters>({
+    tag: [],
+    name: [],
+    assignedTo: [],
+    purchaseDate: [],
+    wear: [],
+    purchaseCost: []
+  });
 
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -128,6 +151,66 @@ const Assets = () => {
     retry: 1,
     refetchOnWindowFocus: false
   });
+  
+  const getFilterOptions = (key: keyof Asset) => {
+    if (!assets?.length) return [];
+    
+    const uniqueValues = Array.from(new Set(
+      assets
+        .map(asset => asset[key])
+        .filter(Boolean)
+    )).sort();
+    
+    return uniqueValues.map(value => String(value));
+  };
+  
+  const filterOptions = {
+    tag: getFilterOptions('tag' as keyof Asset),
+    name: getFilterOptions('name' as keyof Asset),
+    assignedTo: getFilterOptions('assigned_to' as keyof Asset),
+    purchaseDate: getFilterOptions('purchase_date' as keyof Asset)
+      .map(date => new Date(date).toLocaleDateString()),
+    wear: getFilterOptions('notes' as keyof Asset),
+    purchaseCost: getFilterOptions('purchase_cost' as keyof Asset)
+      .map(cost => `$${Number(cost).toFixed(2)}`)
+  };
+  
+  const isFilterActive = (key: keyof Filters) => {
+    return activeFilters[key] && activeFilters[key].length > 0;
+  };
+  
+  const activeFilterCount = Object.values(activeFilters).reduce(
+    (count, filters) => count + filters.length, 0
+  );
+  
+  const toggleFilter = (key: keyof Filters, value: string) => {
+    setActiveFilters(prev => {
+      const currentFilters = [...prev[key]];
+      const valueIndex = currentFilters.indexOf(value);
+      
+      if (valueIndex === -1) {
+        return { ...prev, [key]: [...currentFilters, value] };
+      } else {
+        currentFilters.splice(valueIndex, 1);
+        return { ...prev, [key]: currentFilters };
+      }
+    });
+  };
+  
+  const clearFilters = (key: keyof Filters) => {
+    setActiveFilters(prev => ({ ...prev, [key]: [] }));
+  };
+  
+  const clearAllFilters = () => {
+    setActiveFilters({
+      tag: [],
+      name: [],
+      assignedTo: [],
+      purchaseDate: [],
+      wear: [],
+      purchaseCost: []
+    });
+  };
   
   const handleDebug = async () => {
     setIsDebugging(true);
@@ -328,11 +411,36 @@ const Assets = () => {
     }
   };
   
-  const filteredAssets = assets.filter(asset => 
-    asset?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    asset?.tag?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    asset?.category?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredAssets = assets.filter(asset => {
+    const matchesSearch = 
+      (asset?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       asset?.tag?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       asset?.category?.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    if (!matchesSearch) return false;
+    
+    const tagMatch = activeFilters.tag.length === 0 || 
+      (asset.tag && activeFilters.tag.includes(asset.tag));
+    
+    const nameMatch = activeFilters.name.length === 0 || 
+      (asset.name && activeFilters.name.includes(asset.name));
+    
+    const assignedToMatch = activeFilters.assignedTo.length === 0 || 
+      (asset.assigned_to && activeFilters.assignedTo.includes(asset.assigned_to));
+    
+    const purchaseDateMatch = activeFilters.purchaseDate.length === 0 || 
+      (asset.purchase_date && 
+       activeFilters.purchaseDate.includes(new Date(asset.purchase_date).toLocaleDateString()));
+    
+    const wearMatch = activeFilters.wear.length === 0 || 
+      (asset.notes && activeFilters.wear.includes(asset.notes));
+    
+    const costMatch = activeFilters.purchaseCost.length === 0 || 
+      (asset.purchase_cost && 
+       activeFilters.purchaseCost.includes(`$${asset.purchase_cost.toFixed(2)}`));
+    
+    return tagMatch && nameMatch && assignedToMatch && purchaseDateMatch && wearMatch && costMatch;
+  });
 
   const handleImportClick = () => {
     if (fileInputRef.current) {
@@ -618,6 +726,71 @@ const Assets = () => {
     );
   }
   
+  const renderFilterPopover = (
+    title: string, 
+    options: string[], 
+    filterKey: keyof Filters
+  ) => {
+    const selectedFilters = activeFilters[filterKey];
+    
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={`h-8 px-2 ${isFilterActive(filterKey) ? 'bg-accent text-accent-foreground' : ''}`}
+          >
+            <ArrowUpDown className="h-3 w-3 mr-2" />
+            {title}
+            {isFilterActive(filterKey) && (
+              <Badge variant="secondary" className="ml-2 px-1 font-normal">
+                {selectedFilters.length}
+              </Badge>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-56 p-0" align="start">
+          <div className="p-2">
+            <div className="flex items-center justify-between pb-2">
+              <h4 className="font-medium text-sm">{title} Filter</h4>
+              <Button
+                variant="ghost" 
+                size="sm" 
+                className="h-8 px-2 text-xs"
+                onClick={() => clearFilters(filterKey)}
+                disabled={selectedFilters.length === 0}
+              >
+                Reset
+              </Button>
+            </div>
+            <div className="max-h-[300px] overflow-auto space-y-1">
+              {options.length > 0 ? (
+                options.map((option) => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`${filterKey}-${option}`}
+                      checked={selectedFilters.includes(option)}
+                      onCheckedChange={() => toggleFilter(filterKey, option)}
+                    />
+                    <label 
+                      htmlFor={`${filterKey}-${option}`}
+                      className="text-sm font-normal cursor-pointer flex-1 truncate"
+                    >
+                      {option || "(Empty)"}
+                    </label>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-muted-foreground py-2">No options available</div>
+              )}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
@@ -687,10 +860,43 @@ const Assets = () => {
             />
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
-            </Button>
+            <Popover open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filter
+                  {activeFilterCount > 0 && (
+                    <Badge variant="secondary" className="ml-2 px-1 font-normal">
+                      {activeFilterCount}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2" align="end">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="font-medium">Filters</h4>
+                  <Button
+                    variant="ghost" 
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={clearAllFilters}
+                    disabled={activeFilterCount === 0}
+                  >
+                    Reset All
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    {activeFilterCount === 0 
+                      ? "No filters applied." 
+                      : `${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied.`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Click column headers to filter by specific fields.
+                  </p>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
         
@@ -698,12 +904,24 @@ const Assets = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>IN</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Purchase Date</TableHead>
-                <TableHead>Wear</TableHead>
-                <TableHead>Purchase Cost</TableHead>
+                <TableHead>
+                  {renderFilterPopover("IN", filterOptions.tag, "tag")}
+                </TableHead>
+                <TableHead>
+                  {renderFilterPopover("Name", filterOptions.name, "name")}
+                </TableHead>
+                <TableHead>
+                  {renderFilterPopover("Assigned To", filterOptions.assignedTo, "assignedTo")}
+                </TableHead>
+                <TableHead>
+                  {renderFilterPopover("Purchase Date", filterOptions.purchaseDate, "purchaseDate")}
+                </TableHead>
+                <TableHead>
+                  {renderFilterPopover("Wear", filterOptions.wear, "wear")}
+                </TableHead>
+                <TableHead>
+                  {renderFilterPopover("Purchase Cost", filterOptions.purchaseCost, "purchaseCost")}
+                </TableHead>
                 <TableHead>Qty</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -723,8 +941,17 @@ const Assets = () => {
                   <TableCell colSpan={8} className="text-center py-8">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <Package className="h-12 w-12 mb-2 text-muted-foreground/50" />
-                      <p>No assets found. Click the Import or Add Asset button to get started.</p>
+                      <p>{assets.length > 0 ? "No matching assets found. Try adjusting your filters." : "No assets found. Click the Import or Add Asset button to get started."}</p>
                       <div className="flex gap-2 mt-2">
+                        {activeFilterCount > 0 && (
+                          <Button 
+                            variant="outline"
+                            size="sm"
+                            onClick={clearAllFilters}
+                          >
+                            Clear Filters
+                          </Button>
+                        )}
                         <Button 
                           variant="outline"
                           size="sm"
