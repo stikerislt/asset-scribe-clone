@@ -52,7 +52,7 @@ export const CSVPreview = ({
             {data.slice(0, 10).map((row, rowIndex) => (
               <TableRow key={rowIndex}>
                 {row.map((cell, cellIndex) => (
-                  <TableCell key={cellIndex}>{cell}</TableCell>
+                  <TableCell key={cellIndex}>{String(cell)}</TableCell>
                 ))}
               </TableRow>
             ))}
