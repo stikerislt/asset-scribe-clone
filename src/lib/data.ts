@@ -3,7 +3,9 @@ import { useActivity, getActivityIcon } from "@/hooks/useActivity";
 import { Database } from "@/integrations/supabase/types";
 
 // Define Asset type based on Supabase schema
-export type Asset = Database['public']['Tables']['assets']['Row'];
+export type Asset = Database['public']['Tables']['assets']['Row'] & {
+  notes?: string | null;
+};
 
 // Define asset status type for type safety
 export type AssetStatus = "ready" | "assigned" | "pending" | "archived" | "broken";

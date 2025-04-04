@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,6 @@ import {
   Download, 
   UserPlus,
   Filter,
-  Upload,
   Import,
   Loader,
 } from "lucide-react";
@@ -61,12 +60,17 @@ const Assets = () => {
         throw new Error(error.message);
       }
       
-      return data || [];
+      const assetsWithNotes = data?.map(asset => ({
+        ...asset,
+        notes: asset.location
+      })) || [];
+      
+      return assetsWithNotes;
     }
   });
   
   const createAssetMutation = useMutation({
-    mutationFn: async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
       const { data, error } = await supabase
         .from('assets')
         .insert([{

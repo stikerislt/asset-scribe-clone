@@ -7,6 +7,7 @@ import { Package } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useActivity } from "@/hooks/useActivity";
 
@@ -20,6 +21,7 @@ const assetFormSchema = z.object({
   status: z.enum(["ready", "assigned", "pending", "archived", "broken"]),
   assigned_to: z.string().optional(),
   location: z.string().optional(),
+  notes: z.string().optional(),
   purchase_date: z.string().optional(),
   purchase_cost: z.string().optional(),
 });
@@ -55,6 +57,7 @@ export function AssetForm({ onSubmit, onCancel }: AssetFormProps) {
       serial: values.serial || null,
       model: values.model || null,
       location: values.location || null,
+      notes: values.notes || null,
       assigned_to: values.assigned_to || null,
       purchase_date: values.purchase_date ? new Date(values.purchase_date).toISOString() : null,
       purchase_cost: values.purchase_cost ? parseFloat(values.purchase_cost) : null,
@@ -238,6 +241,24 @@ export function AssetForm({ onSubmit, onCancel }: AssetFormProps) {
                 <FormLabel>Purchase Cost</FormLabel>
                 <FormControl>
                   <Input placeholder="1299.99" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel>Notes</FormLabel>
+                <FormControl>
+                  <Textarea 
+                    placeholder="Additional information about this asset" 
+                    className="min-h-[80px]" 
+                    {...field} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
