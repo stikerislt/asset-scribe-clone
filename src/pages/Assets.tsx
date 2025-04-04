@@ -37,9 +37,11 @@ import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Asset, AssetStatus, debugAssetAccess } from "@/lib/data";
 import { csvToObjects, objectsToCSV, generateAssetImportTemplate } from "@/lib/csv-utils";
+import { parseCSVForPreview } from "@/lib/preview-csv";
 import { useActivity } from "@/hooks/useActivity";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AssetForm } from "@/components/AssetForm";
+import { CSVPreview } from "@/components/CSVPreview";
 import { supabase, checkAuth } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast as sonnerToast } from "sonner";
@@ -50,6 +52,9 @@ const Assets = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDebugging, setIsDebugging] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [csvPreviewData, setCsvPreviewData] = useState<{ headers: string[], data: string[][] } | null>(null);
+  const [csvContent, setCsvContent] = useState<string | null>(null);
+  const [showCSVPreview, setShowCSVPreview] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { logActivity } = useActivity();
@@ -191,72 +196,26 @@ const Assets = () => {
     const reader = new FileReader();
     reader.onload = async (e) => {
       const csvContent = e.target?.result as string;
+      setCsvContent(csvContent);
+      
       try {
-        const importedAssets = csvToObjects<{
-          name: string;
-          tag: string;
-          serial: string;
-          model: string;
-          category: string;
-          status: AssetStatus;
-          assigned_to: string;
-          location: string;
-          purchase_date: string;
-          purchase_cost: string;
-        }>(csvContent);
-        
-        const validAssets = importedAssets
-          .filter(asset => asset.name && asset.tag);
-        
-        if (validAssets.length === 0) {
+        const previewData = parseCSVForPreview(csvContent);
+        if (previewData.headers.length === 0 || previewData.data.length === 0) {
           toast({
-            title: "Import Failed",
-            description: "No valid assets found in the file",
+            title: "Invalid CSV",
+            description: "Unable to parse CSV data. Please check your file format.",
             variant: "destructive",
           });
           return;
         }
-
-        for (const asset of validAssets) {
-          try {
-            await supabase.from('assets').insert([{
-              name: asset.name,
-              tag: asset.tag,
-              serial: asset.serial || '',
-              model: asset.model || '',
-              category: asset.category,
-              status: asset.status as AssetStatus,
-              assigned_to: asset.assigned_to || null,
-              purchase_date: asset.purchase_date ? new Date(asset.purchase_date).toISOString() : null,
-              purchase_cost: asset.purchase_cost ? parseFloat(asset.purchase_cost) : null,
-              location: asset.location || '',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              user_id: null
-            }]);
-          } catch (error) {
-            console.error('Error importing asset:', error);
-          }
-        }
         
-        queryClient.invalidateQueries({ queryKey: ['assets'] });
-        
-        logActivity({
-          title: "Assets Imported",
-          description: `${validAssets.length} assets imported`,
-          category: 'asset',
-          icon: <Package className="h-5 w-5 text-blue-600" />
-        });
-
-        toast({
-          title: "Import Successful",
-          description: `${validAssets.length} assets imported`,
-        });
+        setCsvPreviewData(previewData);
+        setShowCSVPreview(true);
       } catch (error) {
-        console.error("CSV import error:", error);
+        console.error("CSV preview error:", error);
         toast({
-          title: "Import Failed",
-          description: "The file format is invalid",
+          title: "Preview Failed",
+          description: "Failed to preview CSV data. Please check your file format.",
           variant: "destructive",
         });
       }
@@ -264,6 +223,91 @@ const Assets = () => {
     reader.readAsText(file);
 
     event.target.value = '';
+  };
+  
+  const handleConfirmImport = async () => {
+    if (!csvContent) {
+      toast({
+        title: "Import Failed",
+        description: "No CSV content to import",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      const importedAssets = csvToObjects<{
+        name: string;
+        tag: string;
+        serial: string;
+        model: string;
+        category: string;
+        status: AssetStatus;
+        assigned_to: string;
+        location: string;
+        purchase_date: string;
+        purchase_cost: string;
+      }>(csvContent);
+      
+      const validAssets = importedAssets
+        .filter(asset => asset.name && asset.tag);
+      
+      if (validAssets.length === 0) {
+        toast({
+          title: "Import Failed",
+          description: "No valid assets found in the file",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      for (const asset of validAssets) {
+        try {
+          await supabase.from('assets').insert([{
+            name: asset.name,
+            tag: asset.tag,
+            serial: asset.serial || '',
+            model: asset.model || '',
+            category: asset.category,
+            status: asset.status as AssetStatus,
+            assigned_to: asset.assigned_to || null,
+            purchase_date: asset.purchase_date ? new Date(asset.purchase_date).toISOString() : null,
+            purchase_cost: asset.purchase_cost ? parseFloat(asset.purchase_cost) : null,
+            location: asset.location || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            user_id: null
+          }]);
+        } catch (error) {
+          console.error('Error importing asset:', error);
+        }
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      
+      logActivity({
+        title: "Assets Imported",
+        description: `${validAssets.length} assets imported`,
+        category: 'asset',
+        icon: <Package className="h-5 w-5 text-blue-600" />
+      });
+
+      toast({
+        title: "Import Successful",
+        description: `${validAssets.length} assets imported`,
+      });
+      
+      setShowCSVPreview(false);
+      setCsvContent(null);
+      setCsvPreviewData(null);
+    } catch (error) {
+      console.error("CSV import error:", error);
+      toast({
+        title: "Import Failed",
+        description: "The file format is invalid",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleExportClick = () => {
@@ -519,6 +563,32 @@ const Assets = () => {
             onSubmit={handleAddAsset}
             onCancel={() => setIsAddDialogOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={showCSVPreview} onOpenChange={(value) => {
+        if (!value) {
+          setShowCSVPreview(false);
+          setCsvPreviewData(null);
+          setCsvContent(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[900px] max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Preview Import Data</DialogTitle>
+          </DialogHeader>
+          {csvPreviewData && (
+            <CSVPreview
+              headers={csvPreviewData.headers}
+              data={csvPreviewData.data}
+              onConfirm={handleConfirmImport}
+              onCancel={() => {
+                setShowCSVPreview(false);
+                setCsvPreviewData(null);
+                setCsvContent(null);
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
