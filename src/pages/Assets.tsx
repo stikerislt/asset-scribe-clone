@@ -93,20 +93,23 @@ const Assets = () => {
     }
   });
   
-  const handleAddAsset = async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
+  const handleAddAsset = async (assetData: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
     try {
-      await createAssetMutation.mutateAsync(newAsset);
+      await createAssetMutation.mutateAsync({
+        ...assetData,
+        user_id: null
+      });
       
       setIsAddDialogOpen(false);
       
       toast({
         title: "Asset Created",
-        description: `${newAsset.name} has been added to the inventory`,
+        description: `${assetData.name} has been added to the inventory`,
       });
       
       logActivity({
         title: "Asset Created",
-        description: `${newAsset.name} added to inventory`,
+        description: `${assetData.name} added to inventory`,
         category: 'asset',
         icon: <Package className="h-5 w-5 text-blue-600" />
       });

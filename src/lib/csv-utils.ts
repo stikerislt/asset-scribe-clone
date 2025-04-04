@@ -90,17 +90,19 @@ const parseCSVLine = (line: string): string[] => {
  * Generate a template CSV for asset imports
  */
 export const generateAssetImportTemplate = (): string => {
+  // Updated template headers to match the current database schema
   const templateHeaders = [
     'name',
     'tag',
     'serial',
     'model',
     'category',
+    'location',
+    'notes',
     'status',
-    'assignedTo',
-    'purchaseDate',
-    'purchaseCost',
-    'location'
+    'assigned_to',
+    'purchase_date',
+    'purchase_cost'
   ];
   
   // Example row with empty values
