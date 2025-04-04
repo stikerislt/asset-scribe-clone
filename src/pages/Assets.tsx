@@ -43,7 +43,7 @@ import { useActivity } from "@/hooks/useActivity";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AssetForm } from "@/components/AssetForm";
 import { CSVPreview } from "@/components/CSVPreview";
-import { supabase, checkAuth } from "@/integrations/supabase/client";
+import { supabase, checkAuth, debugRlsAccess } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast as sonnerToast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -334,15 +334,19 @@ const Assets = () => {
       const importErrors = [];
       const importSuccess = [];
 
+      const DEFAULT_CATEGORY = "General";
+
       for (const asset of validAssets) {
         try {
+          const category = asset.category || DEFAULT_CATEGORY;
+          
           const { error } = await supabase.from('assets').insert([{
             name: asset.name,
             tag: asset.tag,
             serial: asset.serial || '',
             model: asset.model || '',
-            category: asset.category,
-            status: asset.status as AssetStatus,
+            category: category,
+            status: asset.status as AssetStatus || 'ready',
             assigned_to: asset.assigned_to || null,
             purchase_date: asset.purchase_date ? new Date(asset.purchase_date).toISOString() : null,
             purchase_cost: asset.purchase_cost ? parseFloat(asset.purchase_cost) : null,

@@ -1,3 +1,4 @@
+
 // CSV export/import utility functions
 
 /**
@@ -94,6 +95,7 @@ export const generateAssetImportTemplate = (): string => {
   const templateHeaders = [
     'tag',           // IN
     'name',          // Name
+    'category',      // Category (added this explicitly as it's required)
     'assigned_to',   // Assigned To
     'purchase_date', // Purchase Date
     'wear',          // Wear
@@ -101,8 +103,11 @@ export const generateAssetImportTemplate = (): string => {
     'qty'            // Qty
   ];
   
-  // Example row with empty values
-  const exampleRow = templateHeaders.map(() => '');
+  // Example row with default values for required fields
+  const exampleRow = templateHeaders.map(header => {
+    if (header === 'category') return 'General'; // Default category
+    return '';
+  });
   
   return [templateHeaders.join(','), exampleRow.join(',')].join('\n');
 };
