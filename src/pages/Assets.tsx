@@ -70,13 +70,14 @@ const Assets = () => {
   });
   
   const createAssetMutation = useMutation({
-    mutationFn: async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
+    mutationFn: async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
         .from('assets')
         .insert([{
           ...newAsset,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          user_id: null
         }])
         .select()
         .single();
@@ -94,10 +95,7 @@ const Assets = () => {
   
   const handleAddAsset = async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
     try {
-      await createAssetMutation.mutateAsync({
-        ...newAsset,
-        user_id: null
-      });
+      await createAssetMutation.mutateAsync(newAsset);
       
       setIsAddDialogOpen(false);
       
