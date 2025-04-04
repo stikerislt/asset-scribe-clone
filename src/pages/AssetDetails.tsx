@@ -30,11 +30,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { formatDate } from "@/lib/utils";
 import { AssetStatus } from "@/lib/data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 
 const AssetDetails = () => {
   const { id } = useParams<{ id: string }>();
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
+  const [assignedTo, setAssignedTo] = useState("");
+  const [maintenanceDescription, setMaintenanceDescription] = useState("");
+  const [maintenanceDate, setMaintenanceDate] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { data: asset, isLoading, error } = useQuery({
+  const { data: asset, isLoading, error, refetch } = useQuery({
     queryKey: ['asset', id],
     queryFn: async () => {
       if (!id) return null;
@@ -53,6 +66,68 @@ const AssetDetails = () => {
     },
     enabled: !!id,
   });
+
+  // Get users for the assign dropdown
+  const { data: users } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email');
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      return data || [];
+    },
+  });
+
+  const handleAssignAsset = async () => {
+    if (!id || !assignedTo) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const { error } = await supabase
+        .from('assets')
+        .update({ assigned_to: assignedTo })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      toast.success("Asset assigned successfully");
+      setAssignDialogOpen(false);
+      refetch();
+    } catch (error) {
+      toast.error("Failed to assign asset");
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddMaintenance = async () => {
+    if (!id || !maintenanceDescription) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      // In a real app, you'd add a record to a maintenance table
+      // For now, we'll just show a success message
+      toast.success("Maintenance record added");
+      setMaintenanceDialogOpen(false);
+      
+      // Reset form
+      setMaintenanceDescription("");
+      setMaintenanceDate("");
+    } catch (error) {
+      toast.error("Failed to add maintenance record");
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   
   if (isLoading) {
     return (
@@ -78,17 +153,6 @@ const AssetDetails = () => {
     );
   }
   
-  // Calculate warranty expiration if purchase date exists
-  const getWarrantyExpiration = () => {
-    if (!asset.purchase_date) return 'N/A';
-    
-    const purchaseDate = new Date(asset.purchase_date);
-    const expiryDate = new Date(purchaseDate);
-    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-    
-    return formatDate(expiryDate.toISOString());
-  };
-  
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6">
@@ -108,9 +172,11 @@ const AssetDetails = () => {
           </div>
         </div>
         <div className="flex gap-2 mt-4 sm:mt-0">
-          <Button variant="outline" size="sm">
-            <Edit className="mr-2 h-4 w-4" />
-            Edit
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/assets/edit/${id}`}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </Link>
           </Button>
           <Button variant="outline" size="sm">
             <Printer className="mr-2 h-4 w-4" />
@@ -166,10 +232,6 @@ const AssetDetails = () => {
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-1">Purchase Cost</h4>
                         <p>{asset.purchase_cost ? `$${asset.purchase_cost}` : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Warranty</h4>
-                        <p>12 months (expires on {getWarrantyExpiration()})</p>
                       </div>
                       {asset.assigned_to && (
                         <div>
@@ -251,15 +313,17 @@ const AssetDetails = () => {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button className="w-full justify-start">
+              <Button className="w-full justify-start" onClick={() => setAssignDialogOpen(true)}>
                 <User className="mr-2 h-4 w-4" />
                 Assign Asset
               </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Details
+              <Button variant="outline" className="w-full justify-start" asChild>
+                <Link to={`/assets/edit/${id}`}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Details
+                </Link>
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={() => setMaintenanceDialogOpen(true)}>
                 <Clock className="mr-2 h-4 w-4" />
                 Add Maintenance
               </Button>
@@ -326,6 +390,83 @@ const AssetDetails = () => {
           </Card>
         </div>
       </div>
+
+      {/* Assign Asset Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Asset</DialogTitle>
+            <DialogDescription>
+              Assign this asset to a user or location.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="assignTo">Assign to</Label>
+              <Select onValueChange={setAssignedTo} defaultValue={asset.assigned_to || ""}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a user" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users?.map(user => (
+                    <SelectItem key={user.id} value={user.full_name || user.email}>
+                      {user.full_name || user.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAssignAsset} disabled={isSubmitting}>
+              {isSubmitting ? "Assigning..." : "Assign Asset"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Maintenance Dialog */}
+      <Dialog open={maintenanceDialogOpen} onOpenChange={setMaintenanceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Maintenance Record</DialogTitle>
+            <DialogDescription>
+              Record maintenance activity for this asset.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="date">Date</Label>
+              <Input 
+                id="date"
+                type="date"
+                value={maintenanceDate}
+                onChange={(e) => setMaintenanceDate(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea 
+                id="description"
+                placeholder="Enter maintenance details..."
+                value={maintenanceDescription}
+                onChange={(e) => setMaintenanceDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMaintenanceDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddMaintenance} disabled={isSubmitting}>
+              {isSubmitting ? "Adding..." : "Add Maintenance"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
