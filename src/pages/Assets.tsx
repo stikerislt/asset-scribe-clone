@@ -228,16 +228,15 @@ const Assets = () => {
     }
 
     const formattedAssets = assets.map(asset => ({
-      name: asset.name,
       tag: asset.tag,
+      name: asset.name,
       serial: asset.serial || '',
-      model: asset.model || '',
       category: asset.category,
+      notes: asset.notes || '',
       status: asset.status,
-      assigned_to: asset.assigned_to || '',
-      location: asset.location || '',
       purchase_date: asset.purchase_date || '',
       purchase_cost: asset.purchase_cost || '',
+      assigned_to: asset.assigned_to || '',
     }));
     
     const csv = objectsToCSV(formattedAssets);
