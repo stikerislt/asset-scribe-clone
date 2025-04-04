@@ -102,6 +102,7 @@ const Employees = () => {
         .from('profiles')
         .insert([
           { 
+            id: crypto.randomUUID(), // Generate a random UUID for the profile
             full_name: employee.fullName,
             email: employee.email
           }
