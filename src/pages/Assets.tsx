@@ -50,7 +50,6 @@ const Assets = () => {
   const { logActivity } = useActivity();
   const queryClient = useQueryClient();
   
-  // Fetch assets from Supabase
   const { data: assets = [], isLoading, error } = useQuery({
     queryKey: ['assets'],
     queryFn: async () => {
@@ -66,7 +65,6 @@ const Assets = () => {
     }
   });
   
-  // Create asset mutation
   const createAssetMutation = useMutation({
     mutationFn: async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
@@ -90,7 +88,6 @@ const Assets = () => {
     }
   });
   
-  // Handle asset form submission
   const handleAddAsset = async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
     try {
       await createAssetMutation.mutateAsync({
@@ -154,7 +151,6 @@ const Assets = () => {
           purchase_cost: string;
         }>(csvContent);
         
-        // Validate imported assets
         const validAssets = importedAssets
           .filter(asset => asset.name && asset.tag);
         
@@ -167,7 +163,6 @@ const Assets = () => {
           return;
         }
 
-        // Insert assets into Supabase
         for (const asset of validAssets) {
           try {
             await supabase.from('assets').insert([{
@@ -192,7 +187,6 @@ const Assets = () => {
         
         queryClient.invalidateQueries({ queryKey: ['assets'] });
         
-        // Log activity
         logActivity({
           title: "Assets Imported",
           description: `${validAssets.length} assets imported`,
@@ -215,12 +209,10 @@ const Assets = () => {
     };
     reader.readAsText(file);
 
-    // Reset file input
     event.target.value = '';
   };
 
   const handleExportClick = () => {
-    // If no assets, export template
     if (assets.length === 0) {
       downloadCSV(generateAssetImportTemplate(), "assets-template.csv");
       toast({
@@ -230,7 +222,6 @@ const Assets = () => {
       return;
     }
 
-    // Format assets for CSV export
     const formattedAssets = assets.map(asset => ({
       name: asset.name,
       tag: asset.tag,
@@ -244,7 +235,6 @@ const Assets = () => {
       purchase_cost: asset.purchase_cost || '',
     }));
     
-    // Export current assets
     const csv = objectsToCSV(formattedAssets);
     downloadCSV(csv, "assets-export.csv");
     
@@ -340,13 +330,13 @@ const Assets = () => {
               <TableRow>
                 <TableHead>IN</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Serial</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Notes</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Purchase Date</TableHead>
                 <TableHead>Purchase Cost</TableHead>
                 <TableHead>Assigned To</TableHead>
-                <TableHead>Serial</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -378,8 +368,15 @@ const Assets = () => {
                         {asset.name}
                       </Link>
                     </TableCell>
+                    <TableCell>
+                      {asset.serial || <span className="text-gray-400">—</span>}
+                    </TableCell>
+                    <TableCell>{asset.category}</TableCell>
                     <TableCell className="max-w-[150px] truncate">
                       {asset.notes || <span className="text-gray-400">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      <AssetStatusBadge status={asset.status as AssetStatus} />
                     </TableCell>
                     <TableCell>
                       {asset.purchase_date ? new Date(asset.purchase_date).toLocaleDateString() : <span className="text-gray-400">—</span>}
@@ -389,13 +386,6 @@ const Assets = () => {
                     </TableCell>
                     <TableCell>
                       {asset.assigned_to || <span className="text-gray-400">—</span>}
-                    </TableCell>
-                    <TableCell>
-                      {asset.serial || <span className="text-gray-400">—</span>}
-                    </TableCell>
-                    <TableCell>{asset.category}</TableCell>
-                    <TableCell>
-                      <AssetStatusBadge status={asset.status as AssetStatus} />
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
