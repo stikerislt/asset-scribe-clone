@@ -18,7 +18,7 @@ export const parseCSVForPreview = (csv: string): { headers: string[], data: stri
 };
 
 /**
- * Parse a CSV line, handling quoted values with commas
+ * Parse a CSV line, handling quoted values with commas and UTF-8 characters
  */
 const parseCSVLine = (line: string): string[] => {
   const values: string[] = [];

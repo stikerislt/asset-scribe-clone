@@ -33,7 +33,7 @@ export const CSVPreview = ({ headers, data, onConfirm, onCancel }: CSVPreviewPro
           <TableHeader>
             <TableRow>
               {headers.map((header, index) => (
-                <TableHead key={index}>{header}</TableHead>
+                <TableHead key={index} className="whitespace-nowrap">{header}</TableHead>
               ))}
             </TableRow>
           </TableHeader>

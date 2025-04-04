@@ -1,7 +1,8 @@
+
 // CSV export/import utility functions
 
 /**
- * Converts an array of objects to CSV format
+ * Converts an array of objects to CSV format with UTF-8 support
  */
 export const objectsToCSV = <T extends Record<string, any>>(data: T[]): string => {
   if (data.length === 0) return '';
@@ -17,8 +18,8 @@ export const objectsToCSV = <T extends Record<string, any>>(data: T[]): string =
     return headers.map(header => {
       // Handle special characters and quotes in CSV
       const value = item[header] === null || item[header] === undefined ? '' : String(item[header]);
-      // Escape quotes and wrap in quotes if contains comma or quotes
-      if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+      // Escape quotes and wrap in quotes if contains comma, quotes, or special characters
+      if (value.includes(',') || value.includes('"') || value.includes('\n') || /[^\x00-\x7F]/.test(value)) {
         return `"${value.replace(/"/g, '""')}"`;
       }
       return value;
@@ -30,7 +31,7 @@ export const objectsToCSV = <T extends Record<string, any>>(data: T[]): string =
 };
 
 /**
- * Parse CSV string to array of objects
+ * Parse CSV string to array of objects with UTF-8 support
  */
 export const csvToObjects = <T extends Record<string, any>>(csv: string): T[] => {
   if (!csv || csv.trim() === '') return [];
@@ -38,7 +39,8 @@ export const csvToObjects = <T extends Record<string, any>>(csv: string): T[] =>
   const lines = csv.split('\n');
   if (lines.length <= 1) return [];
   
-  const headers = lines[0].split(',').map(header => header.trim());
+  // Parse header line using parseCSVLine for better UTF-8 support
+  const headers = parseCSVLine(lines[0]);
   
   return lines.slice(1)
     .filter(line => line.trim() !== '')
@@ -55,7 +57,7 @@ export const csvToObjects = <T extends Record<string, any>>(csv: string): T[] =>
 };
 
 /**
- * Parse a CSV line, handling quoted values with commas
+ * Parse a CSV line, handling quoted values with commas and UTF-8 characters
  */
 const parseCSVLine = (line: string): string[] => {
   const values: string[] = [];
