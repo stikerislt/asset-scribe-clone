@@ -68,19 +68,49 @@ const AssetDetails = () => {
   });
 
   // Get users for the assign dropdown
-  const { data: users } = useQuery({
-    queryKey: ['users'],
+  const { data: employeesList } = useQuery({
+    queryKey: ['employees-list'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Get all unique assigned_to values from assets
+      const { data: assignedAssets, error: assignedError } = await supabase
+        .from('assets')
+        .select('assigned_to')
+        .not('assigned_to', 'is', null);
+      
+      if (assignedError) throw assignedError;
+      
+      // Create a Set to avoid duplicates
+      const uniqueEmployees = new Set(
+        assignedAssets
+          .filter(asset => asset.assigned_to)
+          .map(asset => asset.assigned_to)
+      );
+      
+      // Get profiles for more employee data
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, full_name, email');
       
-      if (error) {
-        throw new Error(error.message);
-      }
+      if (profilesError) throw profilesError;
       
-      return data || [];
-    },
+      // Combine assigned_to values with profiles
+      const employees = Array.from(uniqueEmployees).map(name => ({
+        name: name as string,
+        isProfile: false
+      }));
+      
+      // Add profiles that aren't already in the list
+      profiles?.forEach(profile => {
+        if (profile.full_name && !uniqueEmployees.has(profile.full_name)) {
+          employees.push({
+            name: profile.full_name,
+            isProfile: true
+          });
+        }
+      });
+      
+      return employees;
+    }
   });
 
   const handleAssignAsset = async () => {
@@ -236,7 +266,14 @@ const AssetDetails = () => {
                       {asset.assigned_to && (
                         <div>
                           <h4 className="text-sm font-medium text-muted-foreground mb-1">Assigned To</h4>
-                          <p>{asset.assigned_to}</p>
+                          <p>
+                            <Link 
+                              to={`/employees?search=${encodeURIComponent(asset.assigned_to)}`}
+                              className="text-blue-600 hover:underline"
+                            >
+                              {asset.assigned_to}
+                            </Link>
+                          </p>
                         </div>
                       )}
                     </div>
@@ -397,7 +434,7 @@ const AssetDetails = () => {
           <DialogHeader>
             <DialogTitle>Assign Asset</DialogTitle>
             <DialogDescription>
-              Assign this asset to a user or location.
+              Assign this asset to an employee or location.
             </DialogDescription>
           </DialogHeader>
           
@@ -406,12 +443,12 @@ const AssetDetails = () => {
               <Label htmlFor="assignTo">Assign to</Label>
               <Select onValueChange={setAssignedTo} defaultValue={asset.assigned_to || ""}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a user" />
+                  <SelectValue placeholder="Select an employee" />
                 </SelectTrigger>
                 <SelectContent>
-                  {users?.map(user => (
-                    <SelectItem key={user.id} value={user.full_name || user.email}>
-                      {user.full_name || user.email}
+                  {employeesList?.map((employee) => (
+                    <SelectItem key={employee.name} value={employee.name}>
+                      {employee.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

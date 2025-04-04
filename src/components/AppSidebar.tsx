@@ -33,8 +33,8 @@ const mainMenuItems = [
     icon: Package,
   },
   {
-    title: "Users",
-    path: "/users",
+    title: "Employees",
+    path: "/employees",
     icon: Users,
   },
 ];
