@@ -18,18 +18,57 @@ export const AppRoutes = () => {
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
-      <Route element={<AppLayout>
-        <Routes>
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
-          <Route path="/assets/:id" element={<ProtectedRoute><AssetDetails /></ProtectedRoute>} />
-          <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
-          <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
-        </Routes>
-      </AppLayout>}>
-      </Route>
+      
+      {/* Protected Routes */}
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Dashboard />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/assets" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Assets />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/assets/:id" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <AssetDetails />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/employees" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Employees />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/categories" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Categories />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Settings />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/users" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Users />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
