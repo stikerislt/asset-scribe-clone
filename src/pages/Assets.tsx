@@ -338,19 +338,22 @@ const Assets = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Asset Tag</TableHead>
+                <TableHead>IN</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead>Purchase Date</TableHead>
+                <TableHead>Purchase Cost</TableHead>
+                <TableHead>Assigned To</TableHead>
+                <TableHead>Serial</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Location</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={10} className="text-center py-8">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <Loader className="h-8 w-8 animate-spin mb-2 text-muted-foreground/50" />
                       <p>Loading assets...</p>
@@ -359,7 +362,7 @@ const Assets = () => {
                 </TableRow>
               ) : filteredAssets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={10} className="text-center py-8">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <Package className="h-12 w-12 mb-2 text-muted-foreground/50" />
                       <p>No assets found. Click the Import or Add Asset button to get started.</p>
@@ -374,18 +377,26 @@ const Assets = () => {
                       <Link to={`/assets/${asset.id}`} className="font-medium hover:underline text-blue-600">
                         {asset.name}
                       </Link>
-                      <div className="text-xs text-muted-foreground">
-                        S/N: {asset.serial}
-                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[150px] truncate">
+                      {asset.notes || <span className="text-gray-400">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      {asset.purchase_date ? new Date(asset.purchase_date).toLocaleDateString() : <span className="text-gray-400">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      {asset.purchase_cost ? `$${asset.purchase_cost.toFixed(2)}` : <span className="text-gray-400">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      {asset.assigned_to || <span className="text-gray-400">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      {asset.serial || <span className="text-gray-400">—</span>}
                     </TableCell>
                     <TableCell>{asset.category}</TableCell>
                     <TableCell>
                       <AssetStatusBadge status={asset.status as AssetStatus} />
                     </TableCell>
-                    <TableCell>
-                      {asset.assigned_to || <span className="text-gray-400">—</span>}
-                    </TableCell>
-                    <TableCell>{asset.location}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
