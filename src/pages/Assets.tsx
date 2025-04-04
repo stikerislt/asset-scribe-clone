@@ -32,7 +32,22 @@ import {
   Loader,
   AlertCircle,
   RefreshCw,
-  FileSpreadsheet
+  FileSpreadsheet,
+  AlertTriangle,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Alert,
+  AlertTitle,
+  AlertDescription
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +72,11 @@ const Assets = () => {
   const [csvContent, setCsvContent] = useState<string | null>(null);
   const [showCSVPreview, setShowCSVPreview] = useState(false);
   const [importFileType, setImportFileType] = useState<'csv' | 'excel'>('csv');
+  const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
+  const [deleteAllConfirmText, setDeleteAllConfirmText] = useState("");
+  const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { logActivity } = useActivity();
@@ -148,6 +168,129 @@ const Assets = () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
     }
   });
+  
+  const deleteAssetMutation = useMutation({
+    mutationFn: async (assetId: string) => {
+      const { error } = await supabase
+        .from('assets')
+        .delete()
+        .eq('id', assetId);
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      return assetId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+    }
+  });
+  
+  const deleteAllAssetsMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error("Not authenticated");
+      
+      const { error } = await supabase
+        .from('assets')
+        .delete()
+        .eq('user_id', user.id);
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+    }
+  });
+
+  const handleDeleteAsset = (asset: Asset) => {
+    setAssetToDelete(asset);
+    setIsDeleteConfirmOpen(true);
+  };
+  
+  const confirmDeleteAsset = async () => {
+    if (!assetToDelete) return;
+    
+    try {
+      await deleteAssetMutation.mutateAsync(assetToDelete.id);
+      
+      toast({
+        title: "Asset Deleted",
+        description: `${assetToDelete.name} has been removed from inventory`,
+      });
+      
+      logActivity({
+        title: "Asset Deleted",
+        description: `${assetToDelete.name} removed from inventory`,
+        category: 'asset',
+        icon: <Package className="h-5 w-5 text-red-600" />
+      });
+      
+      setIsDeleteConfirmOpen(false);
+      setAssetToDelete(null);
+    } catch (error) {
+      console.error('Error deleting asset:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete asset. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleDeleteAllAssets = () => {
+    if (!assets || assets.length === 0) {
+      toast({
+        title: "No Assets to Delete",
+        description: "There are no assets in the inventory to delete.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsDeleteAllDialogOpen(true);
+  };
+  
+  const confirmDeleteAllAssets = async () => {
+    if (deleteAllConfirmText !== "DELETE ALL ASSETS") {
+      toast({
+        title: "Confirmation Failed",
+        description: "Please type the exact confirmation phrase to proceed.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      await deleteAllAssetsMutation.mutateAsync();
+      
+      toast({
+        title: "All Assets Deleted",
+        description: `${assets.length} assets have been removed from inventory`,
+      });
+      
+      logActivity({
+        title: "All Assets Deleted",
+        description: `${assets.length} assets removed from inventory`,
+        category: 'asset',
+        icon: <AlertTriangle className="h-5 w-5 text-red-600" />
+      });
+      
+      setIsDeleteAllDialogOpen(false);
+      setDeleteAllConfirmText("");
+    } catch (error) {
+      console.error('Error deleting all assets:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete all assets. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
   
   const handleAddAsset = async (assetData: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
     try {
@@ -500,6 +643,10 @@ const Assets = () => {
             <RefreshCw className={`mr-2 h-4 w-4 ${isDebugging ? 'animate-spin' : ''}`} />
             Debug
           </Button>
+          <Button className="" size="sm" variant="destructive" onClick={handleDeleteAllAssets}>
+            <Trash className="mr-2 h-4 w-4" />
+            Delete All
+          </Button>
         </div>
       </div>
       
@@ -632,7 +779,10 @@ const Assets = () => {
                             Assign
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem 
+                            className="text-red-600"
+                            onClick={() => handleDeleteAsset(asset)}
+                          >
                             <Trash className="mr-2 h-4 w-4" />
                             Delete
                           </DropdownMenuItem>
@@ -688,6 +838,84 @@ const Assets = () => {
           )}
         </DialogContent>
       </Dialog>
+      
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this asset?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete{' '}
+              <span className="font-semibold">{assetToDelete?.name}</span> from your inventory.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setAssetToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteAsset}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={isDeleteAllDialogOpen} onOpenChange={setIsDeleteAllDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600">
+              Danger: Delete All Assets
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-4">
+                <p>
+                  This action <span className="font-bold">cannot be undone</span>. This will permanently delete all {assets.length} assets from your inventory.
+                </p>
+                
+                <Alert variant="destructive" className="mb-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Critical Warning</AlertTitle>
+                  <AlertDescription>
+                    You are about to delete all your inventory data. This operation is irreversible.
+                  </AlertDescription>
+                </Alert>
+                
+                <p className="font-semibold">
+                  Please type "DELETE ALL ASSETS" below to confirm:
+                </p>
+                
+                <Input
+                  value={deleteAllConfirmText}
+                  onChange={(e) => setDeleteAllConfirmText(e.target.value)}
+                  className={`border-2 ${
+                    deleteAllConfirmText === "DELETE ALL ASSETS"
+                    ? "border-green-500"
+                    : "border-red-200"
+                  }`}
+                  placeholder="Type DELETE ALL ASSETS"
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setIsDeleteAllDialogOpen(false);
+                setDeleteAllConfirmText("");
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteAllAssets}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteAllConfirmText !== "DELETE ALL ASSETS"}
+            >
+              Yes, Delete All Assets
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
