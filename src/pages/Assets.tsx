@@ -33,10 +33,14 @@ import {
   AlertCircle,
   RefreshCw,
   FileSpreadsheet,
-  AlertTriangle,
+  AlertTriangle
+} from "lucide-react";
+import { 
   Popover,
   PopoverTrigger,
-  PopoverContent,
+  PopoverContent 
+} from "@/components/ui/popover";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -44,11 +48,13 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
+import {
   Alert,
   AlertTitle,
   AlertDescription
-} from "lucide-react";
+} from "@/components/ui/alert";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Asset, AssetStatus, debugAssetAccess } from "@/lib/data";
