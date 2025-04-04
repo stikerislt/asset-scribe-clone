@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -46,12 +46,51 @@ import { Badge } from "@/components/ui/badge";
 import { UserForm, User } from "@/components/UserForm";
 import { logUserActivity } from "@/lib/data";
 import { useActivity } from "@/hooks/useActivity";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { logActivity } = useActivity();
+  const { user: currentUser } = useAuth();
+  
+  // Fetch users from Supabase profiles table
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*');
+        
+        if (error) {
+          throw error;
+        }
+        
+        // Transform the profiles data to match the User type
+        const formattedUsers: User[] = data.map(profile => ({
+          id: profile.id,
+          name: profile.full_name || 'Unnamed User',
+          email: profile.email || 'No email provided',
+          role: profile.id === currentUser?.id ? 'Admin' : 'User', // Set current user as admin for demo
+          active: true
+        }));
+        
+        setUsers(formattedUsers);
+      } catch (error: any) {
+        console.error('Error fetching users:', error);
+        toast.error('Failed to load users');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [currentUser]);
   
   const filteredUsers = users.filter(user => 
     user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -116,7 +155,16 @@ const Users = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.length === 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mb-2"></div>
+                        <p className="text-muted-foreground">Loading users...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
