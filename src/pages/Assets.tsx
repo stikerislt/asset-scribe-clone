@@ -216,7 +216,12 @@ const Assets = () => {
             return;
           }
           
-          setCsvPreviewData(previewData);
+          const sanitizedData = {
+            headers: previewData.headers.map(h => String(h)),
+            data: previewData.data.map(row => row.map(cell => String(cell)))
+          };
+          
+          setCsvPreviewData(sanitizedData);
           setShowCSVPreview(true);
         } catch (error) {
           console.error("Excel preview error:", error);
@@ -245,7 +250,12 @@ const Assets = () => {
             return;
           }
           
-          setCsvPreviewData(previewData);
+          const sanitizedData = {
+            headers: previewData.headers.map(h => String(h)),
+            data: previewData.data.map(row => row.map(cell => String(cell)))
+          };
+          
+          setCsvPreviewData(sanitizedData);
           setShowCSVPreview(true);
         } catch (error) {
           console.error("CSV preview error:", error);

@@ -49,12 +49,12 @@ const parseExcelForPreview = (base64Content: string): { headers: string[], data:
     if (jsonData.length === 0) return { headers: [], data: [] };
     
     // Safely convert headers to strings
-    const headers = jsonData[0].map(h => 
+    const headers = (jsonData[0] || []).map(h => 
       h === null || h === undefined ? '' : String(h)
     );
     
     // Safely convert all data cells to strings
-    const data = jsonData.slice(1).map(row => {
+    const data = (jsonData.slice(1) || []).map(row => {
       if (!Array.isArray(row)) return [];
       return row.map(cell => 
         cell === null || cell === undefined ? '' : String(cell)
