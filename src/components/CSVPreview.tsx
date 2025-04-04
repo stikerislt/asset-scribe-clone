@@ -16,13 +16,24 @@ interface CSVPreviewProps {
   data: string[][];
   onConfirm: () => void;
   onCancel: () => void;
+  fileType?: 'csv' | 'excel';
 }
 
-export const CSVPreview = ({ headers, data, onConfirm, onCancel }: CSVPreviewProps) => {
+export const CSVPreview = ({ 
+  headers, 
+  data, 
+  onConfirm, 
+  onCancel,
+  fileType = 'csv'
+}: CSVPreviewProps) => {
   return (
     <div className="rounded-lg border bg-white shadow-lg p-6 max-w-full">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">Preview Import Data</h3>
+        <h3 className="text-lg font-medium">
+          Preview Import Data 
+          {fileType === 'excel' && <span className="text-sm text-blue-600 ml-2">(Excel)</span>}
+          {fileType === 'csv' && <span className="text-sm text-green-600 ml-2">(CSV)</span>}
+        </h3>
         <Button variant="ghost" size="sm" onClick={onCancel}>
           <X className="h-4 w-4" />
         </Button>

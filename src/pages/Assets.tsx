@@ -31,7 +31,8 @@ import {
   Import,
   Loader,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  FileSpreadsheet
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -55,6 +56,7 @@ const Assets = () => {
   const [csvPreviewData, setCsvPreviewData] = useState<{ headers: string[], data: string[][] } | null>(null);
   const [csvContent, setCsvContent] = useState<string | null>(null);
   const [showCSVPreview, setShowCSVPreview] = useState(false);
+  const [importFileType, setImportFileType] = useState<'csv' | 'excel'>('csv');
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { logActivity } = useActivity();
@@ -193,34 +195,69 @@ const Assets = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const csvContent = e.target?.result as string;
-      setCsvContent(csvContent);
-      
-      try {
-        const previewData = parseCSVForPreview(csvContent);
-        if (previewData.headers.length === 0 || previewData.data.length === 0) {
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    const isExcel = fileExtension === 'xlsx' || fileExtension === 'xls';
+    setImportFileType(isExcel ? 'excel' : 'csv');
+
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64Content = e.target?.result as string;
+        setCsvContent(base64Content);
+        
+        try {
+          const previewData = parseCSVForPreview(base64Content, 'excel');
+          if (previewData.headers.length === 0 || previewData.data.length === 0) {
+            toast({
+              title: "Invalid Excel File",
+              description: "Unable to parse Excel data. Please check your file format.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          setCsvPreviewData(previewData);
+          setShowCSVPreview(true);
+        } catch (error) {
+          console.error("Excel preview error:", error);
           toast({
-            title: "Invalid CSV",
-            description: "Unable to parse CSV data. Please check your file format.",
+            title: "Preview Failed",
+            description: "Failed to preview Excel data. Please check your file format.",
             variant: "destructive",
           });
-          return;
         }
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const csvContent = e.target?.result as string;
+        setCsvContent(csvContent);
         
-        setCsvPreviewData(previewData);
-        setShowCSVPreview(true);
-      } catch (error) {
-        console.error("CSV preview error:", error);
-        toast({
-          title: "Preview Failed",
-          description: "Failed to preview CSV data. Please check your file format.",
-          variant: "destructive",
-        });
-      }
-    };
-    reader.readAsText(file);
+        try {
+          const previewData = parseCSVForPreview(csvContent, 'csv');
+          if (previewData.headers.length === 0 || previewData.data.length === 0) {
+            toast({
+              title: "Invalid CSV",
+              description: "Unable to parse CSV data. Please check your file format.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          setCsvPreviewData(previewData);
+          setShowCSVPreview(true);
+        } catch (error) {
+          console.error("CSV preview error:", error);
+          toast({
+            title: "Preview Failed",
+            description: "Failed to preview CSV data. Please check your file format.",
+            variant: "destructive",
+          });
+        }
+      };
+      reader.readAsText(file);
+    }
 
     event.target.value = '';
   };
@@ -229,25 +266,39 @@ const Assets = () => {
     if (!csvContent) {
       toast({
         title: "Import Failed",
-        description: "No CSV content to import",
+        description: "No data content to import",
         variant: "destructive",
       });
       return;
     }
     
     try {
-      const importedAssets = csvToObjects<{
-        name: string;
-        tag: string;
-        serial: string;
-        model: string;
-        category: string;
-        status: AssetStatus;
-        assigned_to: string;
-        location: string;
-        purchase_date: string;
-        purchase_cost: string;
-      }>(csvContent);
+      let importedAssets;
+      
+      if (importFileType === 'excel') {
+        if (!csvPreviewData) return;
+        
+        importedAssets = csvPreviewData.data.map(row => {
+          const asset: Record<string, any> = {};
+          csvPreviewData.headers.forEach((header, index) => {
+            asset[header] = row[index] || '';
+          });
+          return asset;
+        });
+      } else {
+        importedAssets = csvToObjects<{
+          name: string;
+          tag: string;
+          serial: string;
+          model: string;
+          category: string;
+          status: AssetStatus;
+          assigned_to: string;
+          location: string;
+          purchase_date: string;
+          purchase_cost: string;
+        }>(csvContent);
+      }
       
       const validAssets = importedAssets
         .filter(asset => asset.name && asset.tag);
@@ -286,7 +337,7 @@ const Assets = () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       
       logActivity({
-        title: "Assets Imported",
+        title: `Assets Imported from ${importFileType.toUpperCase()}`,
         description: `${validAssets.length} assets imported`,
         category: 'asset',
         icon: <Package className="h-5 w-5 text-blue-600" />
@@ -301,7 +352,7 @@ const Assets = () => {
       setCsvContent(null);
       setCsvPreviewData(null);
     } catch (error) {
-      console.error("CSV import error:", error);
+      console.error("Import error:", error);
       toast({
         title: "Import Failed",
         description: "The file format is invalid",
@@ -387,7 +438,7 @@ const Assets = () => {
           <input 
             type="file" 
             ref={fileInputRef} 
-            accept=".csv" 
+            accept=".csv,.xlsx,.xls" 
             onChange={handleFileChange}
             className="hidden"
           />
@@ -575,7 +626,10 @@ const Assets = () => {
       }}>
         <DialogContent className="sm:max-w-[900px] max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>Preview Import Data</DialogTitle>
+            <DialogTitle>
+              Preview Import Data 
+              {importFileType === 'excel' && <span className="text-blue-600 ml-2">(Excel)</span>}
+            </DialogTitle>
           </DialogHeader>
           {csvPreviewData && (
             <CSVPreview
@@ -587,6 +641,7 @@ const Assets = () => {
                 setCsvPreviewData(null);
                 setCsvContent(null);
               }}
+              fileType={importFileType}
             />
           )}
         </DialogContent>

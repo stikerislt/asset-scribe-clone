@@ -1,11 +1,18 @@
 
+import * as XLSX from 'xlsx';
+
 /**
- * Parse CSV string to array of arrays for preview
+ * Parse CSV or Excel file content for preview
  */
-export const parseCSVForPreview = (csv: string): { headers: string[], data: string[][] } => {
-  if (!csv || csv.trim() === '') return { headers: [], data: [] };
+export const parseCSVForPreview = (content: string, fileType: 'csv' | 'excel'): { headers: string[], data: string[][] } => {
+  if (fileType === 'excel') {
+    return parseExcelForPreview(content);
+  }
   
-  const lines = csv.split('\n');
+  // Regular CSV parsing
+  if (!content || content.trim() === '') return { headers: [], data: [] };
+  
+  const lines = content.split('\n');
   if (lines.length === 0) return { headers: [], data: [] };
   
   const headers = parseCSVLine(lines[0]);
@@ -15,6 +22,42 @@ export const parseCSVForPreview = (csv: string): { headers: string[], data: stri
     .map(line => parseCSVLine(line));
   
   return { headers, data };
+};
+
+/**
+ * Parse Excel data from base64 string
+ */
+const parseExcelForPreview = (base64Content: string): { headers: string[], data: string[][] } => {
+  try {
+    // Convert base64 to array buffer
+    const binaryString = window.atob(base64Content.split(',')[1]);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Read the Excel file
+    const workbook = XLSX.read(bytes, { type: 'array' });
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    
+    // Convert to JSON
+    const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { header: 1 });
+    
+    // Extract headers and data
+    if (jsonData.length === 0) return { headers: [], data: [] };
+    
+    const headers = jsonData[0].map(h => String(h || ''));
+    const data = jsonData.slice(1).map(row => 
+      Array.isArray(row) ? row.map(cell => cell === null || cell === undefined ? '' : String(cell)) : []
+    );
+    
+    return { headers, data };
+  } catch (error) {
+    console.error('Error parsing Excel file:', error);
+    return { headers: [], data: [] };
+  }
 };
 
 /**
