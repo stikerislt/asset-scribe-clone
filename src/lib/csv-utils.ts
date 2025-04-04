@@ -1,4 +1,3 @@
-
 // CSV export/import utility functions
 
 /**
@@ -94,13 +93,11 @@ export const generateAssetImportTemplate = (): string => {
   const templateHeaders = [
     'tag',           // IN
     'name',          // Name
-    'serial',        // Serial
-    'category',      // Category
-    'notes',         // Notes
-    'status',        // Status
-    'purchase_date', // Purchase_Date
-    'purchase_cost', // Purchase_Cost
-    'assigned_to'    // Assigned_To
+    'assigned_to',   // Assigned To
+    'purchase_date', // Purchase Date
+    'wear',          // Wear
+    'purchase_cost', // Purchase Cost
+    'qty'            // Qty
   ];
   
   // Example row with empty values
