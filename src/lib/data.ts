@@ -1,6 +1,7 @@
 
 import { useActivity, getActivityIcon } from "@/hooks/useActivity";
 import { Database } from "@/integrations/supabase/types";
+import { supabase } from "@/integrations/supabase/client";
 
 // Define Asset type based on Supabase schema
 export type Asset = Database['public']['Tables']['assets']['Row'] & {
@@ -67,4 +68,24 @@ export const logUserActivity = (
     category: 'user',
     icon: getActivityIcon('user')
   });
+};
+
+// Helper to check and debug asset access
+export const debugAssetAccess = async () => {
+  console.log("Debugging asset access...");
+  try {
+    const { data: session } = await supabase.auth.getSession();
+    console.log("Current session:", session);
+    
+    const { data, error } = await supabase
+      .from('assets')
+      .select('*')
+      .limit(5);
+    
+    console.log("Debug asset query result:", { data, error });
+    return { data, error, authenticated: !!session?.session };
+  } catch (e) {
+    console.error("Debug asset access error:", e);
+    return { data: null, error: e, authenticated: false };
+  }
 };

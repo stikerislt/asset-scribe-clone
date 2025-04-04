@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,31 +30,47 @@ import {
   Filter,
   Import,
   Loader,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { Asset, AssetStatus } from "@/lib/data";
+import { Asset, AssetStatus, debugAssetAccess } from "@/lib/data";
 import { csvToObjects, objectsToCSV, generateAssetImportTemplate } from "@/lib/csv-utils";
 import { useActivity } from "@/hooks/useActivity";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AssetForm } from "@/components/AssetForm";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, checkAuth } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast as sonnerToast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 const Assets = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isDebugging, setIsDebugging] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { logActivity } = useActivity();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      const session = await checkAuth();
+      console.log("Auth status check on Assets page:", !!session);
+    };
+    
+    checkAuthStatus();
+  }, []);
   
   const { data: assets = [], isLoading, error } = useQuery({
     queryKey: ['assets'],
     queryFn: async () => {
       console.log("Fetching assets");
+      console.log("Current user:", user);
+      
       const { data, error } = await supabase
         .from('assets')
         .select('*');
@@ -79,6 +95,28 @@ const Assets = () => {
     retry: 1,
     refetchOnWindowFocus: false
   });
+  
+  const handleDebug = async () => {
+    setIsDebugging(true);
+    try {
+      const result = await debugAssetAccess();
+      setDebugInfo(result);
+      
+      if (result.authenticated) {
+        sonnerToast.info("Authentication Status", {
+          description: "You are authenticated. See console for details."
+        });
+      } else {
+        sonnerToast.warning("Authentication Status", {
+          description: "You are not authenticated. Please log in."
+        });
+      }
+    } catch (e) {
+      console.error("Debug error:", e);
+    } finally {
+      setIsDebugging(false);
+    }
+  };
   
   const createAssetMutation = useMutation({
     mutationFn: async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at'>) => {
@@ -282,9 +320,14 @@ const Assets = () => {
         <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
         <h1 className="text-xl font-bold mb-2">Error Loading Assets</h1>
         <p className="text-muted-foreground mb-4">{(error as Error).message || 'Failed to load assets from the database.'}</p>
-        <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}>
-          Try Again
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}>
+            Try Again
+          </Button>
+          <Button variant="outline" onClick={handleDebug}>
+            Debug Access
+          </Button>
+        </div>
       </div>
     );
   }
@@ -296,7 +339,7 @@ const Assets = () => {
           <h1 className="text-3xl font-bold">Assets</h1>
           <p className="text-muted-foreground mt-1">Manage your hardware and device inventory</p>
         </div>
-        <div className="flex gap-2 mt-4 sm:mt-0">
+        <div className="flex gap-2 mt-4 sm:mt-0 flex-wrap">
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -316,8 +359,31 @@ const Assets = () => {
             <Plus className="mr-2 h-4 w-4" />
             Add Asset
           </Button>
+          <Button className="" size="sm" variant="outline" onClick={handleDebug} disabled={isDebugging}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isDebugging ? 'animate-spin' : ''}`} />
+            Debug
+          </Button>
         </div>
       </div>
+      
+      {debugInfo && (
+        <div className="bg-amber-50 border border-amber-200 rounded p-4 mb-4">
+          <h3 className="font-medium text-amber-900 mb-2">Debug Information</h3>
+          <div className="text-sm text-amber-800">
+            <p>Authentication status: {debugInfo.authenticated ? 'Authenticated' : 'Not authenticated'}</p>
+            <p>Data received: {debugInfo.data ? debugInfo.data.length : 0} assets</p>
+            {debugInfo.error && <p>Error: {debugInfo.error.message}</p>}
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="mt-2" 
+            onClick={() => setDebugInfo(null)}
+          >
+            Dismiss
+          </Button>
+        </div>
+      )}
       
       <div className="bg-white rounded-lg shadow mb-8">
         <div className="p-4 border-b flex flex-col sm:flex-row gap-4">
@@ -368,14 +434,23 @@ const Assets = () => {
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <Package className="h-12 w-12 mb-2 text-muted-foreground/50" />
                       <p>No assets found. Click the Import or Add Asset button to get started.</p>
-                      <Button 
-                        variant="outline"
-                        size="sm"
-                        onClick={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}
-                        className="mt-2"
-                      >
-                        Refresh Data
-                      </Button>
+                      <div className="flex gap-2 mt-2">
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          onClick={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}
+                        >
+                          Refresh Data
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDebug}
+                          disabled={isDebugging}
+                        >
+                          Debug Access
+                        </Button>
+                      </div>
                     </div>
                   </TableCell>
                 </TableRow>
