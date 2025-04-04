@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Package, Users, Tag, AlertTriangle } from 'lucide-react';
 
@@ -33,7 +34,14 @@ export const ActivityProvider = ({ children }: { children: ReactNode }) => {
     try {
       const savedActivities = localStorage.getItem('activities');
       if (savedActivities) {
-        setActivities(JSON.parse(savedActivities));
+        // Parse activities but don't try to parse the icon
+        const parsedActivities = JSON.parse(savedActivities);
+        // Reassign icons based on category
+        const activitiesWithIcons = parsedActivities.map((activity: Partial<Activity>) => ({
+          ...activity,
+          icon: activity.category ? getActivityIcon(activity.category) : undefined
+        }));
+        setActivities(activitiesWithIcons);
       }
     } catch (error) {
       console.error('Failed to load activities from localStorage:', error);
@@ -43,7 +51,9 @@ export const ActivityProvider = ({ children }: { children: ReactNode }) => {
   // Save activities to localStorage when they change
   useEffect(() => {
     try {
-      localStorage.setItem('activities', JSON.stringify(activities));
+      // Remove icon before storing (can't serialize React elements)
+      const activitiesForStorage = activities.map(({ icon, ...rest }) => rest);
+      localStorage.setItem('activities', JSON.stringify(activitiesForStorage));
     } catch (error) {
       console.error('Failed to save activities to localStorage:', error);
     }

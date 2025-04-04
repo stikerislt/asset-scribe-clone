@@ -82,7 +82,7 @@ const Dashboard = () => {
                   title={activity.title}
                   description={activity.description}
                   timestamp={activity.timestamp}
-                  icon={activity.icon}
+                  icon={activity.icon ? renderActivityIcon(activity.icon) : undefined}
                 />
               ))}
             </div>
@@ -96,6 +96,12 @@ const Dashboard = () => {
       </div>
     </div>
   );
+};
+
+// Helper function to render activity icons safely
+const renderActivityIcon = (icon: React.ReactNode) => {
+  // If icon is already a valid ReactNode, return it
+  return icon;
 };
 
 interface ActivityItemProps {
