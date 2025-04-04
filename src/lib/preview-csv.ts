@@ -48,7 +48,7 @@ const parseExcelForPreview = (base64Content: string): { headers: string[], data:
     // Extract headers and data
     if (jsonData.length === 0) return { headers: [], data: [] };
     
-    const headers = jsonData[0].map(h => String(h || ''));
+    const headers = jsonData[0].map(h => h === null || h === undefined ? '' : String(h));
     const data = jsonData.slice(1).map(row => 
       Array.isArray(row) ? row.map(cell => cell === null || cell === undefined ? '' : String(cell)) : []
     );

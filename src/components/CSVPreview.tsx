@@ -44,7 +44,7 @@ export const CSVPreview = ({
           <TableHeader>
             <TableRow>
               {headers.map((header, index) => (
-                <TableHead key={index} className="whitespace-nowrap">{header}</TableHead>
+                <TableHead key={index} className="whitespace-nowrap">{header ? String(header) : ''}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
@@ -52,7 +52,7 @@ export const CSVPreview = ({
             {data.slice(0, 10).map((row, rowIndex) => (
               <TableRow key={rowIndex}>
                 {row.map((cell, cellIndex) => (
-                  <TableCell key={cellIndex}>{String(cell)}</TableCell>
+                  <TableCell key={cellIndex}>{cell !== null && cell !== undefined ? String(cell) : ''}</TableCell>
                 ))}
               </TableRow>
             ))}
