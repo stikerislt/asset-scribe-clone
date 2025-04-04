@@ -5,13 +5,17 @@ import { Link } from "react-router-dom";
 import { useActivity } from "@/hooks/useActivity";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const Dashboard = () => {
   const { activities } = useActivity();
+  const { user } = useAuth();
   
-  const { data: assetCount = 0 } = useQuery({
-    queryKey: ['asset-count'],
+  const { data: assetCount = 0, isLoading: countLoading } = useQuery({
+    queryKey: ['asset-count', user?.id],
     queryFn: async () => {
+      if (!user) return 0;
+      
       const { count, error } = await supabase
         .from('assets')
         .select('*', { count: 'exact', head: true });
@@ -22,7 +26,8 @@ const Dashboard = () => {
       }
       
       return count || 0;
-    }
+    },
+    enabled: !!user
   });
 
   // In a real app, these would also be from Supabase
@@ -38,7 +43,7 @@ const Dashboard = () => {
         <Link to="/assets" className="block">
           <StatsCard
             title="Total Assets"
-            value={assetCount.toString()}
+            value={countLoading ? "..." : assetCount.toString()}
             icon={<Package className="h-5 w-5" />}
             description={`${assetCount > 0 ? 'Manage your assets' : 'No assets yet'}`}
           />
