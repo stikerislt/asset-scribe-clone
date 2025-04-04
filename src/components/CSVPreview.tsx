@@ -26,6 +26,14 @@ export const CSVPreview = ({
   onCancel,
   fileType = 'csv'
 }: CSVPreviewProps) => {
+  // Ensure all headers are strings
+  const safeHeaders = headers.map(header => 
+    header !== null && header !== undefined ? String(header) : '');
+  
+  // Ensure all data cells are strings
+  const safeData = data.map(row => 
+    row.map(cell => cell !== null && cell !== undefined ? String(cell) : ''));
+  
   return (
     <div className="rounded-lg border bg-white shadow-lg p-6 max-w-full">
       <div className="flex justify-between items-center mb-4">
@@ -43,16 +51,18 @@ export const CSVPreview = ({
         <Table>
           <TableHeader>
             <TableRow>
-              {headers.map((header, index) => (
-                <TableHead key={index} className="whitespace-nowrap">{header ? String(header) : ''}</TableHead>
+              {safeHeaders.map((header, index) => (
+                <TableHead key={index} className="whitespace-nowrap">
+                  {header}
+                </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.slice(0, 10).map((row, rowIndex) => (
+            {safeData.slice(0, 10).map((row, rowIndex) => (
               <TableRow key={rowIndex}>
                 {row.map((cell, cellIndex) => (
-                  <TableCell key={cellIndex}>{cell !== null && cell !== undefined ? String(cell) : ''}</TableCell>
+                  <TableCell key={cellIndex}>{cell}</TableCell>
                 ))}
               </TableRow>
             ))}

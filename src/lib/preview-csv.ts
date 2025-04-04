@@ -45,13 +45,21 @@ const parseExcelForPreview = (base64Content: string): { headers: string[], data:
     // Convert to JSON
     const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { header: 1 });
     
-    // Extract headers and data
+    // Extract headers and data, ensuring all values are strings
     if (jsonData.length === 0) return { headers: [], data: [] };
     
-    const headers = jsonData[0].map(h => h === null || h === undefined ? '' : String(h));
-    const data = jsonData.slice(1).map(row => 
-      Array.isArray(row) ? row.map(cell => cell === null || cell === undefined ? '' : String(cell)) : []
+    // Safely convert headers to strings
+    const headers = jsonData[0].map(h => 
+      h === null || h === undefined ? '' : String(h)
     );
+    
+    // Safely convert all data cells to strings
+    const data = jsonData.slice(1).map(row => {
+      if (!Array.isArray(row)) return [];
+      return row.map(cell => 
+        cell === null || cell === undefined ? '' : String(cell)
+      );
+    });
     
     return { headers, data };
   } catch (error) {
