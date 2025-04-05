@@ -169,3 +169,62 @@ export const downloadCSV = (headers: string[], data: string[][], filename: strin
   link.click();
   document.body.removeChild(link);
 };
+
+/**
+ * Validate imported CSV data against expected fields for assets
+ */
+export const validateAssetCSV = (headers: string[], data: string[][]): { valid: boolean, errors: string[] } => {
+  const errors: string[] = [];
+  const requiredFields = ['name', 'tag', 'category', 'status'];
+  
+  // Check for required headers
+  const lowerCaseHeaders = headers.map(h => h.toLowerCase().trim());
+  const missingFields = requiredFields.filter(field => 
+    !lowerCaseHeaders.includes(field.toLowerCase())
+  );
+  
+  if (missingFields.length > 0) {
+    errors.push(`Missing required fields: ${missingFields.join(', ')}`);
+  }
+  
+  // Validate data rows
+  data.forEach((row, index) => {
+    const rowNumber = index + 1;
+    
+    // Check if row has correct number of columns
+    if (row.length !== headers.length) {
+      errors.push(`Row ${rowNumber}: Column count mismatch (expected ${headers.length}, got ${row.length})`);
+    }
+    
+    // Check for empty required values
+    requiredFields.forEach(field => {
+      const fieldIndex = lowerCaseHeaders.indexOf(field.toLowerCase());
+      if (fieldIndex !== -1 && (!row[fieldIndex] || row[fieldIndex].trim() === '')) {
+        errors.push(`Row ${rowNumber}: Missing required value for "${field}"`);
+      }
+    });
+    
+    // Validate status field has allowed values
+    const statusIndex = lowerCaseHeaders.indexOf('status');
+    if (statusIndex !== -1) {
+      const status = row[statusIndex]?.toLowerCase();
+      const validStatuses = ['ready', 'deployed', 'maintenance', 'retired', 'assigned', 'pending', 'archived', 'broken'];
+      if (status && !validStatuses.includes(status)) {
+        errors.push(`Row ${rowNumber}: Invalid status "${status}". Valid options: ${validStatuses.join(', ')}`);
+      }
+    }
+    
+    // Validate numeric fields
+    const qtyIndex = lowerCaseHeaders.indexOf('qty');
+    if (qtyIndex !== -1 && row[qtyIndex] && !/^\d+$/.test(row[qtyIndex])) {
+      errors.push(`Row ${rowNumber}: Quantity must be a number`);
+    }
+    
+    const costIndex = lowerCaseHeaders.indexOf('purchase_cost');
+    if (costIndex !== -1 && row[costIndex] && !/^\d+(\.\d+)?$/.test(row[costIndex])) {
+      errors.push(`Row ${rowNumber}: Purchase cost must be a number`);
+    }
+  });
+  
+  return { valid: errors.length === 0, errors };
+};

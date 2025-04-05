@@ -98,3 +98,38 @@ const parseCSVLine = (line: string): string[] => {
   values.push(current); // Add the last value
   return values;
 };
+
+/**
+ * Detect file type and parse accordingly
+ */
+export const parseFileForPreview = (file: File): Promise<{ headers: string[], data: string[][], fileType: 'csv' | 'excel' }> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    // Determine file type based on extension
+    const fileType = file.name.toLowerCase().endsWith('.csv') ? 'csv' : 'excel';
+    
+    if (fileType === 'csv') {
+      reader.onload = (e) => {
+        try {
+          const csvText = e.target?.result as string;
+          const result = parseCSVForPreview(csvText, 'csv');
+          resolve({ ...result, fileType });
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      reader.onload = (e) => {
+        try {
+          const result = parseCSVForPreview(e.target?.result as string, 'excel');
+          resolve({ ...result, fileType });
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+};
