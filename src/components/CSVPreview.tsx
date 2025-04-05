@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { 
   Table, 
@@ -22,6 +21,7 @@ interface CSVPreviewProps {
   onConfirm: () => void;
   onCancel: () => void;
   fileType?: 'csv' | 'excel';
+  loading?: boolean;
 }
 
 export const CSVPreview = ({ 
@@ -29,30 +29,26 @@ export const CSVPreview = ({
   data, 
   onConfirm, 
   onCancel,
-  fileType = 'csv'
+  fileType = 'csv',
+  loading = false
 }: CSVPreviewProps) => {
   const [validationResult, setValidationResult] = useState(() => validateAssetCSV(headers, data));
   const [validationVisible, setValidationVisible] = useState(true);
   
-  // Ensure all headers are strings
   const safeHeaders = headers.map(header => 
     header !== null && header !== undefined ? String(header) : '');
   
-  // Ensure all data cells are strings
   const safeData = data.map(row => 
     row.map(cell => cell !== null && cell !== undefined ? String(cell) : ''));
 
-  // Find index of the status column for highlighting
   const statusColumnIndex = safeHeaders
     .findIndex(header => header.toLowerCase() === 'status');
 
-  // Check for case-sensitive status values that will be normalized
   const hasStatusCaseWarnings = statusColumnIndex !== -1 && 
     safeData.some(row => {
       const statusValue = row[statusColumnIndex];
       return statusValue && 
         statusValue.toLowerCase() !== statusValue && 
-        // Fix: Check if the lowercase value is in VALID_ASSET_STATUSES
         VALID_ASSET_STATUSES.includes(statusValue.toLowerCase() as AssetStatus);
     });
   
@@ -151,7 +147,6 @@ export const CSVPreview = ({
                     key={cellIndex}
                     className={cellIndex === statusColumnIndex ? 'bg-amber-50' : ''}
                   >
-                    {/* Highlight status values that will be normalized */}
                     {cellIndex === statusColumnIndex && cell ? (
                       <div className="flex items-center gap-1.5">
                         <span>{cell}</span>
@@ -184,9 +179,17 @@ export const CSVPreview = ({
         </Button>
         <Button 
           onClick={onConfirm}
-          disabled={!validationResult.valid || data.length === 0}
+          disabled={!validationResult.valid || data.length === 0 || loading}
+          className={loading ? "cursor-not-allowed" : ""}
         >
-          Import {data.length} Records
+          {loading ? (
+            <>
+              <span className="animate-spin mr-2 h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+              Importing...
+            </>
+          ) : (
+            `Import ${data.length} Records`
+          )}
         </Button>
       </div>
     </div>
