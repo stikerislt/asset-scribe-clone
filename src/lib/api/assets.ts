@@ -1,6 +1,9 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { AssetStatus, StatusColor } from "@/lib/data";
+import { StatusColor } from "@/lib/data";
+
+// Update the AssetStatus type to include all valid values
+export type AssetStatus = 'ready' | 'deployed' | 'maintenance' | 'retired';
 
 export interface Asset {
   id: string;
@@ -16,8 +19,8 @@ export interface Asset {
   purchase_cost: number | null;
   location: string | null;
   notes: string | null;
-  wear: string | null; // Added wear field
-  qty: number | null; // Added quantity field
+  wear: string | null;
+  qty: number | null;
   created_at: string;
   updated_at: string;
   user_id: string | null;
@@ -49,7 +52,7 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
     status_color: asset.status_color as StatusColor | null,
     location: asset.location || null,
     notes: asset.notes || null,
-    wear: asset.wear || null, // Handle wear field - safely handle if not present in DB yet
-    qty: asset.qty || 1 // Default quantity to 1 if not specified
+    wear: asset.wear || null,
+    qty: asset.qty || 1
   }));
 };

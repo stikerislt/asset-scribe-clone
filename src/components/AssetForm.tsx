@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Asset } from "@/lib/api/assets";
-import { AssetStatus, StatusColor } from "@/lib/data";
+import { Asset, AssetStatus } from "@/lib/api/assets";
+import { StatusColor } from "@/lib/data";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { StatusColorIndicator } from "@/components/StatusColorIndicator";
 
@@ -36,6 +37,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
   const [purchaseDate, setPurchaseDate] = useState(initialData?.purchase_date || '');
   const [purchaseCost, setPurchaseCost] = useState(initialData?.purchase_cost?.toString() || '');
   const [wear, setWear] = useState(initialData?.wear || '');
+  const [qty, setQty] = useState(initialData?.qty?.toString() || '1');  // Added qty state
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +56,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
       purchase_date: purchaseDate,
       purchase_cost: parseFloat(purchaseCost) || null,
       wear,
+      qty: parseInt(qty) || 1,  // Include qty in form submission
     });
   };
 
@@ -93,10 +96,9 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ready">Ready</SelectItem>
-              <SelectItem value="assigned">Assigned</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-              <SelectItem value="broken">Broken</SelectItem>
+              <SelectItem value="deployed">Deployed</SelectItem>
+              <SelectItem value="maintenance">Maintenance</SelectItem>
+              <SelectItem value="retired">Retired</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -213,6 +215,21 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
             value={wear}
             onChange={(e) => setWear(e.target.value)}
             placeholder="Expected years until asset needs replacement"
+          />
+        </div>
+      </div>
+
+      {/* Add Quantity field */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="qty">Quantity</Label>
+          <Input 
+            id="qty"
+            type="number"
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+            min="1"
+            placeholder="Quantity of this asset"
           />
         </div>
       </div>

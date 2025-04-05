@@ -7,7 +7,7 @@ import { ArrowLeft, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AssetForm } from "@/components/AssetForm";
 import { toast } from "sonner";
-import { Asset } from "@/lib/api/assets";
+import { Asset, AssetStatus } from "@/lib/api/assets";
 
 const EditAsset = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,14 +30,16 @@ const EditAsset = () => {
       }
       
       // Convert database object to Asset type, ensuring properties exist
-      const assetData = {
+      const assetData: Asset = {
         ...data,
+        status: data.status as AssetStatus,
         notes: data.notes || null,
-        wear: data.wear || null, // Ensure wear property exists
-        qty: data.qty || 1 // Ensure quantity property exists with default value 1
+        wear: data.wear || null,
+        qty: data.qty || 1,
+        status_color: data.status_color || null
       };
       
-      return assetData as Asset;
+      return assetData;
     },
     enabled: !!id,
   });
