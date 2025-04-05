@@ -21,6 +21,7 @@ const signupSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   confirmPassword: z.string().min(6, { message: "Confirm password must be at least 6 characters" }),
+  fullName: z.string().min(2, { message: "Full name must be at least 2 characters" }),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -57,6 +58,7 @@ const Auth = () => {
       email: "",
       password: "",
       confirmPassword: "",
+      fullName: "",
     },
   });
 
@@ -74,7 +76,7 @@ const Auth = () => {
 
   const handleSignupSubmit = async (data: SignupFormValues) => {
     try {
-      await signup(data.email, data.password);
+      await signup(data.email, data.password, data.fullName);
     } catch (error) {
       toast({
         title: "Signup Failed",
@@ -131,6 +133,19 @@ const Auth = () => {
           ) : (
             <Form {...signupForm}>
               <form onSubmit={signupForm.handleSubmit(handleSignupSubmit)} className="space-y-4">
+                <FormField
+                  control={signupForm.control}
+                  name="fullName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John Doe" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={signupForm.control}
                   name="email"
