@@ -1,4 +1,3 @@
-
 import { useParams, Link } from "react-router-dom";
 import { 
   ArrowLeft, 
@@ -29,7 +28,7 @@ import { AssetStatusBadge } from "@/components/AssetStatusBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { formatDate } from "@/lib/utils";
-import { AssetStatus } from "@/lib/data";
+import { AssetStatus, StatusColor } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -37,14 +36,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { StatusColorIndicator } from "@/components/StatusColorIndicator";
 
 const AssetDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [assignedTo, setAssignedTo] = useState("");
   const [maintenanceDescription, setMaintenanceDescription] = useState("");
   const [maintenanceDate, setMaintenanceDate] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<AssetStatus>("ready");
+  const [selectedStatusColor, setSelectedStatusColor] = useState<StatusColor>("green");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { data: asset, isLoading, error, refetch } = useQuery({
@@ -159,6 +163,41 @@ const AssetDetails = () => {
     }
   };
   
+  const handleUpdateStatus = async () => {
+    if (!id || !selectedStatus) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const { error } = await supabase
+        .from('assets')
+        .update({ 
+          status: selectedStatus,
+          status_color: selectedStatusColor 
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      toast.success("Asset status updated successfully");
+      setStatusDialogOpen(false);
+      refetch();
+    } catch (error) {
+      toast.error("Failed to update asset status");
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const openStatusDialog = () => {
+    if (asset) {
+      setSelectedStatus(asset.status as AssetStatus);
+      setSelectedStatusColor(asset.status_color as StatusColor || 'green');
+    }
+    setStatusDialogOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh]">
@@ -247,7 +286,12 @@ const AssetDetails = () => {
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-1">Status</h4>
-                        <AssetStatusBadge status={asset.status as AssetStatus} />
+                        <div className="flex items-center gap-2">
+                          <AssetStatusBadge status={asset.status as AssetStatus} />
+                          {asset.status_color && (
+                            <StatusColorIndicator color={asset.status_color as StatusColor} />
+                          )}
+                        </div>
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-1">Location</h4>
@@ -353,6 +397,10 @@ const AssetDetails = () => {
               <Button className="w-full justify-start" onClick={() => setAssignDialogOpen(true)}>
                 <User className="mr-2 h-4 w-4" />
                 Assign Asset
+              </Button>
+              <Button className="w-full justify-start" onClick={openStatusDialog}>
+                <Tag className="mr-2 h-4 w-4" />
+                Update Status
               </Button>
               <Button variant="outline" className="w-full justify-start" asChild>
                 <Link to={`/assets/edit/${id}`}>
@@ -500,6 +548,76 @@ const AssetDetails = () => {
             <Button variant="outline" onClick={() => setMaintenanceDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleAddMaintenance} disabled={isSubmitting}>
               {isSubmitting ? "Adding..." : "Add Maintenance"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Status Dialog */}
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Asset Status</DialogTitle>
+            <DialogDescription>
+              Change the status and condition of this asset.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="status">Status</Label>
+              <Select 
+                value={selectedStatus} 
+                onValueChange={(value: AssetStatus) => setSelectedStatus(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ready">Ready</SelectItem>
+                  <SelectItem value="assigned">Assigned</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                  <SelectItem value="broken">Broken</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Status Color</Label>
+              <RadioGroup 
+                value={selectedStatusColor} 
+                onValueChange={(value) => setSelectedStatusColor(value as StatusColor)}
+                className="flex"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="green" id="status-green" />
+                  <Label htmlFor="status-green" className="flex items-center">
+                    <StatusColorIndicator color="green" className="mr-1" />
+                    <span>Good</span>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 ml-4">
+                  <RadioGroupItem value="yellow" id="status-yellow" />
+                  <Label htmlFor="status-yellow" className="flex items-center">
+                    <StatusColorIndicator color="yellow" className="mr-1" />
+                    <span>Warning</span>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 ml-4">
+                  <RadioGroupItem value="red" id="status-red" />
+                  <Label htmlFor="status-red" className="flex items-center">
+                    <StatusColorIndicator color="red" className="mr-1" />
+                    <span>Critical</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateStatus} disabled={isSubmitting}>
+              {isSubmitting ? "Updating..." : "Update Status"}
             </Button>
           </DialogFooter>
         </DialogContent>
