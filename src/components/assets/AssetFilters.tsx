@@ -20,6 +20,7 @@ export interface Filters {
   purchaseDate: string[];
   wear: string[];
   purchaseCost: string[];
+  category: string[]; // Added category filter
 }
 
 interface AssetFiltersProps {
@@ -34,6 +35,7 @@ interface AssetFiltersProps {
     purchaseDate: FilterOption[];
     wear: FilterOption[];
     purchaseCost: FilterOption[];
+    category: FilterOption[]; // Added category filter options
   };
   isFiltersOpen: boolean;
   setIsFiltersOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -215,6 +217,7 @@ export const AssetFilters = ({
         <div className="mt-4 flex flex-wrap gap-2">
           {renderFilterPopover("Tag", filterOptions.tag, "tag")}
           {renderFilterPopover("Name", filterOptions.name, "name")}
+          {renderFilterPopover("Category", filterOptions.category, "category")}
           {renderFilterPopover("Assigned To", filterOptions.assignedTo, "assignedTo")}
           {renderFilterPopover("Purchase Date", filterOptions.purchaseDate, "purchaseDate")}
           {renderFilterPopover("Wear", filterOptions.wear, "wear")}

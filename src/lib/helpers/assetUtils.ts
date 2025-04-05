@@ -29,6 +29,9 @@ export const filterAssets = (assets: Asset[], searchTerm: string, activeFilters:
     const nameMatch = activeFilters.name.length === 0 || 
       (asset.name && activeFilters.name.includes(asset.name));
     
+    const categoryMatch = activeFilters.category.length === 0 || 
+      (asset.category && activeFilters.category.includes(asset.category));
+    
     const assignedToMatch = activeFilters.assignedTo.length === 0 || 
       (asset.assigned_to && activeFilters.assignedTo.includes(asset.assigned_to));
     
@@ -43,7 +46,7 @@ export const filterAssets = (assets: Asset[], searchTerm: string, activeFilters:
       (asset.purchase_cost && 
        activeFilters.purchaseCost.includes(`$${asset.purchase_cost.toFixed(2)}`));
     
-    return tagMatch && nameMatch && assignedToMatch && purchaseDateMatch && wearMatch && costMatch;
+    return tagMatch && nameMatch && categoryMatch && assignedToMatch && purchaseDateMatch && wearMatch && costMatch;
   });
 };
 

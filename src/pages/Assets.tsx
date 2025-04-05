@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Package, AlertTriangle } from "lucide-react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -36,7 +35,8 @@ const Assets = () => {
     assignedTo: [],
     purchaseDate: [],
     wear: [],
-    purchaseCost: []
+    purchaseCost: [],
+    category: []
   });
 
   const [columns, setColumns] = useState<ColumnDef[]>([
@@ -76,7 +76,6 @@ const Assets = () => {
     checkAuthStatus();
   }, []);
   
-  // Asset data fetching
   const { data: assets = [], isLoading, error } = useQuery({
     queryKey: ['assets'],
     queryFn: async () => {
@@ -96,7 +95,6 @@ const Assets = () => {
         throw new Error(error.message);
       }
       
-      // Process the assets to ensure they have all required properties
       const assetsWithProps = data?.map(asset => ({
         ...asset,
         notes: asset.notes || null,
@@ -113,7 +111,6 @@ const Assets = () => {
     refetchOnWindowFocus: false
   });
   
-  // Computed filter options based on assets data
   const filterOptions = {
     tag: getFilterOptions(assets, 'tag' as keyof Asset),
     name: getFilterOptions(assets, 'name' as keyof Asset),
@@ -122,10 +119,10 @@ const Assets = () => {
       .map(date => new Date(date).toLocaleDateString()),
     wear: getFilterOptions(assets, 'wear' as keyof Asset),
     purchaseCost: getFilterOptions(assets, 'purchase_cost' as keyof Asset)
-      .map(cost => `$${Number(cost).toFixed(2)}`)
+      .map(cost => `$${Number(cost).toFixed(2)}`),
+    category: getFilterOptions(assets, 'category' as keyof Asset)
   };
   
-  // Mutations for CRUD operations
   const createAssetMutation = useMutation({
     mutationFn: async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
@@ -208,7 +205,6 @@ const Assets = () => {
     }
   });
 
-  // Event handlers
   const handleStatusColorChange = async (assetId: string, newColor: StatusColor) => {
     try {
       await updateAssetStatusColorMutation.mutateAsync({ 
@@ -363,10 +359,8 @@ const Assets = () => {
     }
   };
   
-  // Apply filters to assets
   const filteredAssets = filterAssets(assets, searchTerm, activeFilters);
 
-  // Render error state
   if (error) {
     return (
       <ErrorState 
