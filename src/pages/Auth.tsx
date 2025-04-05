@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +34,16 @@ const Auth = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { login, signup, user } = useAuth();
-  const [isLogin, setIsLogin] = useState(location.pathname === "/auth/login");
+  const [isLogin, setIsLogin] = useState(true);
+
+  // Set initial form mode based on the current path
+  useEffect(() => {
+    if (location.pathname === "/auth/signup") {
+      setIsLogin(false);
+    } else {
+      setIsLogin(true);
+    }
+  }, [location.pathname]);
 
   // Check if we're already logged in
   if (user) {

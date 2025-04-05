@@ -26,6 +26,14 @@ export const publicRoutes: RouteObject[] = [
   {
     path: "/auth",
     element: <Auth />
+  },
+  {
+    path: "/auth/login",
+    element: <Auth />
+  },
+  {
+    path: "/auth/signup",
+    element: <Auth />
   }
 ];
 
