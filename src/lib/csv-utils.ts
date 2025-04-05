@@ -1,6 +1,8 @@
 
 // CSV export/import utility functions
 
+import { VALID_ASSET_STATUSES } from "@/lib/api/assets";
+
 /**
  * Converts an array of objects to CSV format with UTF-8 support
  */
@@ -207,10 +209,9 @@ export const validateAssetCSV = (headers: string[], data: string[][]): { valid: 
     // Validate status field has allowed values
     const statusIndex = lowerCaseHeaders.indexOf('status');
     if (statusIndex !== -1) {
-      const status = row[statusIndex]?.toLowerCase();
-      const validStatuses = ['ready', 'deployed', 'maintenance', 'retired', 'assigned', 'pending', 'archived', 'broken'];
-      if (status && !validStatuses.includes(status)) {
-        errors.push(`Row ${rowNumber}: Invalid status "${status}". Valid options: ${validStatuses.join(', ')}`);
+      const status = row[statusIndex]?.toLowerCase(); // Convert status to lowercase
+      if (status && !VALID_ASSET_STATUSES.includes(status)) {
+        errors.push(`Row ${rowNumber}: Invalid status "${row[statusIndex]}". Valid options: ${VALID_ASSET_STATUSES.join(', ')}`);
       }
     }
     

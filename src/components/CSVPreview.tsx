@@ -9,9 +9,12 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { X, AlertTriangle, CheckCircle, AlertCircle, FileSpreadsheet, FileText } from "lucide-react";
+import { X, AlertTriangle, CheckCircle, AlertCircle, FileSpreadsheet, FileText, Info } from "lucide-react";
 import { validateAssetCSV } from "@/lib/csv-utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AssetStatusBadge } from "@/components/AssetStatusBadge";
+import { StatusColorIndicator } from "@/components/StatusColorIndicator";
+import { VALID_ASSET_STATUSES } from "@/lib/api/assets";
 
 interface CSVPreviewProps {
   headers: string[];
@@ -38,6 +41,19 @@ export const CSVPreview = ({
   // Ensure all data cells are strings
   const safeData = data.map(row => 
     row.map(cell => cell !== null && cell !== undefined ? String(cell) : ''));
+
+  // Find index of the status column for highlighting
+  const statusColumnIndex = safeHeaders
+    .findIndex(header => header.toLowerCase() === 'status');
+
+  // Check for case-sensitive status values that will be normalized
+  const hasStatusCaseWarnings = statusColumnIndex !== -1 && 
+    safeData.some(row => {
+      const statusValue = row[statusColumnIndex];
+      return statusValue && 
+        statusValue.toLowerCase() !== statusValue && 
+        VALID_ASSET_STATUSES.includes(statusValue.toLowerCase());
+    });
   
   const FileIcon = fileType === 'excel' ? FileSpreadsheet : FileText;
   const fileTypeColor = fileType === 'excel' ? 'text-blue-600' : 'text-green-600';
@@ -82,6 +98,17 @@ export const CSVPreview = ({
             </Alert>
           )}
           
+          {hasStatusCaseWarnings && (
+            <Alert variant="default" className="mb-4 bg-amber-50 border-amber-200">
+              <Info className="h-4 w-4 mr-2 text-amber-500" />
+              <AlertTitle className="text-amber-700">Status Case Warning</AlertTitle>
+              <AlertDescription className="text-amber-600">
+                Some status values have incorrect capitalization and will be converted to lowercase during import 
+                (e.g., "Ready" will become "ready").
+              </AlertDescription>
+            </Alert>
+          )}
+          
           {data.length === 0 && (
             <Alert variant="default" className="mb-4 bg-amber-50 border-amber-200">
               <AlertCircle className="h-4 w-4 mr-2 text-amber-500" />
@@ -99,8 +126,18 @@ export const CSVPreview = ({
           <TableHeader>
             <TableRow>
               {safeHeaders.map((header, index) => (
-                <TableHead key={index} className="whitespace-nowrap">
+                <TableHead 
+                  key={index} 
+                  className={`whitespace-nowrap ${
+                    header.toLowerCase() === 'status' ? 'bg-amber-50' : ''
+                  }`}
+                >
                   {header}
+                  {header.toLowerCase() === 'status' && (
+                    <span className="ml-1 text-xs text-amber-600">
+                      (will be normalized)
+                    </span>
+                  )}
                 </TableHead>
               ))}
             </TableRow>
@@ -109,7 +146,24 @@ export const CSVPreview = ({
             {safeData.slice(0, 10).map((row, rowIndex) => (
               <TableRow key={rowIndex}>
                 {row.map((cell, cellIndex) => (
-                  <TableCell key={cellIndex}>{cell}</TableCell>
+                  <TableCell 
+                    key={cellIndex}
+                    className={cellIndex === statusColumnIndex ? 'bg-amber-50' : ''}
+                  >
+                    {/* Highlight status values that will be normalized */}
+                    {cellIndex === statusColumnIndex && cell ? (
+                      <div className="flex items-center gap-1.5">
+                        <span>{cell}</span>
+                        {cell.toLowerCase() !== cell && (
+                          <span className="text-xs text-amber-600">
+                            → {cell.toLowerCase()}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      cell
+                    )}
+                  </TableCell>
                 ))}
               </TableRow>
             ))}

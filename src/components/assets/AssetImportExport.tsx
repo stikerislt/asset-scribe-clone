@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Asset } from "@/lib/api/assets";
+import { Asset, VALID_ASSET_STATUSES } from "@/lib/api/assets";
 import { CSVLink } from "react-csv";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -34,13 +34,21 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
         throw new Error("You must be logged in to import assets");
       }
 
-      // Transform data to match the Asset structure
+      // Transform data to match the Asset structure and normalize values
       const assetsToImport = data.map(row => {
+        // Normalize status to lowercase to match valid values
+        const statusValue = (row.status || "ready").toLowerCase();
+        
+        // Ensure status is valid - default to "ready" if not valid
+        const validStatus = VALID_ASSET_STATUSES.includes(statusValue) 
+          ? statusValue 
+          : "ready";
+
         return {
           name: row.name || "Unnamed Asset",
           tag: row.tag || `ASSET-${Math.floor(Math.random() * 1000)}`,
           category: row.category || "General",
-          status: row.status || "ready",
+          status: validStatus, // Use validated lowercase status
           status_color: row.status_color || null,
           assigned_to: row.assigned_to || null,
           model: row.model || null,
@@ -149,6 +157,7 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
       const objectData = previewData.data.map(row => {
         const obj: Record<string, any> = {};
         previewData.headers.forEach((header, index) => {
+          // Convert header to snake_case for backend compatibility
           obj[header.toLowerCase().replace(/\s+/g, '_')] = row[index];
         });
         return obj;
@@ -165,11 +174,12 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
     }
   };
 
+  // Updated CSV header definitions to match the database column names
   const csvHeaders = [
     { label: "Name", key: "name" },
     { label: "Tag", key: "tag" },
     { label: "Category", key: "category" },
-    { label: "Status", key: "status" },
+    { label: "Status", key: "status" }, // Will be exported in correct case
     { label: "Status Color", key: "status_color" },
     { label: "Assigned To", key: "assigned_to" },
     { label: "Model", key: "model" },
