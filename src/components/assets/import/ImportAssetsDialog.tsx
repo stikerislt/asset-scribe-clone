@@ -1,6 +1,6 @@
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { ImportAssetsPreview } from "./ImportAssetsPreview";
+import { CSVPreview } from "./ImportAssetsPreview";
 
 interface ImportAssetsDialogProps {
   isOpen: boolean;
@@ -17,11 +17,15 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl">
         <DialogTitle>Import Assets</DialogTitle>
-        <ImportAssetsPreview
+        <CSVPreview
           headers={previewData.headers}
           data={previewData.data}
           fileType={previewData.fileType}
           onCancel={onClose}
+          onConfirm={() => {
+            // This will be handled by the parent component
+            onClose();
+          }}
         />
       </DialogContent>
     </Dialog>
