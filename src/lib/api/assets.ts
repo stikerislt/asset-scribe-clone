@@ -40,6 +40,6 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
     status_color: asset.status_color as StatusColor | null,
     location: asset.location || null,
     notes: asset.notes || null,
-    wear: asset.wear || null // Handle wear field
+    wear: asset.wear || null // Handle wear field - safely handle if not present in DB yet
   }));
 };

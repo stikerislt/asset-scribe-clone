@@ -35,6 +35,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
   const [assignedTo, setAssignedTo] = useState(initialData?.assigned_to || '');
   const [purchaseDate, setPurchaseDate] = useState(initialData?.purchase_date || '');
   const [purchaseCost, setPurchaseCost] = useState(initialData?.purchase_cost?.toString() || '');
+  const [wear, setWear] = useState(initialData?.wear || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +53,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
       assigned_to: assignedTo,
       purchase_date: purchaseDate,
       purchase_cost: parseFloat(purchaseCost) || null,
+      wear,
     });
   };
 
@@ -193,14 +195,26 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="purchaseCost">Purchase Cost</Label>
-        <Input 
-          id="purchaseCost"
-          type="number"
-          value={purchaseCost}
-          onChange={(e) => setPurchaseCost(e.target.value)}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="purchaseCost">Purchase Cost</Label>
+          <Input 
+            id="purchaseCost"
+            type="number"
+            value={purchaseCost}
+            onChange={(e) => setPurchaseCost(e.target.value)}
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="wear">Wear (Years Until Replacement)</Label>
+          <Input 
+            id="wear"
+            value={wear}
+            onChange={(e) => setWear(e.target.value)}
+            placeholder="Expected years until asset needs replacement"
+          />
+        </div>
       </div>
 
       <div className="space-y-2">

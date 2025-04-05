@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -29,10 +28,11 @@ const EditAsset = () => {
         throw new Error(error.message);
       }
       
-      // Convert database object to Asset type, ensuring notes property exists
+      // Convert database object to Asset type, ensuring properties exist
       return {
         ...data,
-        notes: data.notes || null
+        notes: data.notes || null,
+        wear: data.wear || null // Ensure wear property exists
       } as Asset;
     },
     enabled: !!id,
