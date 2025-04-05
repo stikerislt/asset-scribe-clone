@@ -16,6 +16,7 @@ export interface Asset {
   purchase_cost: number | null;
   location: string | null;
   notes: string | null;
+  wear: string | null; // Added wear field
   created_at: string;
   updated_at: string;
   user_id: string | null;
@@ -37,7 +38,8 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
     ...asset,
     status: asset.status as AssetStatus,
     status_color: asset.status_color as StatusColor | null,
-    location: asset.location || null, // Ensure location is always defined
-    notes: asset.notes || null // Ensure notes is always defined
+    location: asset.location || null,
+    notes: asset.notes || null,
+    wear: asset.wear || null // Handle wear field
   }));
 };
