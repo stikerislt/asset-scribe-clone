@@ -73,6 +73,7 @@ import { toast as sonnerToast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ColumnDef, ColumnVisibilityDropdown } from "@/components/assets/ColumnVisibilityDropdown";
 
 type Filters = {
   tag: string[];
@@ -105,6 +106,28 @@ const Assets = () => {
     wear: [],
     purchaseCost: []
   });
+
+  const [columns, setColumns] = useState<ColumnDef[]>([
+    { id: "tag", label: "Asset Tag", isVisible: true },
+    { id: "name", label: "Name", isVisible: true },
+    { id: "assignedTo", label: "Assigned To", isVisible: true },
+    { id: "purchaseDate", label: "Purchase Date", isVisible: true },
+    { id: "wear", label: "Wear", isVisible: true },
+    { id: "purchaseCost", label: "Purchase Cost", isVisible: true },
+    { id: "quantity", label: "Qty", isVisible: true }
+  ]);
+
+  const handleColumnVisibilityChange = (columnId: string, isVisible: boolean) => {
+    setColumns(prev => 
+      prev.map(col => 
+        col.id === columnId ? { ...col, isVisible } : col
+      )
+    );
+  };
+
+  const resetColumnVisibility = () => {
+    setColumns(prev => prev.map(col => ({ ...col, isVisible: true })));
+  };
 
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -897,6 +920,12 @@ const Assets = () => {
                 </div>
               </PopoverContent>
             </Popover>
+            
+            <ColumnVisibilityDropdown
+              columns={columns}
+              onColumnVisibilityChange={handleColumnVisibilityChange}
+              onResetColumns={resetColumnVisibility}
+            />
           </div>
         </div>
         
@@ -904,25 +933,39 @@ const Assets = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>
-                  {renderFilterPopover("IN", filterOptions.tag, "tag")}
-                </TableHead>
-                <TableHead>
-                  {renderFilterPopover("Name", filterOptions.name, "name")}
-                </TableHead>
-                <TableHead>
-                  {renderFilterPopover("Assigned To", filterOptions.assignedTo, "assignedTo")}
-                </TableHead>
-                <TableHead>
-                  {renderFilterPopover("Purchase Date", filterOptions.purchaseDate, "purchaseDate")}
-                </TableHead>
-                <TableHead>
-                  {renderFilterPopover("Wear", filterOptions.wear, "wear")}
-                </TableHead>
-                <TableHead>
-                  {renderFilterPopover("Purchase Cost", filterOptions.purchaseCost, "purchaseCost")}
-                </TableHead>
-                <TableHead>Qty</TableHead>
+                {columns.find(col => col.id === "tag")?.isVisible && (
+                  <TableHead>
+                    {renderFilterPopover("IN", filterOptions.tag, "tag")}
+                  </TableHead>
+                )}
+                {columns.find(col => col.id === "name")?.isVisible && (
+                  <TableHead>
+                    {renderFilterPopover("Name", filterOptions.name, "name")}
+                  </TableHead>
+                )}
+                {columns.find(col => col.id === "assignedTo")?.isVisible && (
+                  <TableHead>
+                    {renderFilterPopover("Assigned To", filterOptions.assignedTo, "assignedTo")}
+                  </TableHead>
+                )}
+                {columns.find(col => col.id === "purchaseDate")?.isVisible && (
+                  <TableHead>
+                    {renderFilterPopover("Purchase Date", filterOptions.purchaseDate, "purchaseDate")}
+                  </TableHead>
+                )}
+                {columns.find(col => col.id === "wear")?.isVisible && (
+                  <TableHead>
+                    {renderFilterPopover("Wear", filterOptions.wear, "wear")}
+                  </TableHead>
+                )}
+                {columns.find(col => col.id === "purchaseCost")?.isVisible && (
+                  <TableHead>
+                    {renderFilterPopover("Purchase Cost", filterOptions.purchaseCost, "purchaseCost")}
+                  </TableHead>
+                )}
+                {columns.find(col => col.id === "quantity")?.isVisible && (
+                  <TableHead>Qty</TableHead>
+                )}
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -974,25 +1017,39 @@ const Assets = () => {
               ) : (
                 filteredAssets.map((asset) => (
                   <TableRow key={asset.id}>
-                    <TableCell>{asset.tag}</TableCell>
-                    <TableCell>
-                      <Link to={`/assets/${asset.id}`} className="font-medium hover:underline text-blue-600">
-                        {asset.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      {asset.assigned_to || <span className="text-gray-400">—</span>}
-                    </TableCell>
-                    <TableCell>
-                      {asset.purchase_date ? new Date(asset.purchase_date).toLocaleDateString() : <span className="text-gray-400">—</span>}
-                    </TableCell>
-                    <TableCell className="max-w-[150px] truncate">
-                      {asset.notes || <span className="text-gray-400">—</span>}
-                    </TableCell>
-                    <TableCell>
-                      {asset.purchase_cost ? `$${asset.purchase_cost.toFixed(2)}` : <span className="text-gray-400">—</span>}
-                    </TableCell>
-                    <TableCell>1</TableCell>
+                    {columns.find(col => col.id === "tag")?.isVisible && (
+                      <TableCell>{asset.tag}</TableCell>
+                    )}
+                    {columns.find(col => col.id === "name")?.isVisible && (
+                      <TableCell>
+                        <Link to={`/assets/${asset.id}`} className="font-medium hover:underline text-blue-600">
+                          {asset.name}
+                        </Link>
+                      </TableCell>
+                    )}
+                    {columns.find(col => col.id === "assignedTo")?.isVisible && (
+                      <TableCell>
+                        {asset.assigned_to || <span className="text-gray-400">—</span>}
+                      </TableCell>
+                    )}
+                    {columns.find(col => col.id === "purchaseDate")?.isVisible && (
+                      <TableCell>
+                        {asset.purchase_date ? new Date(asset.purchase_date).toLocaleDateString() : <span className="text-gray-400">—</span>}
+                      </TableCell>
+                    )}
+                    {columns.find(col => col.id === "wear")?.isVisible && (
+                      <TableCell className="max-w-[150px] truncate">
+                        {asset.notes || <span className="text-gray-400">—</span>}
+                      </TableCell>
+                    )}
+                    {columns.find(col => col.id === "purchaseCost")?.isVisible && (
+                      <TableCell>
+                        {asset.purchase_cost ? `$${asset.purchase_cost.toFixed(2)}` : <span className="text-gray-400">—</span>}
+                      </TableCell>
+                    )}
+                    {columns.find(col => col.id === "quantity")?.isVisible && (
+                      <TableCell>1</TableCell>
+                    )}
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
