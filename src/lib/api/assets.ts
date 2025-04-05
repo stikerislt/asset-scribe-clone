@@ -11,10 +11,11 @@ export interface Asset {
   status_color: StatusColor | null;
   assigned_to: string | null;
   model: string | null;
-  serial?: string | null;
-  purchase_date?: string | null;
-  purchase_cost: number | null;  // Changed from optional to required but nullable
-  location: string | null; // Changed from optional to required but nullable
+  serial: string | null;
+  purchase_date: string | null;
+  purchase_cost: number | null;
+  location: string | null;
+  notes?: string; // Optional notes field for UI only
 }
 
 // Get assets by employee name

@@ -1,3 +1,4 @@
+
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +21,8 @@ import {
   BarChart3
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const mainMenuItems = [
   {
@@ -58,6 +61,17 @@ const settingsMenuItems = [
 ];
 
 export function AppSidebar() {
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("Logged out successfully");
+    } catch (error) {
+      toast.error("Failed to log out");
+    }
+  };
+
   return (
     <Sidebar className="border-r">
       <SidebarHeader className="py-6 px-3 flex justify-center">
@@ -102,7 +116,7 @@ export function AppSidebar() {
       <SidebarFooter className="mt-auto p-3">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="w-full">
+            <SidebarMenuButton className="w-full" onClick={handleLogout}>
               <LogOut className="w-5 h-5" />
               <span>Logout</span>
             </SidebarMenuButton>
