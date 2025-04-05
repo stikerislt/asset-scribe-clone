@@ -6,7 +6,7 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-lg text-center space-y-6">
-        <h1 className="text-3xl font-bold">Asset Management System</h1>
+        <h1 className="text-3xl font-bold">ekspeer.com Inventory</h1>
         <p className="text-gray-600">
           Manage your organization's assets efficiently with our powerful asset management system.
         </p>

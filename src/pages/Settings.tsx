@@ -63,9 +63,9 @@ const Settings = () => {
   const generalForm = useForm<GeneralSettingsValues>({
     resolver: zodResolver(generalSettingsSchema),
     defaultValues: {
-      companyName: "AsvenX",
+      companyName: "ekspeer.com Inventory",
       adminEmail: "admin@example.com",
-      siteUrl: "https://example.com",
+      siteUrl: "https://ekspeer.com",
       timezone: "UTC",
     },
   });
@@ -96,7 +96,7 @@ const Settings = () => {
     <div className="animate-fade-in">
       <div className="flex flex-col gap-2 mb-6">
         <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">Configure your AsvenX instance</p>
+        <p className="text-muted-foreground">Configure your ekspeer.com Inventory instance</p>
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
