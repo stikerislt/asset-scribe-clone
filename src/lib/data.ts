@@ -20,7 +20,8 @@ export interface Category {
 
 // Empty arrays instead of sample data
 export const assets: Asset[] = [];
-export const categories: Category[] = [];
+// No longer using local categories array, data comes from Supabase
+// export const categories: Category[] = [];
 
 // Helper to log asset activities
 export const logAssetActivity = (

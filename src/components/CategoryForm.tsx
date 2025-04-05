@@ -24,6 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 // Define the schema for form validation
 const categoryFormSchema = z.object({
@@ -44,6 +46,7 @@ interface CategoryFormProps {
 
 export function CategoryForm({ onSubmit, onCancel }: CategoryFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
 
   // Initialize the form
   const form = useForm<CategoryFormValues>({
@@ -54,22 +57,52 @@ export function CategoryForm({ onSubmit, onCancel }: CategoryFormProps) {
     },
   });
 
-  const handleSubmit = (values: CategoryFormValues) => {
+  const handleSubmit = async (values: CategoryFormValues) => {
+    if (!user) {
+      toast.error("You must be logged in to create categories");
+      return;
+    }
+
     setIsSubmitting(true);
     
-    // Create a new category with a unique ID
-    const newCategory: Category = {
-      id: crypto.randomUUID(),
-      name: values.name,
-      type: values.type,
-      count: 0, // New categories start with 0 items
-    };
+    try {
+      // Create a new category with a unique ID
+      const newCategoryId = crypto.randomUUID();
+      const newCategory: Category = {
+        id: newCategoryId,
+        name: values.name,
+        type: values.type,
+        count: 0, // New categories start with 0 items
+      };
 
-    // Submit the form and reset
-    onSubmit(newCategory);
-    form.reset();
-    setIsSubmitting(false);
-    toast.success("Category created successfully");
+      // Save to Supabase
+      const { error } = await supabase
+        .from('categories')
+        .insert({
+          id: newCategoryId,
+          name: values.name,
+          type: values.type,
+          count: 0,
+          user_id: user.id
+        });
+
+      if (error) {
+        console.error("Error saving category:", error);
+        toast.error("Failed to save category");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Submit the form and reset
+      onSubmit(newCategory);
+      form.reset();
+      toast.success("Category created successfully");
+    } catch (error) {
+      console.error("Error creating category:", error);
+      toast.error("Failed to create category");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

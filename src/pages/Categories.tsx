@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -36,18 +36,57 @@ import {
   Search, 
   Edit, 
   Trash,
-  Tag
+  Tag,
+  Loader2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CategoryForm } from "@/components/CategoryForm";
 import { categories, Category, logCategoryActivity } from "@/lib/data";
 import { useActivity } from "@/hooks/useActivity";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const Categories = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [localCategories, setLocalCategories] = useState<Category[]>(categories);
+  const [localCategories, setLocalCategories] = useState<Category[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { logActivity } = useActivity();
+  const { user } = useAuth();
+
+  // Fetch categories from Supabase
+  useEffect(() => {
+    const fetchCategories = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error("Error fetching categories:", error);
+          toast.error("Failed to load categories");
+          return;
+        }
+
+        // Update local state with fetched categories
+        setLocalCategories(data || []);
+      } catch (error) {
+        console.error("Error in fetchCategories:", error);
+        toast.error("An error occurred while loading categories");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, [user]);
 
   const filteredCategories = localCategories.filter(category => 
     category?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -71,16 +110,50 @@ const Categories = () => {
     }
   };
 
-  const handleAddCategory = (newCategory: Category) => {
-    // Add the new category to both the local state and the imported categories array
+  const handleAddCategory = async (newCategory: Category) => {
+    // Update local state
     setLocalCategories(prev => [newCategory, ...prev]);
-    categories.unshift(newCategory);
     
     // Log the activity
     logCategoryActivity("Created", newCategory);
     
     // Close the dialog
     setIsAddDialogOpen(false);
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!user) {
+      toast.error("You must be logged in to delete categories");
+      return;
+    }
+
+    try {
+      // Delete from Supabase
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', categoryId);
+
+      if (error) {
+        console.error("Error deleting category:", error);
+        toast.error("Failed to delete category");
+        return;
+      }
+
+      // Update local state
+      setLocalCategories(prev => prev.filter(cat => cat.id !== categoryId));
+      
+      // Log activity
+      const deletedCategory = localCategories.find(cat => cat.id === categoryId);
+      if (deletedCategory) {
+        logCategoryActivity("Deleted", deletedCategory);
+      }
+      
+      toast.success("Category deleted successfully");
+    } catch (error) {
+      console.error("Error in handleDeleteCategory:", error);
+      toast.error("An error occurred while deleting the category");
+    }
   };
   
   return (
@@ -118,65 +191,75 @@ const Categories = () => {
           </div>
           
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Item Count</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCategories.length === 0 ? (
+            {isLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Loading categories...</span>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8">
-                      <div className="flex flex-col items-center justify-center text-muted-foreground">
-                        <Tag className="h-12 w-12 mb-2 text-muted-foreground/50" />
-                        <p>No categories found. Click the Add Category button to get started.</p>
-                      </div>
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Item Count</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  filteredCategories.map((category) => (
-                    <TableRow key={category.id}>
-                      <TableCell className="font-medium">{category.name}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant="outline" 
-                          className={getTypeColor(category.type)}
-                        >
-                          {category.type?.charAt(0).toUpperCase() + category.type?.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{category.count}</TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
-                              <Trash className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                </TableHeader>
+                <TableBody>
+                  {filteredCategories.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8">
+                        <div className="flex flex-col items-center justify-center text-muted-foreground">
+                          <Tag className="h-12 w-12 mb-2 text-muted-foreground/50" />
+                          <p>No categories found. Click the Add Category button to get started.</p>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    filteredCategories.map((category) => (
+                      <TableRow key={category.id}>
+                        <TableCell className="font-medium">{category.name}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline" 
+                            className={getTypeColor(category.type)}
+                          >
+                            {category.type?.charAt(0).toUpperCase() + category.type?.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{category.count}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-red-600"
+                                onClick={() => handleDeleteCategory(category.id)}
+                              >
+                                <Trash className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </CardContent>
       </Card>
