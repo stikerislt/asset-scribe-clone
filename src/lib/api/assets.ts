@@ -14,7 +14,7 @@ export interface Asset {
   serial?: string | null;
   purchase_date?: string | null;
   purchase_cost?: number | null;
-  location?: string | null;
+  location: string | null; // Changed from optional to required but nullable
 }
 
 // Get assets by employee name
@@ -32,6 +32,7 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
   return (data || []).map(asset => ({
     ...asset,
     status: asset.status as AssetStatus,
-    status_color: asset.status_color as StatusColor | null
+    status_color: asset.status_color as StatusColor | null,
+    location: asset.location || null // Ensure location is always defined
   }));
 };

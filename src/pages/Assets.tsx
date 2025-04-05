@@ -460,7 +460,7 @@ const Assets = () => {
       await createAssetMutation.mutateAsync({
         ...assetData,
         status_color: assetData.status_color || null,
-        location: assetData.location || '',
+        location: assetData.location || null,
         user_id: null
       });
       
@@ -792,7 +792,6 @@ const Assets = () => {
     const selectedFilters = activeFilters[filterKey];
     const [searchFilter, setSearchFilter] = useState("");
     
-    // Add search filtering for dropdown options
     const filteredOptions = searchFilter 
       ? options.filter(option => 
           option.toLowerCase().includes(searchFilter.toLowerCase()))
@@ -830,7 +829,6 @@ const Assets = () => {
               </Button>
             </div>
             
-            {/* Add search input for filter options */}
             {filterKey === 'assignedTo' && options.length > 5 && (
               <div className="relative mb-2">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
