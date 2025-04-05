@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -32,7 +33,8 @@ const EditAsset = () => {
       return {
         ...data,
         notes: data.notes || null,
-        wear: data.wear || null // Ensure wear property exists
+        wear: data.wear || null, // Ensure wear property exists
+        qty: data.qty || 1 // Ensure quantity property exists with default value 1
       } as Asset;
     },
     enabled: !!id,

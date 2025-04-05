@@ -105,7 +105,8 @@ export const generateAssetImportTemplate = (): string => {
     'location',      // Physical location
     'wear',          // Expected years until asset needs replacement (for budgeting)
     'notes',         // Additional notes
-    'status_color'   // Status color (green, yellow, red)
+    'status_color',  // Status color (green, yellow, red)
+    'qty'            // Quantity of the asset
   ];
   
   // Example row with default values for required fields
@@ -115,6 +116,7 @@ export const generateAssetImportTemplate = (): string => {
     if (header === 'category') return 'General'; 
     if (header === 'status') return 'ready';
     if (header === 'wear') return '3';  // Example: 3 years until replacement
+    if (header === 'qty') return '1';   // Default quantity is 1
     return '';
   });
   

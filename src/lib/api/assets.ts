@@ -17,6 +17,7 @@ export interface Asset {
   location: string | null;
   notes: string | null;
   wear: string | null; // Added wear field
+  qty?: number; // Added quantity field
   created_at: string;
   updated_at: string;
   user_id: string | null;
@@ -40,6 +41,7 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
     status_color: asset.status_color as StatusColor | null,
     location: asset.location || null,
     notes: asset.notes || null,
-    wear: asset.wear || null // Handle wear field - safely handle if not present in DB yet
+    wear: asset.wear || null, // Handle wear field - safely handle if not present in DB yet
+    qty: 1 // Default quantity to 1 if not specified
   }));
 };
