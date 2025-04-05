@@ -125,8 +125,8 @@ const Analytics = () => {
                     paddingAngle={2}
                     dataKey="value"
                     nameKey="name"
-                    label={({ name, value }) => `${name}: ${value}`}
                     labelLine={false}
+                    label={false} // Remove the directly attached labels
                   >
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
