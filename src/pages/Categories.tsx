@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +45,7 @@ import { useActivity } from "@/hooks/useActivity";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { CategoryIcon } from "@/components/CategoryIcon";
 
 const Categories = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -55,7 +55,6 @@ const Categories = () => {
   const { logActivity } = useActivity();
   const { user } = useAuth();
 
-  // Fetch categories from Supabase
   useEffect(() => {
     const getCategories = async () => {
       if (!user) {
@@ -100,13 +99,8 @@ const Categories = () => {
   };
 
   const handleAddCategory = async (newCategory: Category) => {
-    // Update local state
     setLocalCategories(prev => [newCategory, ...prev]);
-    
-    // Log the activity
     logCategoryActivity("Created", newCategory);
-    
-    // Close the dialog
     setIsAddDialogOpen(false);
   };
 
@@ -117,7 +111,6 @@ const Categories = () => {
     }
 
     try {
-      // Delete from Supabase
       const { error } = await supabase
         .from('categories')
         .delete()
@@ -129,10 +122,8 @@ const Categories = () => {
         return;
       }
 
-      // Update local state
       setLocalCategories(prev => prev.filter(cat => cat.id !== categoryId));
       
-      // Log activity
       const deletedCategory = localCategories.find(cat => cat.id === categoryId);
       if (deletedCategory) {
         logCategoryActivity("Deleted", deletedCategory);
@@ -208,7 +199,9 @@ const Categories = () => {
                   ) : (
                     filteredCategories.map((category) => (
                       <TableRow key={category.id}>
-                        <TableCell className="font-medium">{category.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <CategoryIcon category={category.name} />
+                        </TableCell>
                         <TableCell>
                           <Badge 
                             variant="outline" 
@@ -253,7 +246,6 @@ const Categories = () => {
         </CardContent>
       </Card>
 
-      {/* Add Category Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>

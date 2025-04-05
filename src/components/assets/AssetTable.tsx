@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { StatusColorIndicator } from "@/components/StatusColorIndicator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ColumnDef } from "@/components/assets/ColumnVisibilityDropdown";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import {
   Table, 
   TableBody, 
@@ -82,7 +83,9 @@ export const AssetTable = ({
               )}
               
               {columns.find(c => c.id === 'category')?.isVisible && (
-                <TableCell>{asset.category}</TableCell>
+                <TableCell>
+                  <CategoryIcon category={asset.category} />
+                </TableCell>
               )}
               
               {columns.find(c => c.id === 'assignedTo')?.isVisible && (

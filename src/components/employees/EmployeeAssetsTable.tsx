@@ -8,6 +8,7 @@ import { StatusColor } from "@/lib/data";
 import { AssetStatus } from "@/lib/api/assets";
 import { Package, Search } from "lucide-react";
 import { StatusColorIndicator } from "@/components/StatusColorIndicator";
+import { CategoryIcon } from "@/components/CategoryIcon";
 
 interface Asset {
   id: string;
@@ -80,7 +81,9 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
               {filteredAssets.map((asset) => (
                 <tr key={asset.id} className="border-b transition-colors hover:bg-muted/50">
                   <td className="p-4 align-middle">{asset.name}</td>
-                  <td className="p-4 align-middle">{asset.category}</td>
+                  <td className="p-4 align-middle">
+                    <CategoryIcon category={asset.category} size={16} />
+                  </td>
                   <td className="p-4 align-middle">
                     <AssetStatusBadge status={asset.status} />
                   </td>
