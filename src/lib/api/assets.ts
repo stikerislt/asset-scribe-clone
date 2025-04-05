@@ -10,6 +10,7 @@ export interface Asset {
   name: string;
   tag: string;
   category: string;
+  categoryIcon?: string;  // Added this property
   status: AssetStatus;
   status_color: StatusColor | null;
   assigned_to: string | null;
@@ -49,7 +50,7 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
     
   if (error) throw error;
   
-  // Ensure asset status is properly typed
+  // Ensure asset status is properly typed and include categoryIcon property
   return (data || []).map(asset => ({
     ...asset,
     status: asset.status as AssetStatus,
@@ -57,6 +58,7 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
     location: asset.location || null,
     notes: asset.notes || null,
     wear: asset.wear || null,
-    qty: asset.qty || 1
+    qty: asset.qty || 1,
+    categoryIcon: asset.categoryIcon || null
   })) as Asset[];
 };

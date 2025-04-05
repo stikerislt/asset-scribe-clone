@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
@@ -13,6 +14,7 @@ interface Asset {
   id: string;
   name: string;
   category: string;
+  categoryIcon?: string;  // Added this property
   status: AssetStatus;
   status_color?: StatusColor | null;
 }
