@@ -1,5 +1,5 @@
 
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "@/pages/Dashboard";
 import Assets from "@/pages/Assets";
 import Employees from "@/pages/Employees";
@@ -12,12 +12,17 @@ import NotFound from "@/pages/NotFound";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
 import Index from "@/pages/Index";
+import EmployeeDetails from "@/pages/EmployeeDetails";
 
 export const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<Index />} />
+      
+      {/* Auth Routes */}
       <Route path="/auth" element={<Auth />} />
+      <Route path="/auth/login" element={<Auth />} />
+      <Route path="/auth/signup" element={<Auth />} />
       
       {/* Protected Routes */}
       <Route path="/dashboard" element={
@@ -45,6 +50,13 @@ export const AppRoutes = () => {
         <ProtectedRoute>
           <AppLayout>
             <Employees />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/employees/:id" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <EmployeeDetails />
           </AppLayout>
         </ProtectedRoute>
       } />
