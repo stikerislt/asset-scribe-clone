@@ -1,7 +1,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { AssetStatus } from "@/lib/data";
+import { AssetStatus } from "@/lib/api/assets";
 
 interface AssetStatusBadgeProps {
   status: AssetStatus;
@@ -20,6 +20,12 @@ export function AssetStatusBadge({ status }: AssetStatusBadgeProps) {
         return "bg-gray-100 text-gray-800 hover:bg-gray-100/80";
       case "broken":
         return "bg-red-100 text-red-800 hover:bg-red-100/80";
+      case "deployed":
+        return "bg-purple-100 text-purple-800 hover:bg-purple-100/80";
+      case "maintenance":
+        return "bg-orange-100 text-orange-800 hover:bg-orange-100/80";
+      case "retired":
+        return "bg-gray-100 text-gray-500 hover:bg-gray-100/80";
       default:
         return "";
     }

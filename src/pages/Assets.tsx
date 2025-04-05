@@ -1,104 +1,29 @@
-import { useState, useRef, useEffect } from "react";
-import { AssetStatusBadge } from "@/components/AssetStatusBadge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { 
-  Package, 
-  Plus, 
-  MoreHorizontal, 
-  Search, 
-  Edit, 
-  Trash, 
-  Download, 
-  UserPlus,
-  Filter,
-  Import,
-  Loader,
-  AlertCircle,
-  RefreshCw,
-  FileSpreadsheet,
-  AlertTriangle,
-  ArrowUpDown,
-  Check,
-  X
-} from "lucide-react";
-import { 
-  Popover,
-  PopoverTrigger,
-  PopoverContent 
-} from "@/components/ui/popover";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@/components/ui/alert-dialog";
-import {
-  Alert,
-  AlertTitle,
-  AlertDescription
-} from "@/components/ui/alert";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Package, AlertTriangle } from "lucide-react";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Asset, 
-  AssetStatus, 
-  VALID_ASSET_STATUSES 
-} from "@/lib/api/assets";
-import { csvToObjects, objectsToCSV, generateAssetImportTemplate } from "@/lib/csv-utils";
-import { parseCSVForPreview } from "@/lib/preview-csv";
-import { useActivity } from "@/hooks/useActivity";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AssetForm } from "@/components/AssetForm";
-import { CSVPreview } from "@/components/CSVPreview";
-import { supabase, checkAuth, debugRlsAccess } from "@/integrations/supabase/client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast as sonnerToast } from "@/hooks/use-sonner-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ColumnDef, ColumnVisibilityDropdown } from "@/components/assets/ColumnVisibilityDropdown";
-import { StatusColorIndicator } from "@/components/StatusColorIndicator";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useActivity } from "@/hooks/useActivity";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase, checkAuth } from "@/integrations/supabase/client";
+import { Asset, AssetStatus } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
 
-type Filters = {
-  tag: string[];
-  name: string[];
-  assignedTo: string[];
-  purchaseDate: string[];
-  wear: string[];
-  purchaseCost: string[];
-}
+// Import our new components
+import { AssetFilters, Filters } from "@/components/assets/AssetFilters";
+import { AssetTable } from "@/components/assets/AssetTable";
+import { AssetImportExport } from "@/components/assets/AssetImportExport";
+import { AssetActionButtons } from "@/components/assets/AssetActionButtons";
+import { DebugInfo, ErrorState } from "@/components/assets/DebugInfo";
+import { ColumnDef, ColumnVisibilityDropdown } from "@/components/assets/ColumnVisibilityDropdown";
+import { debugAssetAccess, getFilterOptions, filterAssets } from "@/lib/helpers/assetUtils";
 
 const Assets = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDebugging, setIsDebugging] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [csvPreviewData, setCsvPreviewData] = useState<{ headers: string[], data: string[][] } | null>(null);
-  const [csvContent, setCsvContent] = useState<string | null>(null);
-  const [showCSVPreview, setShowCSVPreview] = useState(false);
-  const [importFileType, setImportFileType] = useState<'csv' | 'excel'>('csv');
   const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
   const [deleteAllConfirmText, setDeleteAllConfirmText] = useState("");
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
@@ -136,10 +61,9 @@ const Assets = () => {
   };
 
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { logActivity } = useActivity();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { logActivity } = useActivity();
   
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -150,6 +74,7 @@ const Assets = () => {
     checkAuthStatus();
   }, []);
   
+  // Asset data fetching
   const { data: assets = [], isLoading, error } = useQuery({
     queryKey: ['assets'],
     queryFn: async () => {
@@ -181,88 +106,19 @@ const Assets = () => {
     refetchOnWindowFocus: false
   });
   
-  const getFilterOptions = (key: keyof Asset) => {
-    if (!assets?.length) return [];
-    
-    const uniqueValues = Array.from(new Set(
-      assets
-        .map(asset => asset[key])
-        .filter(Boolean)
-    )).sort();
-    
-    return uniqueValues.map(value => String(value));
-  };
-  
+  // Computed filter options based on assets data
   const filterOptions = {
-    tag: getFilterOptions('tag' as keyof Asset),
-    name: getFilterOptions('name' as keyof Asset),
-    assignedTo: getFilterOptions('assigned_to' as keyof Asset),
-    purchaseDate: getFilterOptions('purchase_date' as keyof Asset)
+    tag: getFilterOptions(assets, 'tag' as keyof Asset),
+    name: getFilterOptions(assets, 'name' as keyof Asset),
+    assignedTo: getFilterOptions(assets, 'assigned_to' as keyof Asset),
+    purchaseDate: getFilterOptions(assets, 'purchase_date' as keyof Asset)
       .map(date => new Date(date).toLocaleDateString()),
-    wear: getFilterOptions('notes' as keyof Asset),
-    purchaseCost: getFilterOptions('purchase_cost' as keyof Asset)
+    wear: getFilterOptions(assets, 'notes' as keyof Asset),
+    purchaseCost: getFilterOptions(assets, 'purchase_cost' as keyof Asset)
       .map(cost => `$${Number(cost).toFixed(2)}`)
   };
   
-  const isFilterActive = (key: keyof Filters) => {
-    return activeFilters[key] && activeFilters[key].length > 0;
-  };
-  
-  const activeFilterCount = Object.values(activeFilters).reduce(
-    (count, filters) => count + filters.length, 0
-  );
-  
-  const toggleFilter = (key: keyof Filters, value: string) => {
-    setActiveFilters(prev => {
-      const currentFilters = [...prev[key]];
-      const valueIndex = currentFilters.indexOf(value);
-      
-      if (valueIndex === -1) {
-        return { ...prev, [key]: [...currentFilters, value] };
-      } else {
-        currentFilters.splice(valueIndex, 1);
-        return { ...prev, [key]: currentFilters };
-      }
-    });
-  };
-  
-  const clearFilters = (key: keyof Filters) => {
-    setActiveFilters(prev => ({ ...prev, [key]: [] }));
-  };
-  
-  const clearAllFilters = () => {
-    setActiveFilters({
-      tag: [],
-      name: [],
-      assignedTo: [],
-      purchaseDate: [],
-      wear: [],
-      purchaseCost: []
-    });
-  };
-  
-  const handleDebug = async () => {
-    setIsDebugging(true);
-    try {
-      const result = await debugAssetAccess();
-      setDebugInfo(result);
-      
-      if (result.authenticated) {
-        sonnerToast.info("Authentication Status", {
-          description: "You are authenticated. See console for details."
-        });
-      } else {
-        sonnerToast.warning("Authentication Status", {
-          description: "You are not authenticated. Please log in."
-        });
-      }
-    } catch (e) {
-      console.error("Debug error:", e);
-    } finally {
-      setIsDebugging(false);
-    }
-  };
-  
+  // Mutations for CRUD operations
   const createAssetMutation = useMutation({
     mutationFn: async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
@@ -345,6 +201,7 @@ const Assets = () => {
     }
   });
 
+  // Event handlers
   const handleStatusColorChange = async (assetId: string, newColor: StatusColor) => {
     try {
       await updateAssetStatusColorMutation.mutateAsync({ 
@@ -408,24 +265,11 @@ const Assets = () => {
     }
   };
   
-  const handleDeleteAllAssets = () => {
+  const handleDeleteAllAssets = async () => {
     if (!assets || assets.length === 0) {
       toast({
         title: "No Assets to Delete",
         description: "There are no assets in the inventory to delete.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsDeleteAllDialogOpen(true);
-  };
-  
-  const confirmDeleteAllAssets = async () => {
-    if (deleteAllConfirmText !== "DELETE ALL ASSETS") {
-      toast({
-        title: "Confirmation Failed",
-        description: "Please type the exact confirmation phrase to proceed.",
         variant: "destructive",
       });
       return;
@@ -445,9 +289,6 @@ const Assets = () => {
         category: 'asset',
         icon: <AlertTriangle className="h-5 w-5 text-red-600" />
       });
-      
-      setIsDeleteAllDialogOpen(false);
-      setDeleteAllConfirmText("");
     } catch (error) {
       console.error('Error deleting all assets:', error);
       toast({
@@ -468,8 +309,6 @@ const Assets = () => {
         user_id: null
       });
       
-      setIsAddDialogOpen(false);
-      
       toast({
         title: "Asset Created",
         description: `${assetData.name} has been added to the inventory`,
@@ -488,428 +327,46 @@ const Assets = () => {
         description: "Failed to create asset. Please try again.",
         variant: "destructive",
       });
+      throw error;
     }
   };
   
-  const filteredAssets = assets.filter(asset => {
-    const matchesSearch = 
-      (asset?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       asset?.tag?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       asset?.category?.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    if (!matchesSearch) return false;
-    
-    const tagMatch = activeFilters.tag.length === 0 || 
-      (asset.tag && activeFilters.tag.includes(asset.tag));
-    
-    const nameMatch = activeFilters.name.length === 0 || 
-      (asset.name && activeFilters.name.includes(asset.name));
-    
-    const assignedToMatch = activeFilters.assignedTo.length === 0 || 
-      (asset.assigned_to && activeFilters.assignedTo.includes(asset.assigned_to));
-    
-    const purchaseDateMatch = activeFilters.purchaseDate.length === 0 || 
-      (asset.purchase_date && 
-       activeFilters.purchaseDate.includes(new Date(asset.purchase_date).toLocaleDateString()));
-    
-    const wearMatch = activeFilters.wear.length === 0 || 
-      (asset.notes && activeFilters.wear.includes(asset.notes));
-    
-    const costMatch = activeFilters.purchaseCost.length === 0 || 
-      (asset.purchase_cost && 
-       activeFilters.purchaseCost.includes(`$${asset.purchase_cost.toFixed(2)}`));
-    
-    return tagMatch && nameMatch && assignedToMatch && purchaseDateMatch && wearMatch && costMatch;
-  });
-
-  const handleImportClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const fileExtension = file.name.split('.').pop()?.toLowerCase();
-    const isExcel = fileExtension === 'xlsx' || fileExtension === 'xls';
-    setImportFileType(isExcel ? 'excel' : 'csv');
-
-    if (isExcel) {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64Content = e.target?.result as string;
-        setCsvContent(base64Content);
-        
-        try {
-          const previewData = parseCSVForPreview(base64Content, 'excel');
-          if (previewData.headers.length === 0 || previewData.data.length === 0) {
-            toast({
-              title: "Invalid Excel File",
-              description: "Unable to parse Excel data. Please check your file format.",
-              variant: "destructive",
-            });
-            return;
-          }
-          
-          const sanitizedData = {
-            headers: previewData.headers.map(h => String(h)),
-            data: previewData.data.map(row => row.map(cell => String(cell)))
-          };
-          
-          setCsvPreviewData(sanitizedData);
-          setShowCSVPreview(true);
-        } catch (error) {
-          console.error("Excel preview error:", error);
-          toast({
-            title: "Preview Failed",
-            description: "Failed to preview Excel data. Please check your file format.",
-            variant: "destructive",
-          });
-        }
-      };
-      reader.readAsDataURL(file);
-    } else {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const csvContent = e.target?.result as string;
-        setCsvContent(csvContent);
-        
-        try {
-          const previewData = parseCSVForPreview(csvContent, 'csv');
-          if (previewData.headers.length === 0 || previewData.data.length === 0) {
-            toast({
-              title: "Invalid CSV",
-              description: "Unable to parse CSV data. Please check your file format.",
-              variant: "destructive",
-            });
-            return;
-          }
-          
-          const sanitizedData = {
-            headers: previewData.headers.map(h => String(h)),
-            data: previewData.data.map(row => row.map(cell => String(cell)))
-          };
-          
-          setCsvPreviewData(sanitizedData);
-          setShowCSVPreview(true);
-        } catch (error) {
-          console.error("CSV preview error:", error);
-          toast({
-            title: "Preview Failed",
-            description: "Failed to preview CSV data. Please check your file format.",
-            variant: "destructive",
-          });
-        }
-      };
-      reader.readAsText(file);
-    }
-
-    event.target.value = '';
-  };
-  
-  const handleConfirmImport = async () => {
-    if (!csvContent) {
-      toast({
-        title: "Import Failed",
-        description: "No data content to import",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+  const handleDebug = async () => {
+    setIsDebugging(true);
     try {
-      let importedAssets;
+      const result = await debugAssetAccess();
+      setDebugInfo(result);
       
-      if (importFileType === 'excel') {
-        if (!csvPreviewData) return;
-        
-        importedAssets = csvPreviewData.data.map(row => {
-          const asset: Record<string, any> = {};
-          csvPreviewData.headers.forEach((header, index) => {
-            asset[header] = row[index] || '';
-          });
-          return asset;
-        });
-      } else {
-        importedAssets = csvToObjects<{
-          name: string;
-          tag: string;
-          serial: string;
-          model: string;
-          category: string;
-          status: string;
-          assigned_to: string;
-          location: string;
-          purchase_date: string;
-          purchase_cost: string;
-        }>(csvContent);
-      }
-      
-      const validAssets = importedAssets
-        .filter(asset => asset.name && asset.tag);
-      
-      if (validAssets.length === 0) {
+      if (result.authenticated) {
         toast({
-          title: "Import Failed",
-          description: "No valid assets found in the file",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!user?.id) {
-        toast({
-          title: "Import Failed",
-          description: "You must be logged in to import assets",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const importErrors = [];
-      const importSuccess = [];
-
-      const DEFAULT_CATEGORY = "General";
-      
-
-      for (const asset of validAssets) {
-    try {
-      const category = asset.category || DEFAULT_CATEGORY;
-      
-      let status = (asset.status || 'ready').toLowerCase().trim();
-      if (!VALID_ASSET_STATUSES.includes(status as AssetStatus)) {
-        console.log(`Invalid status "${status}" for asset "${asset.name}", defaulting to "ready"`);
-        status = 'ready';
-      }
-      
-      const { error } = await supabase.from('assets').insert([{
-        name: asset.name,
-        tag: asset.tag,
-        serial: asset.serial || '',
-        model: asset.model || '',
-        category: category,
-        status: status as AssetStatus,
-        assigned_to: asset.assigned_to || null,
-        purchase_date: asset.purchase_date ? new Date(asset.purchase_date).toISOString() : null,
-        purchase_cost: asset.purchase_cost ? parseFloat(asset.purchase_cost) : null,
-        location: asset.location || '',
-        wear: asset.wear || null,
-        qty: asset.qty ? parseInt(asset.qty) : 1,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        user_id: user.id
-      }]);
-      
-      if (error) {
-        console.error('Error importing asset:', error);
-        importErrors.push(asset.name);
-      } else {
-        importSuccess.push(asset.name);
-      }
-    } catch (error) {
-      console.error('Error importing asset:', error);
-      importErrors.push(asset.name);
-    }
-  }
-      
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
-      
-      logActivity({
-        title: `Assets Imported from ${importFileType.toUpperCase()}`,
-        description: `${importSuccess.length} assets imported successfully, ${importErrors.length} failed`,
-        category: 'asset',
-        icon: <Package className="h-5 w-5 text-blue-600" />
-      });
-
-      if (importErrors.length > 0) {
-        toast({
-          title: "Import Partially Successful",
-          description: `${importSuccess.length} assets imported, ${importErrors.length} failed`,
-          variant: "destructive",
+          title: "Authentication Status",
+          description: "You are authenticated. See console for details."
         });
       } else {
         toast({
-          title: "Import Successful",
-          description: `${importSuccess.length} assets imported`,
+          title: "Authentication Status",
+          description: "You are not authenticated. Please log in.",
+          variant: "destructive"
         });
       }
-      
-      setShowCSVPreview(false);
-      setCsvContent(null);
-      setCsvPreviewData(null);
-    } catch (error) {
-      console.error("Import error:", error);
-      toast({
-        title: "Import Failed",
-        description: "The file format is invalid or there was an error processing your request",
-        variant: "destructive",
-      });
+    } catch (e) {
+      console.error("Debug error:", e);
+    } finally {
+      setIsDebugging(false);
     }
-  };
-
-  const handleExportTemplateClick = () => {
-    downloadCSV(generateAssetImportTemplate(), "assets-import-template.csv");
-    
-    toast({
-      title: "Template Exported",
-      description: "Asset import template with all columns has been downloaded",
-    });
-    
-    logActivity({
-      title: "Template Downloaded",
-      description: "Asset import template downloaded",
-      category: 'asset',
-      icon: <FileSpreadsheet className="h-5 w-5 text-blue-600" />
-    });
-  };
-
-  const handleExportClick = () => {
-    if (assets.length === 0) {
-      handleExportTemplateClick();
-      return;
-    }
-
-    const formattedAssets = assets.map(asset => ({
-      tag: asset.tag,
-      name: asset.name,
-      assigned_to: asset.assigned_to || '',
-      purchase_date: asset.purchase_date || '',
-      wear: asset.notes || '',
-      purchase_cost: asset.purchase_cost || '',
-      qty: '1',
-    }));
-    
-    const csv = objectsToCSV(formattedAssets);
-    downloadCSV(csv, "assets-export.csv");
-    
-    logActivity({
-      title: "Assets Exported",
-      description: `${assets.length} assets exported`,
-      category: 'asset',
-      icon: <Package className="h-5 w-5 text-blue-600" />
-    });
-
-    toast({
-      title: "Export Successful",
-      description: `${assets.length} assets exported`,
-    });
-  };
-
-  const downloadCSV = (csvContent: string, filename: string) => {
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
   
-  const renderFilterPopover = (
-    title: string, 
-    options: string[], 
-    filterKey: keyof Filters
-  ) => {
-    const selectedFilters = activeFilters[filterKey];
-    const [searchFilter, setSearchFilter] = useState("");
-    
-    const filteredOptions = searchFilter 
-      ? options.filter(option => 
-          option.toLowerCase().includes(searchFilter.toLowerCase()))
-      : options;
-    
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className={`h-8 px-2 ${isFilterActive(filterKey) ? 'bg-accent text-accent-foreground' : ''}`}
-          >
-            <ArrowUpDown className="h-3 w-3 mr-2" />
-            {title}
-            {isFilterActive(filterKey) && (
-              <Badge variant="secondary" className="ml-2 px-1 font-normal">
-                {selectedFilters.length}
-              </Badge>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-0" align="start">
-          <div className="p-2">
-            <div className="flex items-center justify-between pb-2">
-              <h4 className="font-medium text-sm">{title} Filter</h4>
-              <Button
-                variant="ghost" 
-                size="sm" 
-                className="h-8 px-2 text-xs"
-                onClick={() => clearFilters(filterKey)}
-                disabled={selectedFilters.length === 0}
-              >
-                Reset
-              </Button>
-            </div>
-            
-            {filterKey === 'assignedTo' && options.length > 5 && (
-              <div className="relative mb-2">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search..."
-                  className="pl-8 h-9"
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                />
-              </div>
-            )}
-            
-            <div className="max-h-[300px] overflow-auto space-y-1">
-              {filteredOptions.length > 0 ? (
-                filteredOptions.map((option) => (
-                  <div key={option} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`${filterKey}-${option}`}
-                      checked={selectedFilters.includes(option)}
-                      onCheckedChange={() => toggleFilter(filterKey, option)}
-                    />
-                    <label 
-                      htmlFor={`${filterKey}-${option}`}
-                      className="text-sm font-normal cursor-pointer flex-1 truncate"
-                    >
-                      {option || "(Empty)"}
-                    </label>
-                  </div>
-                ))
-              ) : (
-                <div className="text-sm text-muted-foreground py-2 text-center">
-                  {searchFilter ? "No matching results" : "No options available"}
-                </div>
-              )}
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    );
-  };
+  // Apply filters to assets
+  const filteredAssets = filterAssets(assets, searchTerm, activeFilters);
 
+  // Render error state
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-[50vh]">
-        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-        <h1 className="text-xl font-bold mb-2">Error Loading Assets</h1>
-        <p className="text-muted-foreground mb-4">{(error as Error).message || 'Failed to load assets from the database.'}</p>
-        <div className="flex gap-2">
-          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}>
-            Try Again
-          </Button>
-          <Button variant="outline" onClick={handleDebug}>
-            Debug Access
-          </Button>
-        </div>
-      </div>
+      <ErrorState 
+        error={error as Error} 
+        onRetry={() => queryClient.invalidateQueries({ queryKey: ['assets'] })} 
+        onDebug={handleDebug}
+      />
     );
   }
   
@@ -921,50 +378,57 @@ const Assets = () => {
           <p className="text-muted-foreground mt-1">Manage your hardware and device inventory</p>
         </div>
         <div className="flex gap-2 mt-4 sm:mt-0 flex-wrap">
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            accept=".csv,.xlsx,.xls" 
-            onChange={handleFileChange}
-            className="hidden"
+          <AssetImportExport assets={assets} />
+          <AssetActionButtons 
+            onDebug={handleDebug}
+            isDebugging={isDebugging}
+            onAddAsset={handleAddAsset}
+            onDeleteAllAssets={handleDeleteAllAssets}
           />
-          <Button className="" size="sm" onClick={handleImportClick}>
-            <Import className="mr-2 h-4 w-4" />
-            Import
-          </Button>
-          <Button className="" size="sm" onClick={handleExportClick}>
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-          <Button className="" size="sm" onClick={handleExportTemplateClick} variant="outline">
-            <FileSpreadsheet className="mr-2 h-4 w-4" />
-            Export Template
-          </Button>
-          <Button className="" size="sm" onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Asset
-          </Button>
-          <Button className="" size="sm" variant="outline" onClick={handleDebug} disabled={isDebugging}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${isDebugging ? 'animate-spin' : ''}`} />
-            Debug
-          </Button>
-          <Button className="" size="sm" variant="destructive" onClick={handleDeleteAllAssets}>
-            <Trash className="mr-2 h-4 w-4" />
-            Delete All
-          </Button>
         </div>
       </div>
       
-      {debugInfo && (
-        <div className="bg-amber-50 border border-amber-200 rounded p-4 mb-4">
-          <h3 className="font-medium text-amber-900 mb-2">Debug Information</h3>
-          <div className="text-sm text-amber-800">
-            <p>Authentication status: {debugInfo.authenticated ? 'Authenticated' : 'Not authenticated'}</p>
-            <p>Data received: {debugInfo.data ? debugInfo.data.length : 0} assets</p>
-            {debugInfo.error && (
-              <p className="text-red-600">Error: {debugInfo.error.message}</p>
-            )}
+      <DebugInfo debugInfo={debugInfo} />
+      
+      {isLoading ? (
+        <div className="text-center py-10">
+          <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+          <p className="text-muted-foreground">Loading assets...</p>
+        </div>
+      ) : assets.length === 0 ? (
+        <Alert>
+          <AlertTitle>No Assets Found</AlertTitle>
+          <p>
+            You don't have any assets in your inventory yet.
+            Click "Add Asset" to create your first asset, or import assets from a CSV file.
+          </p>
+        </Alert>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-2">
+            <AssetFilters
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              activeFilters={activeFilters}
+              setActiveFilters={setActiveFilters}
+              filterOptions={filterOptions}
+              isFiltersOpen={isFiltersOpen}
+              setIsFiltersOpen={setIsFiltersOpen}
+            />
+            
+            <ColumnVisibilityDropdown
+              columns={columns}
+              onColumnVisibilityChange={handleColumnVisibilityChange}
+              onResetColumnVisibility={resetColumnVisibility}
+            />
           </div>
+          
+          <AssetTable 
+            assets={filteredAssets}
+            columns={columns} 
+            onDeleteAsset={handleDeleteAsset} 
+            onStatusColorChange={handleStatusColorChange}
+          />
         </div>
       )}
     </div>

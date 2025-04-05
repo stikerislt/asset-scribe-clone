@@ -2,8 +2,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { StatusColor } from "@/lib/data";
 
-// Update the AssetStatus type to include all valid values
-export type AssetStatus = 'ready' | 'deployed' | 'maintenance' | 'retired';
+// Define valid asset statuses
+export type AssetStatus = 'ready' | 'deployed' | 'maintenance' | 'retired' | 'assigned' | 'pending' | 'archived' | 'broken';
 
 export interface Asset {
   id: string;
@@ -31,7 +31,11 @@ export const VALID_ASSET_STATUSES: AssetStatus[] = [
   'ready', 
   'deployed', 
   'maintenance', 
-  'retired'
+  'retired',
+  'assigned',
+  'pending',
+  'archived',
+  'broken'
 ];
 
 // Get assets by employee name

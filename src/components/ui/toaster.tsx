@@ -1,4 +1,5 @@
-import { useToast } from "@/hooks/use-toast"
+
+import { useToast } from "@/hooks/use-toast";
 import {
   Toast,
   ToastClose,
@@ -6,10 +7,16 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "@/components/ui/toast"
+} from "@/components/ui/toast";
+import { Toaster as SonnerToaster } from "sonner";
+
+// Export the Sonner Toaster for direct usage
+export const SonnerToaster = () => {
+  return <SonnerToaster richColors position="top-right" />;
+};
 
 export function Toaster() {
-  const { toasts } = useToast()
+  const { toasts } = useToast();
 
   return (
     <ToastProvider>
@@ -29,5 +36,5 @@ export function Toaster() {
       })}
       <ToastViewport />
     </ToastProvider>
-  )
+  );
 }
