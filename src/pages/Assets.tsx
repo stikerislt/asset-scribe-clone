@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Package, AlertTriangle } from "lucide-react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -94,13 +95,18 @@ const Assets = () => {
         throw new Error(error.message);
       }
       
-      const assetsWithNotes = data?.map(asset => ({
+      // Process the assets to ensure they have all required properties
+      const assetsWithProps = data?.map(asset => ({
         ...asset,
-        notes: asset.location
+        notes: asset.notes || null,
+        wear: asset.wear || null,
+        qty: asset.qty || 1,
+        status_color: asset.status_color as StatusColor || null,
+        status: asset.status as AssetStatus
       })) || [];
       
-      console.log("Processed assets:", assetsWithNotes.length);
-      return assetsWithNotes;
+      console.log("Processed assets:", assetsWithProps.length);
+      return assetsWithProps as Asset[];
     },
     retry: 1,
     refetchOnWindowFocus: false
@@ -113,7 +119,7 @@ const Assets = () => {
     assignedTo: getFilterOptions(assets, 'assigned_to' as keyof Asset),
     purchaseDate: getFilterOptions(assets, 'purchase_date' as keyof Asset)
       .map(date => new Date(date).toLocaleDateString()),
-    wear: getFilterOptions(assets, 'notes' as keyof Asset),
+    wear: getFilterOptions(assets, 'wear' as keyof Asset),
     purchaseCost: getFilterOptions(assets, 'purchase_cost' as keyof Asset)
       .map(cost => `$${Number(cost).toFixed(2)}`)
   };
@@ -337,7 +343,7 @@ const Assets = () => {
       const result = await debugAssetAccess();
       setDebugInfo(result);
       
-      if (result.authenticated) {
+      if (result.isAuthenticated) {
         toast({
           title: "Authentication Status",
           description: "You are authenticated. See console for details."
@@ -419,7 +425,7 @@ const Assets = () => {
             <ColumnVisibilityDropdown
               columns={columns}
               onColumnVisibilityChange={handleColumnVisibilityChange}
-              onResetColumnVisibility={resetColumnVisibility}
+              onResetColumns={resetColumnVisibility}
             />
           </div>
           

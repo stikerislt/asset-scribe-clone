@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AssetStatus, StatusColor } from "@/lib/data";
+import { StatusColor } from "@/lib/data";
+import { AssetStatus } from "@/lib/api/assets";
 import { Package, Search } from "lucide-react";
 import { StatusColorIndicator } from "@/components/StatusColorIndicator";
 

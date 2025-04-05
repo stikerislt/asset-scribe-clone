@@ -1,15 +1,15 @@
 
 import React from "react";
-import { CheckSquare, EyeOff, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Settings } from "lucide-react";
 
 export interface ColumnDef {
   id: string;
@@ -17,62 +17,44 @@ export interface ColumnDef {
   isVisible: boolean;
 }
 
-interface ColumnVisibilityDropdownProps {
+export interface ColumnVisibilityDropdownProps {
   columns: ColumnDef[];
   onColumnVisibilityChange: (columnId: string, isVisible: boolean) => void;
   onResetColumns: () => void;
 }
 
-export const ColumnVisibilityDropdown: React.FC<ColumnVisibilityDropdownProps> = ({
+export function ColumnVisibilityDropdown({
   columns,
   onColumnVisibilityChange,
-  onResetColumns
-}) => {
-  const visibleCount = columns.filter(col => col.isVisible).length;
-  const hasHiddenColumns = visibleCount < columns.length;
-
+  onResetColumns,
+}: ColumnVisibilityDropdownProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="h-8 gap-1"
-        >
-          {hasHiddenColumns ? <EyeOff className="h-4 w-4" /> : <Settings className="h-4 w-4" />}
-          <span className="hidden sm:inline">Columns</span>
-          {hasHiddenColumns && (
-            <span className="ml-1 text-xs bg-muted text-muted-foreground rounded-full px-1.5">
-              {visibleCount}/{columns.length}
-            </span>
-          )}
+        <Button variant="outline" size="sm" className="ml-auto">
+          <Settings className="w-4 h-4 mr-2" />
+          Columns
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-[180px]">
         <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {columns.map((column) => (
           <DropdownMenuCheckboxItem
             key={column.id}
             checked={column.isVisible}
-            onCheckedChange={(checked) => onColumnVisibilityChange(column.id, checked)}
+            onCheckedChange={(checked) =>
+              onColumnVisibilityChange(column.id, !!checked)
+            }
           >
             {column.label}
           </DropdownMenuCheckboxItem>
         ))}
         <DropdownMenuSeparator />
-        <div className="p-1">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start"
-            onClick={onResetColumns}
-          >
-            <CheckSquare className="mr-2 h-4 w-4" />
-            Show All
-          </Button>
-        </div>
+        <DropdownMenuCheckboxItem onClick={onResetColumns}>
+          Reset Columns
+        </DropdownMenuCheckboxItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
-};
+}

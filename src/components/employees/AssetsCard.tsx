@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmployeeAssetsTable } from "./EmployeeAssetsTable";
-import { AssetStatus } from "@/lib/data";
+import { AssetStatus } from "@/lib/api/assets";
 
 interface Asset {
   id: string;

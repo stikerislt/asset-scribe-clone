@@ -2,15 +2,13 @@
 import { useActivity, getActivityIcon } from "@/hooks/useActivity";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
-import { AssetStatus } from "@/lib/api/assets";
+import { AssetStatus, Asset as ApiAsset } from "@/lib/api/assets";
+
+// Export AssetStatus from api/assets
+export { AssetStatus } from "@/lib/api/assets";
 
 // Define Asset type based on Supabase schema
-export type Asset = Database['public']['Tables']['assets']['Row'] & {
-  notes?: string | null;
-  wear?: string | null;
-  qty?: number | null;
-  status: AssetStatus;
-};
+export type Asset = ApiAsset;
 
 // Define status color type
 export type StatusColor = "green" | "yellow" | "red";
@@ -90,10 +88,10 @@ export const debugAssetAccess = async () => {
       .limit(5);
     
     console.log("Debug asset query result:", { data, error });
-    return { data, error, authenticated: !!session?.session };
+    return { data, error, isAuthenticated: !!session?.session };
   } catch (e) {
     console.error("Debug asset access error:", e);
-    return { data: null, error: e, authenticated: false };
+    return { data: null, error: e, isAuthenticated: false };
   }
 };
 

@@ -88,7 +88,10 @@ export const AssetActionButtons = ({
           <DialogHeader>
             <DialogTitle>Add New Asset</DialogTitle>
           </DialogHeader>
-          <AssetForm onSubmit={handleAddAssetSubmit} />
+          <AssetForm 
+            onSubmit={handleAddAssetSubmit} 
+            onCancel={() => setIsAddDialogOpen(false)}
+          />
         </DialogContent>
       </Dialog>
       

@@ -8,12 +8,12 @@ import {
   ToastTitle,
   ToastViewport,
 } from "@/components/ui/toast";
-import { Toaster as SonnerToaster } from "sonner";
+import { Toaster as SonnerToasterComponent } from "sonner";
 
 // Export the Sonner Toaster for direct usage
-export const SonnerToaster = () => {
-  return <SonnerToaster richColors position="top-right" />;
-};
+export function SonnerToaster() {
+  return <SonnerToasterComponent richColors position="top-right" />;
+}
 
 export function Toaster() {
   const { toasts } = useToast();
