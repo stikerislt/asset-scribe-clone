@@ -60,7 +60,11 @@ import {
 } from "@/components/ui/alert";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { Asset, AssetStatus, debugAssetAccess } from "@/lib/data";
+import { 
+  Asset, 
+  AssetStatus, 
+  VALID_ASSET_STATUSES 
+} from "@/lib/api/assets";
 import { csvToObjects, objectsToCSV, generateAssetImportTemplate } from "@/lib/csv-utils";
 import { parseCSVForPreview } from "@/lib/preview-csv";
 import { useActivity } from "@/hooks/useActivity";
@@ -69,7 +73,6 @@ import { AssetForm } from "@/components/AssetForm";
 import { CSVPreview } from "@/components/CSVPreview";
 import { supabase, checkAuth, debugRlsAccess } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast as sonnerToast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -670,47 +673,46 @@ const Assets = () => {
 
       const DEFAULT_CATEGORY = "General";
       
-      const { VALID_ASSET_STATUSES } = await import('@/lib/api/assets');
 
       for (const asset of validAssets) {
-        try {
-          const category = asset.category || DEFAULT_CATEGORY;
-          
-          let status = (asset.status || 'ready').toLowerCase().trim();
-          if (!VALID_ASSET_STATUSES.includes(status as AssetStatus)) {
-            console.log(`Invalid status "${status}" for asset "${asset.name}", defaulting to "ready"`);
-            status = 'ready';
-          }
-          
-          const { error } = await supabase.from('assets').insert([{
-            name: asset.name,
-            tag: asset.tag,
-            serial: asset.serial || '',
-            model: asset.model || '',
-            category: category,
-            status: status as AssetStatus,
-            assigned_to: asset.assigned_to || null,
-            purchase_date: asset.purchase_date ? new Date(asset.purchase_date).toISOString() : null,
-            purchase_cost: asset.purchase_cost ? parseFloat(asset.purchase_cost) : null,
-            location: asset.location || '',
-            wear: asset.wear || null,
-            qty: asset.qty ? parseInt(asset.qty) : 1,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            user_id: user.id
-          }]);
-          
-          if (error) {
-            console.error('Error importing asset:', error);
-            importErrors.push(asset.name);
-          } else {
-            importSuccess.push(asset.name);
-          }
-        } catch (error) {
-          console.error('Error importing asset:', error);
-          importErrors.push(asset.name);
-        }
+    try {
+      const category = asset.category || DEFAULT_CATEGORY;
+      
+      let status = (asset.status || 'ready').toLowerCase().trim();
+      if (!VALID_ASSET_STATUSES.includes(status as AssetStatus)) {
+        console.log(`Invalid status "${status}" for asset "${asset.name}", defaulting to "ready"`);
+        status = 'ready';
       }
+      
+      const { error } = await supabase.from('assets').insert([{
+        name: asset.name,
+        tag: asset.tag,
+        serial: asset.serial || '',
+        model: asset.model || '',
+        category: category,
+        status: status as AssetStatus,
+        assigned_to: asset.assigned_to || null,
+        purchase_date: asset.purchase_date ? new Date(asset.purchase_date).toISOString() : null,
+        purchase_cost: asset.purchase_cost ? parseFloat(asset.purchase_cost) : null,
+        location: asset.location || '',
+        wear: asset.wear || null,
+        qty: asset.qty ? parseInt(asset.qty) : 1,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        user_id: user.id
+      }]);
+      
+      if (error) {
+        console.error('Error importing asset:', error);
+        importErrors.push(asset.name);
+      } else {
+        importSuccess.push(asset.name);
+      }
+    } catch (error) {
+      console.error('Error importing asset:', error);
+      importErrors.push(asset.name);
+    }
+  }
       
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       
@@ -959,399 +961,4 @@ const Assets = () => {
           <div className="text-sm text-amber-800">
             <p>Authentication status: {debugInfo.authenticated ? 'Authenticated' : 'Not authenticated'}</p>
             <p>Data received: {debugInfo.data ? debugInfo.data.length : 0} assets</p>
-            {debugInfo.error && <p>Error: {debugInfo.error.message}</p>}
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="mt-2" 
-            onClick={() => setDebugInfo(null)}
-          >
-            Dismiss
-          </Button>
-        </div>
-      )}
-      
-      <div className="bg-white rounded-lg shadow mb-8">
-        <div className="p-4 border-b flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search assets..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Popover open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filter
-                  {activeFilterCount > 0 && (
-                    <Badge variant="secondary" className="ml-2 px-1 font-normal">
-                      {activeFilterCount}
-                    </Badge>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-2" align="end">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="font-medium">Filters</h4>
-                  <Button
-                    variant="ghost" 
-                    size="sm"
-                    className="h-8 px-2 text-xs"
-                    onClick={clearAllFilters}
-                    disabled={activeFilterCount === 0}
-                  >
-                    Reset All
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    {activeFilterCount === 0 
-                      ? "No filters applied." 
-                      : `${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} applied.`}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Click column headers to filter by specific fields.
-                  </p>
-                </div>
-              </PopoverContent>
-            </Popover>
-            
-            <ColumnVisibilityDropdown
-              columns={columns}
-              onColumnVisibilityChange={handleColumnVisibilityChange}
-              onResetColumns={resetColumnVisibility}
-            />
-          </div>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {columns.find(col => col.id === "tag")?.isVisible && (
-                  <TableHead>
-                    {renderFilterPopover("IN", filterOptions.tag, "tag")}
-                  </TableHead>
-                )}
-                {columns.find(col => col.id === "name")?.isVisible && (
-                  <TableHead>
-                    {renderFilterPopover("Name", filterOptions.name, "name")}
-                  </TableHead>
-                )}
-                {columns.find(col => col.id === "assignedTo")?.isVisible && (
-                  <TableHead>
-                    {renderFilterPopover("Assigned To", filterOptions.assignedTo, "assignedTo")}
-                  </TableHead>
-                )}
-                {columns.find(col => col.id === "purchaseDate")?.isVisible && (
-                  <TableHead>
-                    {renderFilterPopover("Purchase Date", filterOptions.purchaseDate, "purchaseDate")}
-                  </TableHead>
-                )}
-                {columns.find(col => col.id === "wear")?.isVisible && (
-                  <TableHead>
-                    {renderFilterPopover("Wear", filterOptions.wear, "wear")}
-                  </TableHead>
-                )}
-                {columns.find(col => col.id === "purchaseCost")?.isVisible && (
-                  <TableHead>
-                    {renderFilterPopover("Purchase Cost", filterOptions.purchaseCost, "purchaseCost")}
-                  </TableHead>
-                )}
-                {columns.find(col => col.id === "quantity")?.isVisible && (
-                  <TableHead>Qty</TableHead>
-                )}
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
-                    <div className="flex flex-col items-center justify-center text-muted-foreground">
-                      <Loader className="h-8 w-8 animate-spin mb-2 text-muted-foreground/50" />
-                      <p>Loading assets...</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : filteredAssets.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
-                    <div className="flex flex-col items-center justify-center text-muted-foreground">
-                      <Package className="h-12 w-12 mb-2 text-muted-foreground/50" />
-                      <p>{assets.length > 0 ? "No matching assets found. Try adjusting your filters." : "No assets found. Click the Import or Add Asset button to get started."}</p>
-                      <div className="flex gap-2 mt-2">
-                        {activeFilterCount > 0 && (
-                          <Button 
-                            variant="outline"
-                            size="sm"
-                            onClick={clearAllFilters}
-                          >
-                            Clear Filters
-                          </Button>
-                        )}
-                        <Button 
-                          variant="outline"
-                          size="sm"
-                          onClick={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}
-                        >
-                          Refresh Data
-                        </Button>
-                        <Button 
-                          variant="outline"
-                          size="sm"
-                          onClick={handleDebug}
-                          disabled={isDebugging}
-                        >
-                          Debug Access
-                        </Button>
-                      </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredAssets.map((asset) => (
-                  <TableRow key={asset.id}>
-                    {columns.find(col => col.id === "tag")?.isVisible && (
-                      <TableCell>{asset.tag}</TableCell>
-                    )}
-                    {columns.find(col => col.id === "name")?.isVisible && (
-                      <TableCell>
-                        <Link to={`/assets/${asset.id}`} className="font-medium hover:underline text-blue-600">
-                          {asset.name}
-                        </Link>
-                      </TableCell>
-                    )}
-                    {columns.find(col => col.id === "assignedTo")?.isVisible && (
-                      <TableCell>
-                        {asset.assigned_to || <span className="text-gray-400">—</span>}
-                      </TableCell>
-                    )}
-                    {columns.find(col => col.id === "purchaseDate")?.isVisible && (
-                      <TableCell>
-                        {asset.purchase_date ? new Date(asset.purchase_date).toLocaleDateString() : <span className="text-gray-400">—</span>}
-                      </TableCell>
-                    )}
-                    {columns.find(col => col.id === "wear")?.isVisible && (
-                      <TableCell className="max-w-[150px] truncate">
-                        {asset.notes || <span className="text-gray-400">—</span>}
-                      </TableCell>
-                    )}
-                    {columns.find(col => col.id === "purchaseCost")?.isVisible && (
-                      <TableCell>
-                        {asset.purchase_cost ? `$${asset.purchase_cost.toFixed(2)}` : <span className="text-gray-400">—</span>}
-                      </TableCell>
-                    )}
-                    {columns.find(col => col.id === "quantity")?.isVisible && (
-                      <TableCell>1</TableCell>
-                    )}
-                    <TableCell>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" className="flex items-center gap-2 h-7">
-                            <StatusColorIndicator color={asset.status_color as StatusColor} size="sm" />
-                            <span className="text-xs capitalize">{asset.status_color || 'Set status'}</span>
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56 p-3">
-                          <div className="space-y-2">
-                            <h4 className="font-medium text-sm mb-2">Select Status</h4>
-                            <RadioGroup 
-                              defaultValue={asset.status_color || "green"}
-                              onValueChange={(value) => handleStatusColorChange(asset.id, value as StatusColor)}
-                              className="flex flex-col space-y-1"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="green" id={`green-${asset.id}`} />
-                                <label htmlFor={`green-${asset.id}`} className="flex items-center cursor-pointer">
-                                  <StatusColorIndicator color="green" className="mr-2" />
-                                  <span>Good</span>
-                                </label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="yellow" id={`yellow-${asset.id}`} />
-                                <label htmlFor={`yellow-${asset.id}`} className="flex items-center cursor-pointer">
-                                  <StatusColorIndicator color="yellow" className="mr-2" />
-                                  <span>Warning</span>
-                                </label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="red" id={`red-${asset.id}`} />
-                                <label htmlFor={`red-${asset.id}`} className="flex items-center cursor-pointer">
-                                  <StatusColorIndicator color="red" className="mr-2" />
-                                  <span>Critical</span>
-                                </label>
-                              </div>
-                            </RadioGroup>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <UserPlus className="mr-2 h-4 w-4" />
-                            Assign
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            className="text-red-600"
-                            onClick={() => handleDeleteAsset(asset)}
-                          >
-                            <Trash className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle>Add New Asset</DialogTitle>
-          </DialogHeader>
-          <AssetForm 
-            onSubmit={handleAddAsset}
-            onCancel={() => setIsAddDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-      
-      <Dialog open={showCSVPreview} onOpenChange={(value) => {
-        if (!value) {
-          setShowCSVPreview(false);
-          setCsvPreviewData(null);
-          setCsvContent(null);
-        }
-      }}>
-        <DialogContent className="sm:max-w-[900px] max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>
-              Preview Import Data 
-              {importFileType === 'excel' && <span className="text-blue-600 ml-2">(Excel)</span>}
-            </DialogTitle>
-          </DialogHeader>
-          {csvPreviewData && (
-            <CSVPreview
-              headers={csvPreviewData.headers}
-              data={csvPreviewData.data}
-              onConfirm={handleConfirmImport}
-              onCancel={() => {
-                setShowCSVPreview(false);
-                setCsvPreviewData(null);
-                setCsvContent(null);
-              }}
-              fileType={importFileType}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-      
-      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this asset?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete{' '}
-              <span className="font-semibold">{assetToDelete?.name}</span> from your inventory.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setAssetToDelete(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDeleteAsset}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      <AlertDialog open={isDeleteAllDialogOpen} onOpenChange={setIsDeleteAllDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600">
-              Danger: Delete All Assets
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              <div className="space-y-4">
-                <p>
-                  This action <span className="font-bold">cannot be undone</span>. This will permanently delete all {assets.length} assets from your inventory.
-                </p>
-                
-                <Alert variant="destructive" className="mb-4">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Critical Warning</AlertTitle>
-                  <AlertDescription>
-                    You are about to delete all your inventory data. This operation is irreversible.
-                  </AlertDescription>
-                </Alert>
-                
-                <p className="font-semibold">
-                  Please type "DELETE ALL ASSETS" below to confirm:
-                </p>
-                
-                <Input
-                  value={deleteAllConfirmText}
-                  onChange={(e) => setDeleteAllConfirmText(e.target.value)}
-                  className={`border-2 ${
-                    deleteAllConfirmText === "DELETE ALL ASSETS"
-                    ? "border-green-500"
-                    : "border-red-200"
-                  }`}
-                  placeholder="Type DELETE ALL ASSETS"
-                />
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setIsDeleteAllDialogOpen(false);
-                setDeleteAllConfirmText("");
-              }}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDeleteAllAssets}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={deleteAllConfirmText !== "DELETE ALL ASSETS"}
-            >
-              Yes, Delete All Assets
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-};
-
-export default Assets;
+            {debugInfo

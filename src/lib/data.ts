@@ -2,14 +2,15 @@
 import { useActivity, getActivityIcon } from "@/hooks/useActivity";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
+import { AssetStatus } from "@/lib/api/assets";
 
 // Define Asset type based on Supabase schema
 export type Asset = Database['public']['Tables']['assets']['Row'] & {
   notes?: string | null;
+  wear?: string | null;
+  qty?: number | null;
+  status: AssetStatus;
 };
-
-// Define asset status type for type safety
-export type AssetStatus = "ready" | "assigned" | "pending" | "archived" | "broken";
 
 // Define status color type
 export type StatusColor = "green" | "yellow" | "red";

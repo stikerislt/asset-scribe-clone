@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { AssetForm } from "@/components/AssetForm";
 import { toast } from "sonner";
 import { Asset, AssetStatus } from "@/lib/api/assets";
+import { StatusColor } from "@/lib/data";
 
 const EditAsset = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,7 +37,7 @@ const EditAsset = () => {
         notes: data.notes || null,
         wear: data.wear || null,
         qty: data.qty || 1,
-        status_color: data.status_color || null
+        status_color: (data.status_color as StatusColor) || null
       };
       
       return assetData;

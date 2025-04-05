@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getEmployeeById } from "@/lib/api/employees";
-import { getAssetsByEmployeeName } from "@/lib/api/assets";
+import { getAssetsByEmployeeName, Asset as ApiAsset } from "@/lib/api/assets";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { EmployeeProfileCard } from "@/components/employees/EmployeeProfileCard";

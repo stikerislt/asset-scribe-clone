@@ -52,6 +52,7 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
     status_color: asset.status_color as StatusColor | null,
     location: asset.location || null,
     notes: asset.notes || null,
+    // Add wear and qty properties if they don't exist in DB response
     wear: asset.wear || null,
     qty: asset.qty || 1
   }));
