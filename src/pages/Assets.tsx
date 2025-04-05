@@ -42,6 +42,7 @@ const Assets = () => {
   const [columns, setColumns] = useState<ColumnDef[]>([
     { id: "tag", label: "Asset Tag", isVisible: true },
     { id: "name", label: "Name", isVisible: true },
+    { id: "category", label: "Category", isVisible: true },
     { id: "assignedTo", label: "Assigned To", isVisible: true },
     { id: "purchaseDate", label: "Purchase Date", isVisible: true },
     { id: "wear", label: "Wear", isVisible: true },

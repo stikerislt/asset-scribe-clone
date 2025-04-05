@@ -81,6 +81,10 @@ export const AssetTable = ({
                 <TableCell>{asset.name}</TableCell>
               )}
               
+              {columns.find(c => c.id === 'category')?.isVisible && (
+                <TableCell>{asset.category}</TableCell>
+              )}
+              
               {columns.find(c => c.id === 'assignedTo')?.isVisible && (
                 <TableCell>{asset.assigned_to || '-'}</TableCell>
               )}

@@ -16,7 +16,7 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl">
-        <DialogTitle className="sr-only">Import Assets</DialogTitle>
+        <DialogTitle>Import Assets</DialogTitle>
         <ImportAssetsPreview
           headers={previewData.headers}
           data={previewData.data}
