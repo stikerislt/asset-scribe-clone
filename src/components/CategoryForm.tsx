@@ -23,12 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -129,6 +123,15 @@ export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = fa
     }
   };
 
+  // Function to get the icon component for a specific value
+  const getIconForValue = (value: string) => {
+    const option = iconOptions.find(opt => opt.value === value);
+    if (!option) return null;
+    
+    const IconComponent = option.icon;
+    return <IconComponent className="h-4 w-4 mr-2" />;
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -188,34 +191,36 @@ export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = fa
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category Icon</FormLabel>
-              <Tabs 
-                defaultValue={field.value} 
-                onValueChange={field.onChange}
-                className="w-full"
+              <Select 
+                onValueChange={field.onChange} 
+                defaultValue={field.value}
               >
-                <TabsList className="grid grid-cols-6 w-full">
-                  {iconOptions.map(option => (
-                    <TabsTrigger 
-                      key={option.value} 
-                      value={option.value}
-                      className="flex items-center gap-2"
-                    >
-                      <option.icon className="h-4 w-4" />
-                      <span className="hidden sm:inline">{option.label}</span>
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                {iconOptions.map(option => (
-                  <TabsContent key={option.value} value={option.value} className="p-4 border rounded-md mt-2">
-                    <div className="flex items-center justify-center">
-                      <option.icon className="h-12 w-12" />
-                    </div>
-                    <div className="text-center mt-2">
-                      {option.label} icon selected
-                    </div>
-                  </TabsContent>
-                ))}
-              </Tabs>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue>
+                      <div className="flex items-center">
+                        {getIconForValue(field.value)}
+                        {iconOptions.find(opt => opt.value === field.value)?.label || "Select an icon"}
+                      </div>
+                    </SelectValue>
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectGroup>
+                    {iconOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center">
+                          <option.icon className="h-4 w-4 mr-2" />
+                          <span>{option.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Choose an icon that represents this category.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
