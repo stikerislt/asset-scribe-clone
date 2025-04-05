@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Archive, Smartphone, Globe, Tablet, Package } from "lucide-react";
+import { Archive, Smartphone, Globe, Tablet, Package, Computer } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CategoryIconProps {
@@ -28,6 +28,8 @@ export const CategoryIcon = ({ category, className, size = 18, iconType }: Categ
           return <Tablet size={size} className={cn("text-amber-600", className)} />;
         case "package":
           return <Package size={size} className={cn("text-indigo-600", className)} />;
+        case "computer":
+          return <Computer size={size} className={cn("text-cyan-600", className)} />;
       }
     }
     
@@ -54,6 +56,11 @@ export const CategoryIcon = ({ category, className, size = 18, iconType }: Categ
     if (categoryLower.includes("accessory") || categoryLower.includes("accessories") || 
         categoryLower.includes("priedai")) {
       return <Package size={size} className={cn("text-indigo-600", className)} />;
+    }
+    
+    if (categoryLower.includes("computer") || categoryLower.includes("kompiuteris") || 
+        categoryLower.includes("pc") || categoryLower.includes("laptop")) {
+      return <Computer size={size} className={cn("text-cyan-600", className)} />;
     }
     
     // Default icon for unknown categories

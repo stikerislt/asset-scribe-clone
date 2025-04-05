@@ -50,15 +50,21 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
     
   if (error) throw error;
   
-  // Ensure asset status is properly typed and include categoryIcon property
-  return (data || []).map(asset => ({
-    ...asset,
-    status: asset.status as AssetStatus,
-    status_color: asset.status_color as StatusColor | null,
-    location: asset.location || null,
-    notes: asset.notes || null,
-    wear: asset.wear || null,
-    qty: asset.qty || 1,
-    categoryIcon: asset.categoryIcon || null
-  })) as Asset[];
+  // Map the response to ensure all fields are properly typed
+  return (data || []).map(asset => {
+    // Create a properly typed asset object with all required fields
+    const typedAsset: Asset = {
+      ...asset,
+      status: asset.status as AssetStatus,
+      status_color: asset.status_color as StatusColor | null,
+      location: asset.location || null,
+      notes: asset.notes || null,
+      wear: asset.wear || null,
+      qty: asset.qty || 1,
+      // Handle categoryIcon separately since it might not exist in DB
+      categoryIcon: (asset as any).categoryIcon || null
+    };
+    
+    return typedAsset;
+  });
 };

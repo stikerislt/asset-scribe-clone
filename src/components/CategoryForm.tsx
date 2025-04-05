@@ -32,7 +32,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Archive, Smartphone, Globe, Tablet, Package } from "lucide-react";
+import { Archive, Smartphone, Globe, Tablet, Package, Computer } from "lucide-react";
 
 // Define the schema for form validation
 const categoryFormSchema = z.object({
@@ -61,6 +61,7 @@ const iconOptions = [
   { value: "globe", label: "Website", icon: Globe },
   { value: "tablet", label: "Tablet", icon: Tablet },
   { value: "package", label: "Accessories", icon: Package },
+  { value: "computer", label: "Computer", icon: Computer },
 ];
 
 export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = false }: CategoryFormProps) {
@@ -192,7 +193,7 @@ export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = fa
                 onValueChange={field.onChange}
                 className="w-full"
               >
-                <TabsList className="grid grid-cols-5 w-full">
+                <TabsList className="grid grid-cols-6 w-full">
                   {iconOptions.map(option => (
                     <TabsTrigger 
                       key={option.value} 
