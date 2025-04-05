@@ -38,6 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { StatusColorIndicator } from "@/components/StatusColorIndicator";
+import { Asset } from "@/lib/api/assets";
 
 const AssetDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -66,16 +67,17 @@ const AssetDetails = () => {
         throw new Error(error.message);
       }
       
-      return data;
+      return {
+        ...data,
+        notes: data.notes || null
+      } as Asset;
     },
     enabled: !!id,
   });
 
-  // Get users for the assign dropdown
   const { data: employeesList } = useQuery({
     queryKey: ['employees-list'],
     queryFn: async () => {
-      // Get all unique assigned_to values from assets
       const { data: assignedAssets, error: assignedError } = await supabase
         .from('assets')
         .select('assigned_to')
@@ -83,27 +85,23 @@ const AssetDetails = () => {
       
       if (assignedError) throw assignedError;
       
-      // Create a Set to avoid duplicates
       const uniqueEmployees = new Set(
         assignedAssets
           .filter(asset => asset.assigned_to)
           .map(asset => asset.assigned_to)
       );
       
-      // Get profiles for more employee data
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, full_name, email');
       
       if (profilesError) throw profilesError;
       
-      // Combine assigned_to values with profiles
       const employees = Array.from(uniqueEmployees).map(name => ({
         name: name as string,
         isProfile: false
       }));
       
-      // Add profiles that aren't already in the list
       profiles?.forEach(profile => {
         if (profile.full_name && !uniqueEmployees.has(profile.full_name)) {
           employees.push({
@@ -147,12 +145,9 @@ const AssetDetails = () => {
     setIsSubmitting(true);
     
     try {
-      // In a real app, you'd add a record to a maintenance table
-      // For now, we'll just show a success message
       toast.success("Maintenance record added");
       setMaintenanceDialogOpen(false);
       
-      // Reset form
       setMaintenanceDescription("");
       setMaintenanceDate("");
     } catch (error) {
@@ -480,7 +475,6 @@ const AssetDetails = () => {
         </div>
       </div>
 
-      {/* Assign Asset Dialog */}
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -517,7 +511,6 @@ const AssetDetails = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add Maintenance Dialog */}
       <Dialog open={maintenanceDialogOpen} onOpenChange={setMaintenanceDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -557,7 +550,6 @@ const AssetDetails = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Update Status Dialog */}
       <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <DialogContent>
           <DialogHeader>

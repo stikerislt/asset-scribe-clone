@@ -29,7 +29,11 @@ const EditAsset = () => {
         throw new Error(error.message);
       }
       
-      return data as Asset;
+      // Convert database object to Asset type, ensuring notes property exists
+      return {
+        ...data,
+        notes: data.notes || null
+      } as Asset;
     },
     enabled: !!id,
   });
