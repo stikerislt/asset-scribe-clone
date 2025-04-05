@@ -961,4 +961,14 @@ const Assets = () => {
           <div className="text-sm text-amber-800">
             <p>Authentication status: {debugInfo.authenticated ? 'Authenticated' : 'Not authenticated'}</p>
             <p>Data received: {debugInfo.data ? debugInfo.data.length : 0} assets</p>
-            {debugInfo
+            {debugInfo.error && (
+              <p className="text-red-600">Error: {debugInfo.error.message}</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Assets;
