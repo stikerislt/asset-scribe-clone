@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { X, AlertTriangle, CheckCircle, AlertCircle, FileSpreadsheet, FileText, Info } from "lucide-react";
-import { validateAssetCSV } from "@/lib/csv-utils";
+import { validateAssetCSV } from "@/lib/csv/csv-validation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
 import { StatusColorIndicator } from "@/components/StatusColorIndicator";

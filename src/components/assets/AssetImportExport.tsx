@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, Download } from "lucide-react";
@@ -34,12 +33,8 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
         throw new Error("You must be logged in to import assets");
       }
 
-      // Transform data to match the Asset structure and normalize values
       const assetsToImport = data.map(row => {
-        // Normalize status to lowercase to match valid values
         const statusValue = (row.status || "ready").toLowerCase();
-        
-        // Ensure status is valid - default to "ready" if not valid
         const validStatus = VALID_ASSET_STATUSES.includes(statusValue) 
           ? statusValue 
           : "ready";
@@ -48,7 +43,7 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
           name: row.name || "Unnamed Asset",
           tag: row.tag || `ASSET-${Math.floor(Math.random() * 1000)}`,
           category: row.category || "General",
-          status: validStatus, // Use validated lowercase status
+          status: validStatus,
           status_color: row.status_color || null,
           assigned_to: row.assigned_to || null,
           model: row.model || null,
@@ -61,7 +56,7 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
           qty: row.qty ? Number(row.qty) : 1,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          user_id: user.id // Set the user_id from authenticated user
+          user_id: user.id
         };
       });
 
@@ -118,12 +113,10 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
       return;
     }
 
-    // Use the improved parseFileForPreview function to handle both CSV and Excel
     parseFileForPreview(file)
       .then(({ headers, data, fileType }) => {
         console.log(`Parsed ${fileType} file:`, { headers, rows: data.length });
         
-        // Validate the file structure
         if (headers.length === 0 || data.length === 0) {
           toast({
             title: "Invalid file format",
@@ -145,7 +138,6 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
         });
       });
     
-    // Reset the input so the same file can be selected again
     event.target.value = '';
   };
 
@@ -153,11 +145,9 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
     if (!previewData) return;
     
     try {
-      // Convert the 2D array data to array of objects using headers as keys
       const objectData = previewData.data.map(row => {
         const obj: Record<string, any> = {};
         previewData.headers.forEach((header, index) => {
-          // Convert header to snake_case for backend compatibility
           obj[header.toLowerCase().replace(/\s+/g, '_')] = row[index];
         });
         return obj;
@@ -174,12 +164,11 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
     }
   };
 
-  // Updated CSV header definitions to match the database column names
   const csvHeaders = [
     { label: "Name", key: "name" },
     { label: "Tag", key: "tag" },
     { label: "Category", key: "category" },
-    { label: "Status", key: "status" }, // Will be exported in correct case
+    { label: "Status", key: "status" },
     { label: "Status Color", key: "status_color" },
     { label: "Assigned To", key: "assigned_to" },
     { label: "Model", key: "model" },
