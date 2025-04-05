@@ -7,12 +7,14 @@ import { useQuery } from "@tanstack/react-query";
 import { getEmployees } from "@/lib/api/employees";
 import { EmployeesList } from "@/components/employees/EmployeesList";
 import { AddEmployeeDialog } from "@/components/employees/AddEmployeeDialog";
+import { ExportEmployeesButton } from "@/components/employees/export/ExportEmployeesButton";
+import { ImportEmployeesButton } from "@/components/employees/import/ImportEmployeesButton";
 
 const Employees = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   // Get unique employees from assets
-  const { data: employees, isLoading, error } = useQuery({
+  const { data: employees, isLoading, error, refetch } = useQuery({
     queryKey: ['employees'],
     queryFn: getEmployees
   });
@@ -24,7 +26,9 @@ const Employees = () => {
           <h1 className="text-3xl font-bold">Employees</h1>
           <p className="text-muted-foreground">Manage your organization's employees</p>
         </div>
-        <div className="mt-4 sm:mt-0">
+        <div className="mt-4 sm:mt-0 flex flex-wrap gap-2">
+          <ImportEmployeesButton onImportComplete={refetch} />
+          <ExportEmployeesButton employees={employees} isLoading={isLoading} />
           <Button onClick={() => setIsAddDialogOpen(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
             Add Employee

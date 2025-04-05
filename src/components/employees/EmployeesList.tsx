@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Plus, Loader, X } from "lucide-react";
+import { Search, Plus, Loader, X, Pencil, Save, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,7 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Employee } from "@/lib/api/employees";
+import { Employee, updateEmployee } from "@/lib/api/employees";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface EmployeesListProps {
   employees: Employee[] | undefined;
@@ -23,6 +25,11 @@ interface EmployeesListProps {
 
 export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: EmployeesListProps) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
+  const [editedValues, setEditedValues] = useState<Record<string, { email?: string, role?: string }>>({});
+  const [savingEmployee, setSavingEmployee] = useState<string | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Filter employees based on search
   const filteredEmployees = employees?.filter(employee =>
@@ -30,6 +37,60 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
     employee.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     employee.role?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const startEditing = (employee: Employee) => {
+    setEditingEmployeeId(employee.id);
+    setEditedValues({
+      ...editedValues,
+      [employee.id]: { email: employee.email || "", role: employee.role || "" }
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingEmployeeId(null);
+  };
+
+  const handleInputChange = (employeeId: string, field: 'email' | 'role', value: string) => {
+    setEditedValues({
+      ...editedValues,
+      [employeeId]: { 
+        ...editedValues[employeeId],
+        [field]: value
+      }
+    });
+  };
+
+  const saveChanges = async (employee: Employee) => {
+    const updates = editedValues[employee.id];
+    if (!updates) return;
+
+    setSavingEmployee(employee.id);
+    try {
+      await updateEmployee(employee.name, {
+        email: updates.email,
+        role: updates.role
+      });
+      
+      toast({
+        title: "Employee updated",
+        description: `${employee.name}'s information has been updated.`
+      });
+      
+      // Refresh employee data
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['employee', employee.name] });
+      
+      setEditingEmployeeId(null);
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "Failed to update employee information.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingEmployee(null);
+    }
+  };
 
   return (
     <>
@@ -73,7 +134,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Assets</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
+                <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -84,8 +145,30 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
                       {employee.name}
                     </Link>
                   </TableCell>
-                  <TableCell>{employee.email || "—"}</TableCell>
-                  <TableCell>{employee.role || "—"}</TableCell>
+                  <TableCell>
+                    {editingEmployeeId === employee.id ? (
+                      <Input 
+                        value={editedValues[employee.id]?.email || ""}
+                        onChange={(e) => handleInputChange(employee.id, 'email', e.target.value)}
+                        placeholder="Email address"
+                        className="max-w-[200px]"
+                      />
+                    ) : (
+                      employee.email || "—"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingEmployeeId === employee.id ? (
+                      <Input 
+                        value={editedValues[employee.id]?.role || ""}
+                        onChange={(e) => handleInputChange(employee.id, 'role', e.target.value)}
+                        placeholder="Role/Position"
+                        className="max-w-[200px]"
+                      />
+                    ) : (
+                      employee.role || "—"
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Button variant="link" asChild>
                       <Link to={`/assets?assigned=${encodeURIComponent(employee.name)}`}>
@@ -94,15 +177,49 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
                     </Button>
                   </TableCell>
                   <TableCell>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      asChild
-                    >
-                      <Link to={`/employees/${encodeURIComponent(employee.name)}`}>
-                        View
-                      </Link>
-                    </Button>
+                    {editingEmployeeId === employee.id ? (
+                      <div className="flex gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => saveChanges(employee)}
+                          disabled={savingEmployee === employee.id}
+                        >
+                          {savingEmployee === employee.id ? (
+                            <Loader className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={cancelEditing}
+                          disabled={savingEmployee === employee.id}
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => startEditing(employee)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          asChild
+                        >
+                          <Link to={`/employees/${encodeURIComponent(employee.name)}`}>
+                            View
+                          </Link>
+                        </Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
