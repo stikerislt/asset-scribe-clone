@@ -636,7 +636,7 @@ const Assets = () => {
           serial: string;
           model: string;
           category: string;
-          status: AssetStatus;
+          status: string;
           assigned_to: string;
           location: string;
           purchase_date: string;
@@ -669,10 +669,18 @@ const Assets = () => {
       const importSuccess = [];
 
       const DEFAULT_CATEGORY = "General";
+      
+      const { VALID_ASSET_STATUSES } = await import('@/lib/api/assets');
 
       for (const asset of validAssets) {
         try {
           const category = asset.category || DEFAULT_CATEGORY;
+          
+          let status = (asset.status || 'ready').toLowerCase().trim();
+          if (!VALID_ASSET_STATUSES.includes(status as AssetStatus)) {
+            console.log(`Invalid status "${status}" for asset "${asset.name}", defaulting to "ready"`);
+            status = 'ready';
+          }
           
           const { error } = await supabase.from('assets').insert([{
             name: asset.name,
@@ -680,11 +688,13 @@ const Assets = () => {
             serial: asset.serial || '',
             model: asset.model || '',
             category: category,
-            status: asset.status as AssetStatus || 'ready',
+            status: status as AssetStatus,
             assigned_to: asset.assigned_to || null,
             purchase_date: asset.purchase_date ? new Date(asset.purchase_date).toISOString() : null,
             purchase_cost: asset.purchase_cost ? parseFloat(asset.purchase_cost) : null,
             location: asset.location || '',
+            wear: asset.wear || null,
+            qty: asset.qty ? parseInt(asset.qty) : 1,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             user_id: user.id

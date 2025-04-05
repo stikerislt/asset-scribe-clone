@@ -96,7 +96,7 @@ export const generateAssetImportTemplate = (): string => {
     'tag',           // Asset tag identifier
     'name',          // Asset name
     'category',      // Asset category
-    'status',        // Asset status
+    'status',        // Asset status (valid values: ready, deployed, maintenance, retired)
     'assigned_to',   // Person assigned to
     'model',         // Model information
     'serial',        // Serial number
@@ -114,9 +114,9 @@ export const generateAssetImportTemplate = (): string => {
     if (header === 'tag') return 'ASSET-001';
     if (header === 'name') return 'Sample Asset';
     if (header === 'category') return 'General'; 
-    if (header === 'status') return 'ready';
-    if (header === 'wear') return '3';  // Example: 3 years until replacement
-    if (header === 'qty') return '1';   // Default quantity is 1
+    if (header === 'status') return 'ready';  // Valid status values: ready, deployed, maintenance, retired
+    if (header === 'wear') return '3';        // Example: 3 years until replacement
+    if (header === 'qty') return '1';         // Default quantity is 1
     return '';
   });
   

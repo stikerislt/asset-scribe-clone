@@ -17,11 +17,19 @@ export interface Asset {
   location: string | null;
   notes: string | null;
   wear: string | null; // Added wear field
-  qty?: number; // Added quantity field
+  qty: number | null; // Added quantity field
   created_at: string;
   updated_at: string;
   user_id: string | null;
 }
+
+// Valid status values for validation
+export const VALID_ASSET_STATUSES: AssetStatus[] = [
+  'ready', 
+  'deployed', 
+  'maintenance', 
+  'retired'
+];
 
 // Get assets by employee name
 export const getAssetsByEmployeeName = async (employeeName: string): Promise<Asset[]> => {
@@ -42,6 +50,6 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
     location: asset.location || null,
     notes: asset.notes || null,
     wear: asset.wear || null, // Handle wear field - safely handle if not present in DB yet
-    qty: 1 // Default quantity to 1 if not specified
+    qty: asset.qty || 1 // Default quantity to 1 if not specified
   }));
 };
