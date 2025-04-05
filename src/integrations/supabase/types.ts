@@ -22,6 +22,7 @@ export type Database = {
           purchase_date: string | null
           serial: string | null
           status: string
+          status_color: string | null
           tag: string
           updated_at: string
           user_id: string | null
@@ -38,6 +39,7 @@ export type Database = {
           purchase_date?: string | null
           serial?: string | null
           status: string
+          status_color?: string | null
           tag: string
           updated_at?: string
           user_id?: string | null
@@ -54,6 +56,7 @@ export type Database = {
           purchase_date?: string | null
           serial?: string | null
           status?: string
+          status_color?: string | null
           tag?: string
           updated_at?: string
           user_id?: string | null

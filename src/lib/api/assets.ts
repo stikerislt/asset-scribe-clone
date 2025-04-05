@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { AssetStatus } from "@/lib/data";
+import { AssetStatus, StatusColor } from "@/lib/data";
 
 export interface Asset {
   id: string;
@@ -8,6 +8,7 @@ export interface Asset {
   tag: string;
   category: string;
   status: AssetStatus;
+  status_color?: StatusColor | null;
   assigned_to: string | null;
   model?: string | null;
   serial?: string | null;
@@ -30,6 +31,7 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
   // Ensure asset status is properly typed
   return (data || []).map(asset => ({
     ...asset,
-    status: asset.status as AssetStatus
+    status: asset.status as AssetStatus,
+    status_color: asset.status_color as StatusColor | null
   }));
 };

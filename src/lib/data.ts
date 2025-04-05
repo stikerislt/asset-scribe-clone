@@ -11,6 +11,9 @@ export type Asset = Database['public']['Tables']['assets']['Row'] & {
 // Define asset status type for type safety
 export type AssetStatus = "ready" | "assigned" | "pending" | "archived" | "broken";
 
+// Define status color type
+export type StatusColor = "green" | "yellow" | "red";
+
 // Define Category type based on what we expect from Supabase
 export interface Category {
   id: string;

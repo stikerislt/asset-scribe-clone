@@ -2,14 +2,16 @@
 import { Link } from "react-router-dom";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
 import { Button } from "@/components/ui/button";
-import { AssetStatus } from "@/lib/data";
+import { AssetStatus, StatusColor } from "@/lib/data";
 import { Package } from "lucide-react";
+import { StatusColorIndicator } from "@/components/StatusColorIndicator";
 
 interface Asset {
   id: string;
   name: string;
   category: string;
   status: AssetStatus;
+  status_color?: StatusColor | null;
 }
 
 interface EmployeeAssetsTableProps {
@@ -48,6 +50,7 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
               <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
               <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Category</th>
               <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
+              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Condition</th>
               <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Actions</th>
             </tr>
           </thead>
@@ -58,6 +61,11 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
                 <td className="p-4 align-middle">{asset.category}</td>
                 <td className="p-4 align-middle">
                   <AssetStatusBadge status={asset.status} />
+                </td>
+                <td className="p-4 align-middle">
+                  <div className="flex items-center">
+                    <StatusColorIndicator color={asset.status_color} />
+                  </div>
                 </td>
                 <td className="p-4 align-middle">
                   <Button variant="ghost" size="sm" asChild>

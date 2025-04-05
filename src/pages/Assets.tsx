@@ -74,6 +74,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnDef, ColumnVisibilityDropdown } from "@/components/assets/ColumnVisibilityDropdown";
+import { StatusColorIndicator } from "@/components/StatusColorIndicator";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { StatusColor } from "@/lib/data";
 
 type Filters = {
   tag: string[];
@@ -318,6 +321,54 @@ const Assets = () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
     }
   });
+
+  const updateAssetStatusColorMutation = useMutation({
+    mutationFn: async ({ id, statusColor }: { id: string, statusColor: StatusColor }) => {
+      const { data, error } = await supabase
+        .from('assets')
+        .update({ status_color: statusColor })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+    }
+  });
+
+  const handleStatusColorChange = async (assetId: string, newColor: StatusColor) => {
+    try {
+      await updateAssetStatusColorMutation.mutateAsync({ 
+        id: assetId, 
+        statusColor: newColor 
+      });
+      
+      toast({
+        title: "Status updated",
+        description: `Asset status color has been updated to ${newColor}`,
+      });
+      
+      logActivity({
+        title: "Asset Status Updated",
+        description: `Status color changed to ${newColor}`,
+        category: 'asset',
+        icon: <Package className="h-5 w-5 text-blue-600" />
+      });
+    } catch (error) {
+      console.error('Error updating status color:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update status color",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleDeleteAsset = (asset: Asset) => {
     setAssetToDelete(asset);
@@ -966,6 +1017,7 @@ const Assets = () => {
                 {columns.find(col => col.id === "quantity")?.isVisible && (
                   <TableHead>Qty</TableHead>
                 )}
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -1050,6 +1102,48 @@ const Assets = () => {
                     {columns.find(col => col.id === "quantity")?.isVisible && (
                       <TableCell>1</TableCell>
                     )}
+                    <TableCell>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="flex items-center gap-2 h-7">
+                            <StatusColorIndicator color={asset.status_color as StatusColor} size="sm" />
+                            <span className="text-xs capitalize">{asset.status_color || 'Set status'}</span>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-3">
+                          <div className="space-y-2">
+                            <h4 className="font-medium text-sm mb-2">Select Status</h4>
+                            <RadioGroup 
+                              defaultValue={asset.status_color || "green"}
+                              onValueChange={(value) => handleStatusColorChange(asset.id, value as StatusColor)}
+                              className="flex flex-col space-y-1"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="green" id={`green-${asset.id}`} />
+                                <label htmlFor={`green-${asset.id}`} className="flex items-center cursor-pointer">
+                                  <StatusColorIndicator color="green" className="mr-2" />
+                                  <span>Good</span>
+                                </label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="yellow" id={`yellow-${asset.id}`} />
+                                <label htmlFor={`yellow-${asset.id}`} className="flex items-center cursor-pointer">
+                                  <StatusColorIndicator color="yellow" className="mr-2" />
+                                  <span>Warning</span>
+                                </label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="red" id={`red-${asset.id}`} />
+                                <label htmlFor={`red-${asset.id}`} className="flex items-center cursor-pointer">
+                                  <StatusColorIndicator color="red" className="mr-2" />
+                                  <span>Critical</span>
+                                </label>
+                              </div>
+                            </RadioGroup>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
