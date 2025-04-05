@@ -10,7 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Asset, AssetStatus, StatusColor } from "@/lib/data";
+import { Asset } from "@/lib/api/assets";
+import { AssetStatus, StatusColor } from "@/lib/data";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { StatusColorIndicator } from "@/components/StatusColorIndicator";
 
@@ -18,9 +19,10 @@ interface AssetFormProps {
   initialData?: Partial<Asset>;
   onSubmit: (data: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => void;
   onCancel: () => void;
+  isSubmitting?: boolean;
 }
 
-export const AssetForm = ({ initialData, onSubmit, onCancel }: AssetFormProps) => {
+export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = false }: AssetFormProps) => {
   const [name, setName] = useState(initialData?.name || '');
   const [tag, setTag] = useState(initialData?.tag || '');
   const [status, setStatus] = useState<AssetStatus>(initialData?.status as AssetStatus || 'ready');
@@ -210,8 +212,10 @@ export const AssetForm = ({ initialData, onSubmit, onCancel }: AssetFormProps) =
       </div>
       
       <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="submit">Save Asset</Button>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : "Save Asset"}
+        </Button>
       </div>
     </form>
   );

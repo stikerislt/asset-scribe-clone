@@ -1,95 +1,42 @@
-
-import { Routes, Route, Navigate } from "react-router-dom";
-import Dashboard from "@/pages/Dashboard";
-import Assets from "@/pages/Assets";
-import Employees from "@/pages/Employees";
+import { Routes, Route } from "react-router-dom";
+import { Index } from "@/pages/Index";
+import { Auth } from "@/pages/Auth";
+import { Dashboard } from "@/pages/Dashboard";
+import { Assets } from "@/pages/Assets";
 import AssetDetails from "@/pages/AssetDetails";
-import Categories from "@/pages/Categories";
-import Settings from "@/pages/Settings";
-import Users from "@/pages/Users";
-import Auth from "@/pages/Auth";
-import NotFound from "@/pages/NotFound";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { AppLayout } from "@/components/AppLayout";
-import Index from "@/pages/Index";
-import EmployeeDetails from "@/pages/EmployeeDetails";
-import Analytics from "@/pages/Analytics";
+import { Employees } from "@/pages/Employees";
+import { EmployeeDetails } from "@/pages/EmployeeDetails";
+import { Categories } from "@/pages/Categories";
+import { Analytics } from "@/pages/Analytics";
+import { Users } from "@/pages/Users";
+import { Settings } from "@/pages/Settings";
+import { NotFound } from "@/pages/NotFound";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { ProtectedRoute } from "./ProtectedRoute";
+import EditAsset from "@/pages/EditAsset";
 
-export const AppRoutes = () => {
+export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Index />} />
-      
-      {/* Auth Routes */}
       <Route path="/auth" element={<Auth />} />
-      <Route path="/auth/login" element={<Auth />} />
-      <Route path="/auth/signup" element={<Auth />} />
       
-      {/* Protected Routes */}
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Dashboard />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/assets" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Assets />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/assets/:id" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <AssetDetails />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/employees" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Employees />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/employees/:id" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <EmployeeDetails />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/categories" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Categories />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/analytics" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Analytics />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Settings />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/users" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <Users />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/assets" element={<Assets />} />
+          <Route path="/assets/:id" element={<AssetDetails />} />
+          <Route path="/assets/edit/:id" element={<EditAsset />} />
+          <Route path="/employees" element={<Employees />} />
+          <Route path="/employees/:id" element={<EmployeeDetails />} />
+          <Route path="/categories" element={<Categories />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
+      </Route>
+      
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
-};
+}
