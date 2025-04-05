@@ -79,7 +79,11 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
             <TableBody>
               {filteredEmployees.map((employee) => (
                 <TableRow key={employee.id}>
-                  <TableCell>{employee.name}</TableCell>
+                  <TableCell>
+                    <Link to={`/employees/${encodeURIComponent(employee.name)}`} className="hover:underline">
+                      {employee.name}
+                    </Link>
+                  </TableCell>
                   <TableCell>{employee.email || "—"}</TableCell>
                   <TableCell>{employee.role || "—"}</TableCell>
                   <TableCell>
@@ -95,7 +99,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
                       size="sm" 
                       asChild
                     >
-                      <Link to={`/employees/${employee.id}`}>
+                      <Link to={`/employees/${encodeURIComponent(employee.name)}`}>
                         View
                       </Link>
                     </Button>

@@ -6,6 +6,7 @@ export interface Employee {
   name: string;
   role?: string;
   email?: string;
+  avatar?: string;
 }
 
 export interface NewEmployee {
@@ -54,6 +55,36 @@ export const getEmployees = async (): Promise<Employee[]> => {
   });
   
   return employeesList as Employee[];
+};
+
+// Get employee by ID (name)
+export const getEmployeeById = async (id: string): Promise<Employee | null> => {
+  // First check if this is a name in the assets assigned_to field
+  const { data: assets } = await supabase
+    .from('assets')
+    .select('assigned_to')
+    .eq('assigned_to', id)
+    .limit(1);
+  
+  if (!assets || assets.length === 0) {
+    return null;
+  }
+
+  // Get profile data if available
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, email')
+    .eq('full_name', id)
+    .limit(1);
+
+  const profile = profiles && profiles.length > 0 ? profiles[0] : null;
+
+  return {
+    id: id,
+    name: id,
+    email: profile?.email,
+    // Role would need to be added to profiles table if needed
+  };
 };
 
 // Add new employee
