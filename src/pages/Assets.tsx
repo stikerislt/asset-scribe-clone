@@ -460,6 +460,7 @@ const Assets = () => {
       await createAssetMutation.mutateAsync({
         ...assetData,
         status_color: assetData.status_color || null,
+        location: assetData.location || '',
         user_id: null
       });
       
@@ -783,30 +784,19 @@ const Assets = () => {
     document.body.removeChild(link);
   };
   
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[50vh]">
-        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-        <h1 className="text-xl font-bold mb-2">Error Loading Assets</h1>
-        <p className="text-muted-foreground mb-4">{(error as Error).message || 'Failed to load assets from the database.'}</p>
-        <div className="flex gap-2">
-          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}>
-            Try Again
-          </Button>
-          <Button variant="outline" onClick={handleDebug}>
-            Debug Access
-          </Button>
-        </div>
-      </div>
-    );
-  }
-  
   const renderFilterPopover = (
     title: string, 
     options: string[], 
     filterKey: keyof Filters
   ) => {
     const selectedFilters = activeFilters[filterKey];
+    const [searchFilter, setSearchFilter] = useState("");
+    
+    // Add search filtering for dropdown options
+    const filteredOptions = searchFilter 
+      ? options.filter(option => 
+          option.toLowerCase().includes(searchFilter.toLowerCase()))
+      : options;
     
     return (
       <Popover>
@@ -825,7 +815,7 @@ const Assets = () => {
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-56 p-0" align="start">
+        <PopoverContent className="w-64 p-0" align="start">
           <div className="p-2">
             <div className="flex items-center justify-between pb-2">
               <h4 className="font-medium text-sm">{title} Filter</h4>
@@ -839,9 +829,23 @@ const Assets = () => {
                 Reset
               </Button>
             </div>
+            
+            {/* Add search input for filter options */}
+            {filterKey === 'assignedTo' && options.length > 5 && (
+              <div className="relative mb-2">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search..."
+                  className="pl-8 h-9"
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                />
+              </div>
+            )}
+            
             <div className="max-h-[300px] overflow-auto space-y-1">
-              {options.length > 0 ? (
-                options.map((option) => (
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((option) => (
                   <div key={option} className="flex items-center space-x-2">
                     <Checkbox
                       id={`${filterKey}-${option}`}
@@ -857,7 +861,9 @@ const Assets = () => {
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-muted-foreground py-2">No options available</div>
+                <div className="text-sm text-muted-foreground py-2 text-center">
+                  {searchFilter ? "No matching results" : "No options available"}
+                </div>
               )}
             </div>
           </div>
@@ -866,6 +872,24 @@ const Assets = () => {
     );
   };
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh]">
+        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+        <h1 className="text-xl font-bold mb-2">Error Loading Assets</h1>
+        <p className="text-muted-foreground mb-4">{(error as Error).message || 'Failed to load assets from the database.'}</p>
+        <div className="flex gap-2">
+          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}>
+            Try Again
+          </Button>
+          <Button variant="outline" onClick={handleDebug}>
+            Debug Access
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
