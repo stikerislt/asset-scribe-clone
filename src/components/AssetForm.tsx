@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,10 +32,19 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
   const [serial, setSerial] = useState(initialData?.serial || '');
   const [model, setModel] = useState(initialData?.model || '');
   const [location, setLocation] = useState(initialData?.location || '');
-  const [notes, setNotes] = useState((initialData as any)?.notes || '');
+  const [notes, setNotes] = useState('');
   const [assignedTo, setAssignedTo] = useState(initialData?.assigned_to || '');
   const [purchaseDate, setPurchaseDate] = useState(initialData?.purchase_date || '');
   const [purchaseCost, setPurchaseCost] = useState(initialData?.purchase_cost?.toString() || '');
+
+  // Initialize notes from location field if available
+  React.useEffect(() => {
+    if (initialData) {
+      // @ts-ignore - Handle the notes field from the extended Asset type
+      const initialNotes = initialData.notes || initialData.location || '';
+      setNotes(initialNotes);
+    }
+  }, [initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,8 +57,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
       category,
       serial,
       model,
-      location,
-      notes,
+      location: location || notes, // Use location or notes if location is empty
       assigned_to: assignedTo,
       purchase_date: purchaseDate,
       purchase_cost: parseFloat(purchaseCost) || 0,
