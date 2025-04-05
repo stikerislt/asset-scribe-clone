@@ -15,7 +15,7 @@ export interface Asset {
   purchase_date: string | null;
   purchase_cost: number | null;
   location: string | null;
-  notes?: string; // Optional notes field for UI only
+  notes: string | null;
 }
 
 // Get assets by employee name
@@ -34,6 +34,7 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
     ...asset,
     status: asset.status as AssetStatus,
     status_color: asset.status_color as StatusColor | null,
-    location: asset.location || null // Ensure location is always defined
+    location: asset.location || null, // Ensure location is always defined
+    notes: asset.notes || null // Ensure notes is always defined
   }));
 };

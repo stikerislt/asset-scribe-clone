@@ -29,13 +29,7 @@ const EditAsset = () => {
         throw new Error(error.message);
       }
       
-      // Add notes property for compatibility
-      const assetWithNotes = {
-        ...data,
-        notes: data.location || ''
-      };
-      
-      return assetWithNotes as Asset & { notes?: string };
+      return data as Asset;
     },
     enabled: !!id,
   });

@@ -382,7 +382,11 @@ const AssetDetails = () => {
             </CardHeader>
             <CardContent>
               <div className="text-muted-foreground">
-                <p>No additional information has been added for this asset.</p>
+                {asset.notes ? (
+                  <p>{asset.notes}</p>
+                ) : (
+                  <p>No additional information has been added for this asset.</p>
+                )}
               </div>
             </CardContent>
           </Card>
