@@ -31,16 +31,27 @@ const Analytics = () => {
   const { data: statusCounts = [], isLoading } = useQuery({
     queryKey: ['asset-status-colors'],
     queryFn: async () => {
-      // Query to count assets by status_color
-      const { data, error } = await supabase
+      // Query to count assets by status_color using a more compatible approach
+      const { data: assets, error } = await supabase
         .from('assets')
-        .select('status_color, count(*)')
-        .group('status_color');
+        .select('status_color');
       
       if (error) throw error;
       
+      // Process the results manually to count by status_color
+      const counts: Record<string, number> = {};
+      assets.forEach(asset => {
+        const color = asset.status_color || 'null';
+        counts[color] = (counts[color] || 0) + 1;
+      });
+      
+      // Format the results to match our expected structure
+      const result: AssetStatusCount[] = Object.entries(counts).map(([key, count]) => ({
+        status_color: key === 'null' ? null : key as StatusColor,
+        count
+      }));
+      
       // Add missing colors with count 0
-      const result: AssetStatusCount[] = data || [];
       const colors: (StatusColor | null)[] = ['green', 'yellow', 'red', null];
       
       colors.forEach(color => {
