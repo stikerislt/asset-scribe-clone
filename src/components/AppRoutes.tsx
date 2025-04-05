@@ -22,7 +22,7 @@ export function AppRoutes() {
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
       
-      <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+      <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout children={<Outlet />} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/assets" element={<Assets />} />

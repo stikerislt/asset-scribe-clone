@@ -3,7 +3,7 @@ import { Navigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
@@ -22,7 +22,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  return <>{children}</>;
+  // Consistent return pattern - either render children if provided, or Outlet if not
+  return children ? <>{children}</> : <Outlet />;
 };
 
 export default ProtectedRoute;
