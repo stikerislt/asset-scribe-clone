@@ -1,12 +1,13 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { AssetStatus } from "@/lib/data";
 
 export interface Asset {
   id: string;
   name: string;
   tag: string;
   category: string;
-  status: string;
+  status: AssetStatus;
   assigned_to: string | null;
   model?: string | null;
   serial?: string | null;
@@ -25,5 +26,10 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
     .eq('assigned_to', employeeName);
     
   if (error) throw error;
-  return data || [];
+  
+  // Ensure asset status is properly typed
+  return (data || []).map(asset => ({
+    ...asset,
+    status: asset.status as AssetStatus
+  }));
 };

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Mail, User2, Briefcase, Package } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
+import { AssetStatus } from "@/lib/data";
 
 const EmployeeDetails = () => {
   const { id } = useParams();
