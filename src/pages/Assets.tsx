@@ -105,7 +105,7 @@ const Assets = () => {
         status: asset.status as AssetStatus
       })) as Asset[];
       
-      console.log("Processed assets:", assetsWithProps.length);
+      console.log("Processed assets:", assetsWithProps?.length);
       return assetsWithProps;
     },
     retry: 1,

@@ -21,12 +21,14 @@ export type Database = {
           notes: string | null
           purchase_cost: number | null
           purchase_date: string | null
+          qty: number | null
           serial: string | null
           status: string
           status_color: string | null
           tag: string
           updated_at: string
           user_id: string | null
+          wear: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -39,12 +41,14 @@ export type Database = {
           notes?: string | null
           purchase_cost?: number | null
           purchase_date?: string | null
+          qty?: number | null
           serial?: string | null
           status: string
           status_color?: string | null
           tag: string
           updated_at?: string
           user_id?: string | null
+          wear?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -57,12 +61,14 @@ export type Database = {
           notes?: string | null
           purchase_cost?: number | null
           purchase_date?: string | null
+          qty?: number | null
           serial?: string | null
           status?: string
           status_color?: string | null
           tag?: string
           updated_at?: string
           user_id?: string | null
+          wear?: string | null
         }
         Relationships: []
       }
