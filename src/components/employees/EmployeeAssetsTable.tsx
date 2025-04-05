@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
@@ -82,7 +81,11 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
                 <tr key={asset.id} className="border-b transition-colors hover:bg-muted/50">
                   <td className="p-4 align-middle">{asset.name}</td>
                   <td className="p-4 align-middle">
-                    <CategoryIcon category={asset.category} size={16} />
+                    <CategoryIcon 
+                      category={asset.category} 
+                      iconType={asset.categoryIcon} 
+                      size={16} 
+                    />
                   </td>
                   <td className="p-4 align-middle">
                     <AssetStatusBadge status={asset.status} />

@@ -1,4 +1,3 @@
-
 import { useActivity, getActivityIcon } from "@/hooks/useActivity";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,11 +16,10 @@ export type StatusColor = "green" | "yellow" | "red";
 export interface Category {
   id: string;
   name: string;
-  type: "asset" | "accessory" | "component" | "consumable" | "license";
+  type: string;
   count: number;
   user_id?: string;
-  created_at?: string;
-  updated_at?: string;
+  icon?: string;
 }
 
 // Empty arrays instead of sample data

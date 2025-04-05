@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,8 @@ const Categories = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [localCategories, setLocalCategories] = useState<Category[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { logActivity } = useActivity();
   const { user } = useAuth();
@@ -102,6 +105,20 @@ const Categories = () => {
     setLocalCategories(prev => [newCategory, ...prev]);
     logCategoryActivity("Created", newCategory);
     setIsAddDialogOpen(false);
+  };
+
+  const handleEditCategory = async (updatedCategory: Category) => {
+    setLocalCategories(prev => 
+      prev.map(cat => cat.id === updatedCategory.id ? updatedCategory : cat)
+    );
+    logCategoryActivity("Updated", updatedCategory);
+    setIsEditDialogOpen(false);
+    setCurrentCategory(null);
+  };
+
+  const openEditDialog = (category: Category) => {
+    setCurrentCategory(category);
+    setIsEditDialogOpen(true);
   };
 
   const handleDeleteCategory = async (categoryId: string) => {
@@ -200,7 +217,10 @@ const Categories = () => {
                     filteredCategories.map((category) => (
                       <TableRow key={category.id}>
                         <TableCell className="font-medium">
-                          <CategoryIcon category={category.name} />
+                          <CategoryIcon 
+                            category={category.name} 
+                            iconType={category.icon}
+                          />
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -221,7 +241,7 @@ const Categories = () => {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditDialog(category)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
@@ -246,6 +266,7 @@ const Categories = () => {
         </CardContent>
       </Card>
 
+      {/* Add Category Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -255,6 +276,26 @@ const Categories = () => {
             onSubmit={handleAddCategory}
             onCancel={() => setIsAddDialogOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Category Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Category</DialogTitle>
+          </DialogHeader>
+          {currentCategory && (
+            <CategoryForm 
+              onSubmit={handleEditCategory}
+              onCancel={() => {
+                setIsEditDialogOpen(false);
+                setCurrentCategory(null);
+              }}
+              initialValues={currentCategory}
+              isEditing={true}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

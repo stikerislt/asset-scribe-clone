@@ -7,13 +7,30 @@ interface CategoryIconProps {
   category: string;
   className?: string;
   size?: number;
+  iconType?: string;
 }
 
-export const CategoryIcon = ({ category, className, size = 18 }: CategoryIconProps) => {
+export const CategoryIcon = ({ category, className, size = 18, iconType }: CategoryIconProps) => {
   const categoryLower = category?.toLowerCase() || "";
   
-  // Map category names to icons (including translations)
+  // Get icon based on iconType if provided, otherwise infer from category name
   const getIcon = () => {
+    // If explicit icon type is provided, use that
+    if (iconType) {
+      switch (iconType) {
+        case "archive":
+          return <Archive size={size} className={cn("text-blue-600", className)} />;
+        case "smartphone":
+          return <Smartphone size={size} className={cn("text-green-600", className)} />;
+        case "globe":
+          return <Globe size={size} className={cn("text-purple-600", className)} />;
+        case "tablet":
+          return <Tablet size={size} className={cn("text-amber-600", className)} />;
+        case "package":
+          return <Package size={size} className={cn("text-indigo-600", className)} />;
+      }
+    }
+    
     // Check both english and localized versions
     if (categoryLower.includes("inventory") || categoryLower.includes("inventorius")) {
       return <Archive size={size} className={cn("text-blue-600", className)} />;

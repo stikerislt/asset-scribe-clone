@@ -23,9 +23,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { Archive, Smartphone, Globe, Tablet, Package } from "lucide-react";
 
 // Define the schema for form validation
 const categoryFormSchema = z.object({
@@ -33,6 +40,7 @@ const categoryFormSchema = z.object({
   type: z.enum(["asset", "accessory", "component", "consumable", "license"], {
     required_error: "Please select a category type.",
   }),
+  icon: z.string().default("archive"),
 });
 
 // Define the form values type
@@ -42,9 +50,20 @@ type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 interface CategoryFormProps {
   onSubmit: (values: Category) => void;
   onCancel: () => void;
+  initialValues?: Partial<Category>;
+  isEditing?: boolean;
 }
 
-export function CategoryForm({ onSubmit, onCancel }: CategoryFormProps) {
+// Icon options for the form
+const iconOptions = [
+  { value: "archive", label: "Inventory", icon: Archive },
+  { value: "smartphone", label: "Mobile Phone", icon: Smartphone },
+  { value: "globe", label: "Website", icon: Globe },
+  { value: "tablet", label: "Tablet", icon: Tablet },
+  { value: "package", label: "Accessories", icon: Package },
+];
+
+export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = false }: CategoryFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
 
@@ -52,8 +71,9 @@ export function CategoryForm({ onSubmit, onCancel }: CategoryFormProps) {
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
     defaultValues: {
-      name: "",
-      type: "asset",
+      name: initialValues?.name || "",
+      type: (initialValues?.type as any) || "asset",
+      icon: initialValues?.icon || "archive",
     },
   });
 
@@ -67,24 +87,26 @@ export function CategoryForm({ onSubmit, onCancel }: CategoryFormProps) {
     
     try {
       // Create a new category with a unique ID
-      const newCategoryId = crypto.randomUUID();
-      const newCategory: Category = {
-        id: newCategoryId,
+      const categoryId = initialValues?.id || crypto.randomUUID();
+      const categoryData = {
+        id: categoryId,
         name: values.name,
         type: values.type,
-        count: 0, // New categories start with 0 items
-        user_id: user.id
+        count: initialValues?.count || 0, // New categories start with 0 items
+        user_id: user.id,
+        icon: values.icon
       };
 
       // Save to Supabase
       const { error } = await supabase
         .from('categories')
-        .insert({
-          id: newCategoryId,
+        .upsert({
+          id: categoryId,
           name: values.name,
           type: values.type,
-          count: 0,
-          user_id: user.id
+          count: initialValues?.count || 0,
+          user_id: user.id,
+          icon: values.icon
         });
 
       if (error) {
@@ -95,12 +117,12 @@ export function CategoryForm({ onSubmit, onCancel }: CategoryFormProps) {
       }
 
       // Submit the form and reset
-      onSubmit(newCategory);
+      onSubmit(categoryData);
       form.reset();
-      toast.success("Category created successfully");
+      toast.success(`Category ${isEditing ? 'updated' : 'created'} successfully`);
     } catch (error) {
-      console.error("Error creating category:", error);
-      toast.error("Failed to create category");
+      console.error(`Error ${isEditing ? 'updating' : 'creating'} category:`, error);
+      toast.error(`Failed to ${isEditing ? 'update' : 'create'} category`);
     } finally {
       setIsSubmitting(false);
     }
@@ -159,6 +181,45 @@ export function CategoryForm({ onSubmit, onCancel }: CategoryFormProps) {
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="icon"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Category Icon</FormLabel>
+              <Tabs 
+                defaultValue={field.value} 
+                onValueChange={field.onChange}
+                className="w-full"
+              >
+                <TabsList className="grid grid-cols-5 w-full">
+                  {iconOptions.map(option => (
+                    <TabsTrigger 
+                      key={option.value} 
+                      value={option.value}
+                      className="flex items-center gap-2"
+                    >
+                      <option.icon className="h-4 w-4" />
+                      <span className="hidden sm:inline">{option.label}</span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {iconOptions.map(option => (
+                  <TabsContent key={option.value} value={option.value} className="p-4 border rounded-md mt-2">
+                    <div className="flex items-center justify-center">
+                      <option.icon className="h-12 w-12" />
+                    </div>
+                    <div className="text-center mt-2">
+                      {option.label} icon selected
+                    </div>
+                  </TabsContent>
+                ))}
+              </Tabs>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="flex justify-end space-x-2">
           <Button 
             variant="outline" 
@@ -171,7 +232,7 @@ export function CategoryForm({ onSubmit, onCancel }: CategoryFormProps) {
             type="submit" 
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Creating..." : "Create Category"}
+            {isSubmitting ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Update Category" : "Create Category")}
           </Button>
         </div>
       </form>

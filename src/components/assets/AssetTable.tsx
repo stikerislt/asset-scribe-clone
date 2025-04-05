@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Asset, AssetStatus } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
@@ -84,7 +83,10 @@ export const AssetTable = ({
               
               {columns.find(c => c.id === 'category')?.isVisible && (
                 <TableCell>
-                  <CategoryIcon category={asset.category} />
+                  <CategoryIcon 
+                    category={asset.category} 
+                    iconType={asset.categoryIcon}
+                  />
                 </TableCell>
               )}
               
