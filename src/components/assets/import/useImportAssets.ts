@@ -6,12 +6,29 @@ import { Asset, VALID_ASSET_STATUSES, AssetStatus } from "@/lib/api/assets";
 import { toast as sonnerToast } from "@/hooks/use-sonner-toast";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { StatusColor } from "@/lib/data";
 
 export const useImportAssets = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
   const [isImporting, setIsImporting] = useState(false);
+
+  // Helper function to normalize status color values
+  const normalizeStatusColor = (color: string | null | undefined): StatusColor | null => {
+    if (!color) return null;
+    
+    // Convert to lowercase for case-insensitive comparison
+    const lowerColor = color.toLowerCase();
+    
+    // Map to valid StatusColor values
+    if (lowerColor === 'green') return 'green';
+    if (lowerColor === 'yellow') return 'yellow';
+    if (lowerColor === 'red') return 'red';
+    
+    // Return null for invalid values
+    return null;
+  };
 
   const importAssetsMutation = useMutation({
     mutationFn: async (data: Record<string, any>[]) => {
@@ -25,12 +42,15 @@ export const useImportAssets = () => {
           ? statusValue 
           : "ready";
 
+        // Normalize the status_color value
+        const normalizedStatusColor = normalizeStatusColor(row.status_color);
+
         return {
           name: row.name || "Unnamed Asset",
           tag: row.tag || `ASSET-${Math.floor(Math.random() * 1000)}`,
           category: row.category || "General",
           status: validStatus,
-          status_color: row.status_color || null,
+          status_color: normalizedStatusColor,
           assigned_to: row.assigned_to || null,
           model: row.model || null,
           serial: row.serial || null,

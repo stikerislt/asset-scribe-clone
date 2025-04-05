@@ -1,5 +1,6 @@
 
 import { VALID_ASSET_STATUSES, AssetStatus } from "@/lib/api/assets";
+import { StatusColor } from "@/lib/data";
 
 /**
  * Validate imported CSV data against expected fields for assets
@@ -41,6 +42,15 @@ export const validateAssetCSV = (headers: string[], data: string[][]): { valid: 
       const status = row[statusIndex]?.toLowerCase(); // Convert status to lowercase
       if (status && !VALID_ASSET_STATUSES.includes(status as AssetStatus)) {
         errors.push(`Row ${rowNumber}: Invalid status "${row[statusIndex]}". Valid options: ${VALID_ASSET_STATUSES.join(', ')}`);
+      }
+    }
+    
+    // Validate status_color field has allowed values
+    const statusColorIndex = lowerCaseHeaders.indexOf('status_color');
+    if (statusColorIndex !== -1 && row[statusColorIndex]) {
+      const color = row[statusColorIndex].toLowerCase();
+      if (color && !['green', 'yellow', 'red'].includes(color)) {
+        errors.push(`Row ${rowNumber}: Invalid status color "${row[statusColorIndex]}". Valid options: green, yellow, red`);
       }
     }
     

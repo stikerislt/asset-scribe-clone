@@ -1,5 +1,5 @@
 
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ImportAssetsPreview } from "./ImportAssetsPreview";
 
 interface ImportAssetsDialogProps {
@@ -16,6 +16,7 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl">
+        <DialogTitle className="sr-only">Import Assets</DialogTitle>
         <ImportAssetsPreview
           headers={previewData.headers}
           data={previewData.data}
