@@ -8,7 +8,7 @@ export interface Asset {
   tag: string;
   category: string;
   status: AssetStatus;
-  status_color?: StatusColor | null;
+  status_color: StatusColor | null;
   assigned_to: string | null;
   model?: string | null;
   serial?: string | null;

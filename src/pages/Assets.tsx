@@ -459,6 +459,7 @@ const Assets = () => {
     try {
       await createAssetMutation.mutateAsync({
         ...assetData,
+        status_color: assetData.status_color || null,
         user_id: null
       });
       
