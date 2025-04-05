@@ -9,7 +9,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { X, AlertTriangle, CheckCircle, AlertCircle } from "lucide-react";
+import { X, AlertTriangle, CheckCircle, AlertCircle, FileSpreadsheet, FileText } from "lucide-react";
 import { validateAssetCSV } from "@/lib/csv-utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -39,14 +39,20 @@ export const CSVPreview = ({
   const safeData = data.map(row => 
     row.map(cell => cell !== null && cell !== undefined ? String(cell) : ''));
   
+  const FileIcon = fileType === 'excel' ? FileSpreadsheet : FileText;
+  const fileTypeColor = fileType === 'excel' ? 'text-blue-600' : 'text-green-600';
+  
   return (
     <div className="rounded-lg border bg-white shadow-lg p-6 max-w-full">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">
-          Preview Import Data 
-          {fileType === 'excel' && <span className="text-sm text-blue-600 ml-2">(Excel)</span>}
-          {fileType === 'csv' && <span className="text-sm text-green-600 ml-2">(CSV)</span>}
-        </h3>
+        <div className="flex items-center gap-2">
+          <FileIcon className={`h-5 w-5 ${fileTypeColor}`} />
+          <h3 className="text-lg font-medium">
+            Preview Import Data 
+            {fileType === 'excel' && <span className="text-sm text-blue-600 ml-2">(Excel)</span>}
+            {fileType === 'csv' && <span className="text-sm text-green-600 ml-2">(CSV)</span>}
+          </h3>
+        </div>
         <Button variant="ghost" size="sm" onClick={onCancel}>
           <X className="h-4 w-4" />
         </Button>

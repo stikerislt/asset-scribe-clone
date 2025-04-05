@@ -5,12 +5,13 @@ import { Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Asset } from "@/lib/api/assets";
 import { CSVLink } from "react-csv";
-import { parseCSV } from "@/lib/csv-utils";
-import { CSVPreview } from "@/components/CSVPreview";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast as sonnerToast } from "@/hooks/use-sonner-toast";
+import { parseFileForPreview } from "@/lib/preview-csv";
+import { CSVPreview } from "@/components/CSVPreview";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AssetImportExportProps {
   assets: Asset[];
@@ -19,11 +20,20 @@ interface AssetImportExportProps {
 export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [previewData, setPreviewData] = useState<{ headers: string[], data: string[][] } | null>(null);
+  const { user } = useAuth();
+  const [previewData, setPreviewData] = useState<{ 
+    headers: string[], 
+    data: string[][], 
+    fileType: 'csv' | 'excel' 
+  } | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const importAssetsMutation = useMutation({
     mutationFn: async (data: Record<string, any>[]) => {
+      if (!user) {
+        throw new Error("You must be logged in to import assets");
+      }
+
       // Transform data to match the Asset structure
       const assetsToImport = data.map(row => {
         return {
@@ -42,9 +52,13 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
           wear: row.wear || null,
           qty: row.qty ? Number(row.qty) : 1,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          user_id: user.id // Set the user_id from authenticated user
         };
       });
+
+      console.log("Importing assets with user ID:", user.id);
+      console.log("First asset to import:", assetsToImport[0]);
 
       const { data: result, error } = await supabase
         .from('assets')
@@ -52,6 +66,7 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
         .select();
 
       if (error) {
+        console.error("Import error:", error);
         throw new Error(`Failed to import assets: ${error.message}`);
       }
 
@@ -66,6 +81,7 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
       setPreviewData(null);
     },
     onError: (error) => {
+      console.error("Import mutation error:", error);
       toast({
         title: "Import failed",
         description: error.message,
@@ -79,40 +95,47 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
     if (!file) {
       toast({
         title: "No file selected",
-        description: "Please select a CSV file to import.",
+        description: "Please select a CSV or Excel file to import.",
         variant: "destructive",
       });
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const csvText = e.target?.result as string;
-        const { headers, data } = parseCSV(csvText);
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to import assets.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Use the improved parseFileForPreview function to handle both CSV and Excel
+    parseFileForPreview(file)
+      .then(({ headers, data, fileType }) => {
+        console.log(`Parsed ${fileType} file:`, { headers, rows: data.length });
         
-        // Validate the CSV structure
+        // Validate the file structure
         if (headers.length === 0 || data.length === 0) {
           toast({
-            title: "Invalid CSV format",
-            description: "The CSV file appears to be empty or improperly formatted.",
+            title: "Invalid file format",
+            description: "The file appears to be empty or improperly formatted.",
             variant: "destructive",
           });
           return;
         }
         
-        setPreviewData({ headers, data });
+        setPreviewData({ headers, data, fileType });
         setIsPreviewOpen(true);
-      } catch (error) {
-        console.error("Error parsing CSV:", error);
+      })
+      .catch(error => {
+        console.error("Error parsing file:", error);
         toast({
-          title: "CSV parsing error",
-          description: "There was an error parsing the CSV file. Please check the format.",
+          title: "File parsing error",
+          description: "There was an error parsing the file. Please check the format.",
           variant: "destructive",
         });
-      }
-    };
-    reader.readAsText(file);
+      });
     
     // Reset the input so the same file can be selected again
     event.target.value = '';
@@ -169,7 +192,7 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
         <input
           id="file-upload"
           type="file"
-          accept=".csv"
+          accept=".csv,.xlsx,.xls"
           className="hidden"
           onChange={handleFileChange}
         />
@@ -193,7 +216,7 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
               data={previewData.data}
               onConfirm={handleImportConfirm}
               onCancel={() => setIsPreviewOpen(false)}
-              fileType="csv"
+              fileType={previewData.fileType}
             />
           )}
         </DialogContent>
