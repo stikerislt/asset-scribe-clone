@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +40,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
   React.useEffect(() => {
     if (initialData) {
       // @ts-ignore - Handle the notes field from the extended Asset type
-      const initialNotes = initialData.notes || initialData.location || '';
+      const initialNotes = initialData.notes || '';
       setNotes(initialNotes);
     }
   }, [initialData]);
@@ -57,10 +56,10 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
       category,
       serial,
       model,
-      location: location || notes, // Use location or notes if location is empty
+      location, // Store only location in the location field
       assigned_to: assignedTo,
       purchase_date: purchaseDate,
-      purchase_cost: parseFloat(purchaseCost) || 0,
+      purchase_cost: parseFloat(purchaseCost) || null,
     });
   };
 
@@ -176,6 +175,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
             id="location" 
             value={location} 
             onChange={(e) => setLocation(e.target.value)} 
+            placeholder="Physical location of the asset"
           />
         </div>
       </div>
@@ -217,6 +217,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
           id="notes" 
           value={notes} 
           onChange={(e) => setNotes(e.target.value)} 
+          placeholder="Additional information about this asset"
         />
       </div>
       

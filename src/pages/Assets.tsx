@@ -461,6 +461,7 @@ const Assets = () => {
         ...assetData,
         status_color: assetData.status_color || null,
         location: assetData.location || null,
+        purchase_cost: assetData.purchase_cost || null,
         user_id: null
       });
       

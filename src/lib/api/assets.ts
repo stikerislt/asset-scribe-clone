@@ -10,10 +10,10 @@ export interface Asset {
   status: AssetStatus;
   status_color: StatusColor | null;
   assigned_to: string | null;
-  model: string | null;  // Made consistent with type in lib/data.ts
+  model: string | null;
   serial?: string | null;
   purchase_date?: string | null;
-  purchase_cost?: number | null;
+  purchase_cost: number | null;  // Changed from optional to required but nullable
   location: string | null; // Changed from optional to required but nullable
 }
 
