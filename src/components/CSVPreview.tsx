@@ -14,7 +14,7 @@ import { validateAssetCSV } from "@/lib/csv-utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
 import { StatusColorIndicator } from "@/components/StatusColorIndicator";
-import { VALID_ASSET_STATUSES } from "@/lib/api/assets";
+import { VALID_ASSET_STATUSES, AssetStatus } from "@/lib/api/assets";
 
 interface CSVPreviewProps {
   headers: string[];
@@ -52,7 +52,8 @@ export const CSVPreview = ({
       const statusValue = row[statusColumnIndex];
       return statusValue && 
         statusValue.toLowerCase() !== statusValue && 
-        VALID_ASSET_STATUSES.includes(statusValue.toLowerCase());
+        // Fix: Check if the lowercase value is in VALID_ASSET_STATUSES
+        VALID_ASSET_STATUSES.includes(statusValue.toLowerCase() as AssetStatus);
     });
   
   const FileIcon = fileType === 'excel' ? FileSpreadsheet : FileText;
