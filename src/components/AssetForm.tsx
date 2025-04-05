@@ -1,280 +1,218 @@
-import { useState } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Asset, AssetStatus } from "@/lib/data";
-import { Package } from "lucide-react";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useActivity } from "@/hooks/useActivity";
-
-// Form schema with validation
-const assetFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  tag: z.string().min(2, "Asset tag must be at least 2 characters"),
-  serial: z.string().optional(),
-  model: z.string().optional(),
-  category: z.string().min(1, "Category is required"),
-  status: z.enum(["ready", "assigned", "pending", "archived", "broken"]),
-  assigned_to: z.string().optional(),
-  location: z.string().optional(),
-  notes: z.string().optional(),
-  purchase_date: z.string().optional(),
-  purchase_cost: z.string().optional(),
-});
-
-type AssetFormValues = z.infer<typeof assetFormSchema>;
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Asset, AssetStatus, StatusColor } from "@/lib/data";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { StatusColorIndicator } from "@/components/StatusColorIndicator";
 
 interface AssetFormProps {
+  initialData?: Partial<Asset>;
   onSubmit: (data: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => void;
   onCancel: () => void;
 }
 
-export function AssetForm({ onSubmit, onCancel }: AssetFormProps) {
-  const { logActivity } = useActivity();
-  
-  // Default values for the form
-  const defaultValues: Partial<AssetFormValues> = {
-    status: "ready",
-    category: "Hardware",
-  };
+export const AssetForm = ({ initialData, onSubmit, onCancel }: AssetFormProps) => {
+  const [name, setName] = useState(initialData?.name || '');
+  const [tag, setTag] = useState(initialData?.tag || '');
+  const [status, setStatus] = useState<AssetStatus>(initialData?.status as AssetStatus || 'ready');
+  const [statusColor, setStatusColor] = useState<StatusColor>(initialData?.status_color as StatusColor || 'green');
+  const [category, setCategory] = useState(initialData?.category || '');
+  const [serial, setSerial] = useState(initialData?.serial || '');
+  const [model, setModel] = useState(initialData?.model || '');
+  const [location, setLocation] = useState(initialData?.location || '');
+  const [notes, setNotes] = useState((initialData as any)?.notes || '');
+  const [assignedTo, setAssignedTo] = useState(initialData?.assigned_to || '');
+  const [purchaseDate, setPurchaseDate] = useState(initialData?.purchase_date || '');
+  const [purchaseCost, setPurchaseCost] = useState(initialData?.purchase_cost?.toString() || '');
 
-  const form = useForm<AssetFormValues>({
-    resolver: zodResolver(assetFormSchema),
-    defaultValues,
-  });
-
-  const handleSubmit = (values: AssetFormValues) => {
-    // Create a new asset with form values
-    const newAsset = {
-      name: values.name,
-      tag: values.tag,
-      status: values.status,
-      category: values.category,
-      serial: values.serial || null,
-      model: values.model || null,
-      location: values.location || null,
-      notes: values.notes || null,
-      assigned_to: values.assigned_to || null,
-      purchase_date: values.purchase_date ? new Date(values.purchase_date).toISOString() : null,
-      purchase_cost: values.purchase_cost ? parseFloat(values.purchase_cost) : null,
-    };
-
-    // Log the activity
-    logActivity({
-      title: "Asset Created",
-      description: `${newAsset.name} added to inventory`,
-      category: 'asset',
-      icon: <Package className="h-5 w-5 text-blue-600" />
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    onSubmit({
+      name,
+      tag,
+      status,
+      status_color: statusColor,
+      category,
+      serial,
+      model,
+      location,
+      notes,
+      assigned_to: assignedTo,
+      purchase_date: purchaseDate,
+      purchase_cost: parseFloat(purchaseCost) || 0,
     });
-
-    // Submit the form data
-    onSubmit(newAsset);
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Asset Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="MacBook Pro 13-inch" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="tag"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Asset Tag</FormLabel>
-                <FormControl>
-                  <Input placeholder="LAP-001" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="serial"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Serial Number</FormLabel>
-                <FormControl>
-                  <Input placeholder="SN12345678" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="model"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Model</FormLabel>
-                <FormControl>
-                  <Input placeholder="MacBook Pro" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Category</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Hardware">Hardware</SelectItem>
-                    <SelectItem value="Peripherals">Peripherals</SelectItem>
-                    <SelectItem value="Software">Software</SelectItem>
-                    <SelectItem value="Furniture">Furniture</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Status</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="ready">Ready</SelectItem>
-                    <SelectItem value="assigned">Assigned</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                    <SelectItem value="broken">Broken</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="assigned_to"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Assigned To</FormLabel>
-                <FormControl>
-                  <Input placeholder="John Doe" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="location"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Location</FormLabel>
-                <FormControl>
-                  <Input placeholder="Main Office" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="purchase_date"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Purchase Date</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="purchase_cost"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Purchase Cost</FormLabel>
-                <FormControl>
-                  <Input placeholder="1299.99" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="notes"
-            render={({ field }) => (
-              <FormItem className="col-span-2">
-                <FormLabel>Notes</FormLabel>
-                <FormControl>
-                  <Textarea 
-                    placeholder="Additional information about this asset" 
-                    className="min-h-[80px]" 
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="name">Asset Name *</Label>
+          <Input 
+            id="name" 
+            value={name} 
+            onChange={(e) => setName(e.target.value)} 
+            required
           />
         </div>
         
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button variant="outline" type="button" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button type="submit">
-            Create Asset
-          </Button>
+        <div className="space-y-2">
+          <Label htmlFor="tag">Asset Tag *</Label>
+          <Input 
+            id="tag" 
+            value={tag} 
+            onChange={(e) => setTag(e.target.value)} 
+            required
+          />
         </div>
-      </form>
-    </Form>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="status">Status</Label>
+          <Select 
+            value={status} 
+            onValueChange={(value: AssetStatus) => setStatus(value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ready">Ready</SelectItem>
+              <SelectItem value="assigned">Assigned</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+              <SelectItem value="broken">Broken</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-2">
+          <Label>Status Color</Label>
+          <RadioGroup 
+            value={statusColor} 
+            onValueChange={(value) => setStatusColor(value as StatusColor)}
+            className="flex"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="green" id="green" />
+              <Label htmlFor="green" className="flex items-center">
+                <StatusColorIndicator color="green" className="mr-1" />
+                <span>Good</span>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2 ml-4">
+              <RadioGroupItem value="yellow" id="yellow" />
+              <Label htmlFor="yellow" className="flex items-center">
+                <StatusColorIndicator color="yellow" className="mr-1" />
+                <span>Warning</span>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2 ml-4">
+              <RadioGroupItem value="red" id="red" />
+              <Label htmlFor="red" className="flex items-center">
+                <StatusColorIndicator color="red" className="mr-1" />
+                <span>Critical</span>
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="category">Category</Label>
+          <Input 
+            id="category" 
+            value={category} 
+            onChange={(e) => setCategory(e.target.value)} 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="serial">Serial Number</Label>
+          <Input 
+            id="serial" 
+            value={serial} 
+            onChange={(e) => setSerial(e.target.value)} 
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="model">Model</Label>
+          <Input 
+            id="model" 
+            value={model} 
+            onChange={(e) => setModel(e.target.value)} 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="location">Location</Label>
+          <Input 
+            id="location" 
+            value={location} 
+            onChange={(e) => setLocation(e.target.value)} 
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="assignedTo">Assigned To</Label>
+          <Input 
+            id="assignedTo" 
+            value={assignedTo} 
+            onChange={(e) => setAssignedTo(e.target.value)} 
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="purchaseDate">Purchase Date</Label>
+          <Input 
+            id="purchaseDate" 
+            type="date"
+            value={purchaseDate || ''}
+            onChange={(e) => setPurchaseDate(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="purchaseCost">Purchase Cost</Label>
+        <Input 
+          id="purchaseCost"
+          type="number"
+          value={purchaseCost}
+          onChange={(e) => setPurchaseCost(e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea 
+          id="notes" 
+          value={notes} 
+          onChange={(e) => setNotes(e.target.value)} 
+        />
+      </div>
+      
+      <div className="flex justify-end space-x-2">
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="submit">Save Asset</Button>
+      </div>
+    </form>
   );
-}
+};

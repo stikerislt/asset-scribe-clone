@@ -13,6 +13,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
 import Index from "@/pages/Index";
 import EmployeeDetails from "@/pages/EmployeeDetails";
+import Analytics from "@/pages/Analytics";
 
 export const AppRoutes = () => {
   return (
@@ -64,6 +65,13 @@ export const AppRoutes = () => {
         <ProtectedRoute>
           <AppLayout>
             <Categories />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/analytics" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Analytics />
           </AppLayout>
         </ProtectedRoute>
       } />

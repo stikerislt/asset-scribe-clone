@@ -1,4 +1,3 @@
-
 import {
   Sidebar,
   SidebarContent,
@@ -17,7 +16,8 @@ import {
   Users, 
   Tag, 
   Settings, 
-  LogOut 
+  LogOut,
+  BarChart3
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -36,6 +36,11 @@ const mainMenuItems = [
     title: "Employees",
     path: "/employees",
     icon: Users,
+  },
+  {
+    title: "Analytics",
+    path: "/analytics",
+    icon: BarChart3,
   },
 ];
 
