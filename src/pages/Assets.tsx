@@ -737,13 +737,25 @@ const Assets = () => {
     }
   };
 
+  const handleExportTemplateClick = () => {
+    downloadCSV(generateAssetImportTemplate(), "assets-import-template.csv");
+    
+    toast({
+      title: "Template Exported",
+      description: "Asset import template with all columns has been downloaded",
+    });
+    
+    logActivity({
+      title: "Template Downloaded",
+      description: "Asset import template downloaded",
+      category: 'asset',
+      icon: <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+    });
+  };
+
   const handleExportClick = () => {
     if (assets.length === 0) {
-      downloadCSV(generateAssetImportTemplate(), "assets-template.csv");
-      toast({
-        title: "Template Exported",
-        description: "Asset import template has been downloaded",
-      });
+      handleExportTemplateClick();
       return;
     }
 
@@ -911,6 +923,10 @@ const Assets = () => {
           <Button className="" size="sm" onClick={handleExportClick}>
             <Download className="mr-2 h-4 w-4" />
             Export
+          </Button>
+          <Button className="" size="sm" onClick={handleExportTemplateClick} variant="outline">
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Export Template
           </Button>
           <Button className="" size="sm" onClick={() => setIsAddDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />

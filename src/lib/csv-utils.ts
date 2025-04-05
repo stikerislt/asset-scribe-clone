@@ -93,19 +93,26 @@ const parseCSVLine = (line: string): string[] => {
 export const generateAssetImportTemplate = (): string => {
   // Template headers in the exact order specified
   const templateHeaders = [
-    'tag',           // IN
-    'name',          // Name
-    'category',      // Category (added this explicitly as it's required)
-    'assigned_to',   // Assigned To
-    'purchase_date', // Purchase Date
-    'wear',          // Wear
-    'purchase_cost', // Purchase Cost
-    'qty'            // Qty
+    'tag',           // Asset tag identifier
+    'name',          // Asset name
+    'category',      // Asset category
+    'status',        // Asset status
+    'assigned_to',   // Person assigned to
+    'model',         // Model information
+    'serial',        // Serial number
+    'purchase_date', // Purchase date
+    'purchase_cost', // Purchase cost
+    'location',      // Physical location
+    'notes',         // Additional notes
+    'status_color'   // Status color (green, yellow, red)
   ];
   
   // Example row with default values for required fields
   const exampleRow = templateHeaders.map(header => {
-    if (header === 'category') return 'General'; // Default category
+    if (header === 'tag') return 'ASSET-001';
+    if (header === 'name') return 'Sample Asset';
+    if (header === 'category') return 'General'; 
+    if (header === 'status') return 'ready';
     return '';
   });
   
