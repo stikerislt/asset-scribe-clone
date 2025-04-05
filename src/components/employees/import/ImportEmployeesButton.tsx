@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -15,7 +15,7 @@ export const ImportEmployeesButton = ({ onImportComplete }: ImportEmployeesButto
   const { toast } = useToast();
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [csvData, setCsvData] = useState<{ headers: string[], data: string[][] }>({ headers: [], data: [] });
-  const fileInputRef = useState<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const handleDownloadTemplate = () => {
     const template = generateEmployeeImportTemplate();
@@ -68,7 +68,7 @@ export const ImportEmployeesButton = ({ onImportComplete }: ImportEmployeesButto
       <div className="flex gap-2">
         <Button 
           variant="outline" 
-          onClick={() => fileInputRef[1]?.click()}
+          onClick={() => fileInputRef.current?.click()}
         >
           <Upload className="mr-2 h-4 w-4" />
           Import
@@ -85,7 +85,7 @@ export const ImportEmployeesButton = ({ onImportComplete }: ImportEmployeesButto
         <input 
           type="file"
           accept=".csv"
-          ref={ref => fileInputRef[1] = ref}
+          ref={fileInputRef}
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />

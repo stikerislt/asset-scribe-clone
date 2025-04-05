@@ -179,7 +179,7 @@ export const importEmployeesFromCSV = async (headers: string[], data: string[][]
       // Check if employee already exists
       const { data: existingProfiles } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, email')
         .eq('full_name', name)
         .limit(1);
       
