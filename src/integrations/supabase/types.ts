@@ -18,6 +18,7 @@ export type Database = {
           location: string | null
           model: string | null
           name: string
+          notes: string | null
           purchase_cost: number | null
           purchase_date: string | null
           serial: string | null
@@ -35,6 +36,7 @@ export type Database = {
           location?: string | null
           model?: string | null
           name: string
+          notes?: string | null
           purchase_cost?: number | null
           purchase_date?: string | null
           serial?: string | null
@@ -52,6 +54,7 @@ export type Database = {
           location?: string | null
           model?: string | null
           name?: string
+          notes?: string | null
           purchase_cost?: number | null
           purchase_date?: string | null
           serial?: string | null

@@ -16,6 +16,9 @@ export interface Asset {
   purchase_cost: number | null;
   location: string | null;
   notes: string | null;
+  created_at: string;
+  updated_at: string;
+  user_id: string | null;
 }
 
 // Get assets by employee name
