@@ -41,7 +41,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CategoryForm } from "@/components/CategoryForm";
-import { categories, Category, logCategoryActivity } from "@/lib/data";
+import { Category, logCategoryActivity, fetchCategories } from "@/lib/data";
 import { useActivity } from "@/hooks/useActivity";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,26 +57,15 @@ const Categories = () => {
 
   // Fetch categories from Supabase
   useEffect(() => {
-    const fetchCategories = async () => {
+    const getCategories = async () => {
       if (!user) {
         setIsLoading(false);
         return;
       }
 
       try {
-        const { data, error } = await supabase
-          .from('categories')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error("Error fetching categories:", error);
-          toast.error("Failed to load categories");
-          return;
-        }
-
-        // Update local state with fetched categories
-        setLocalCategories(data || []);
+        const categories = await fetchCategories();
+        setLocalCategories(categories);
       } catch (error) {
         console.error("Error in fetchCategories:", error);
         toast.error("An error occurred while loading categories");
@@ -85,7 +74,7 @@ const Categories = () => {
       }
     };
 
-    fetchCategories();
+    getCategories();
   }, [user]);
 
   const filteredCategories = localCategories.filter(category => 

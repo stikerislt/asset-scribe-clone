@@ -73,6 +73,7 @@ export function CategoryForm({ onSubmit, onCancel }: CategoryFormProps) {
         name: values.name,
         type: values.type,
         count: 0, // New categories start with 0 items
+        user_id: user.id
       };
 
       // Save to Supabase

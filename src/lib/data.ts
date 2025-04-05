@@ -11,17 +11,19 @@ export type Asset = Database['public']['Tables']['assets']['Row'] & {
 // Define asset status type for type safety
 export type AssetStatus = "ready" | "assigned" | "pending" | "archived" | "broken";
 
+// Define Category type based on what we expect from Supabase
 export interface Category {
   id: string;
   name: string;
   type: "asset" | "accessory" | "component" | "consumable" | "license";
   count: number;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Empty arrays instead of sample data
 export const assets: Asset[] = [];
-// No longer using local categories array, data comes from Supabase
-// export const categories: Category[] = [];
 
 // Helper to log asset activities
 export const logAssetActivity = (
@@ -88,5 +90,25 @@ export const debugAssetAccess = async () => {
   } catch (e) {
     console.error("Debug asset access error:", e);
     return { data: null, error: e, authenticated: false };
+  }
+};
+
+// Helper for working with category data from Supabase
+export const fetchCategories = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error("Error fetching categories:", error);
+      throw error;
+    }
+    
+    return data as Category[];
+  } catch (error) {
+    console.error("Error in fetchCategories:", error);
+    throw error;
   }
 };
