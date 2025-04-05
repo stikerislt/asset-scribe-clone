@@ -185,9 +185,11 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
           Export
         </Button>
         
-        <Button size="sm" variant="outline" as="label" htmlFor="file-upload">
-          <Upload className="mr-2 h-4 w-4" />
-          Import
+        <div>
+          <Button size="sm" variant="outline" onClick={() => document.getElementById('file-upload')?.click()}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import
+          </Button>
           <input
             id="file-upload"
             type="file"
@@ -195,7 +197,7 @@ export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
             className="hidden"
             onChange={handleFileChange}
           />
-        </Button>
+        </div>
       </div>
       
       <Dialog open={isImporting} onOpenChange={setIsImporting}>

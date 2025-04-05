@@ -122,3 +122,50 @@ export const generateAssetImportTemplate = (): string => {
   
   return [templateHeaders.join(','), exampleRow.join(',')].join('\n');
 };
+
+/**
+ * Parse CSV file content for preview
+ */
+export const parseCSV = (content: string): { headers: string[], data: string[][] } => {
+  // Regular CSV parsing
+  if (!content || content.trim() === '') return { headers: [], data: [] };
+  
+  const lines = content.split('\n');
+  if (lines.length === 0) return { headers: [], data: [] };
+  
+  const headers = parseCSVLine(lines[0]);
+  
+  const data = lines.slice(1)
+    .filter(line => line.trim() !== '')
+    .map(line => parseCSVLine(line));
+  
+  return { headers, data };
+};
+
+/**
+ * Download CSV file with specified headers and data
+ */
+export const downloadCSV = (headers: string[], data: string[][], filename: string = 'export') => {
+  // Create CSV content
+  const csvContent = [
+    headers.join(','),
+    ...data.map(row => row.join(','))
+  ].join('\n');
+  
+  // Create a Blob with the CSV content
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  
+  // Create a temporary download link
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  // Set link properties
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${filename}-${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  
+  // Add to document, trigger download, and clean up
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};

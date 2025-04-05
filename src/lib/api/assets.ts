@@ -58,5 +58,5 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
     notes: asset.notes || null,
     wear: asset.wear || null,
     qty: asset.qty || 1
-  }));
+  })) as Asset[];
 };

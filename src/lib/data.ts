@@ -2,10 +2,10 @@
 import { useActivity, getActivityIcon } from "@/hooks/useActivity";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
-import { AssetStatus, Asset as ApiAsset } from "@/lib/api/assets";
+import { Asset as ApiAsset } from "@/lib/api/assets";
 
 // Export AssetStatus from api/assets
-export { AssetStatus } from "@/lib/api/assets";
+export type { AssetStatus } from "@/lib/api/assets";
 
 // Define Asset type based on Supabase schema
 export type Asset = ApiAsset;

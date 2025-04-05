@@ -103,10 +103,10 @@ const Assets = () => {
         qty: asset.qty || 1,
         status_color: asset.status_color as StatusColor || null,
         status: asset.status as AssetStatus
-      })) || [];
+      })) as Asset[];
       
       console.log("Processed assets:", assetsWithProps.length);
-      return assetsWithProps as Asset[];
+      return assetsWithProps;
     },
     retry: 1,
     refetchOnWindowFocus: false
