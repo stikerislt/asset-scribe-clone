@@ -45,9 +45,24 @@ export const AssetTable = ({
   const { logActivity } = useActivity();
   const [localAssets, setLocalAssets] = useState<Asset[]>(assets);
   
-  // Update local assets when props change
+  // Only update local assets on initial load or when the asset IDs change
+  // This prevents reordering when only the status colors change
   useEffect(() => {
-    setLocalAssets(assets);
+    // Check if the assets array has different items (not just different properties)
+    const currentIds = localAssets.map(asset => asset.id).join(',');
+    const newIds = assets.map(asset => asset.id).join(',');
+    
+    if (currentIds !== newIds || localAssets.length !== assets.length) {
+      setLocalAssets(assets);
+    } else {
+      // Update properties of existing assets without changing order
+      setLocalAssets(prevAssets => 
+        prevAssets.map(prevAsset => {
+          const updatedAsset = assets.find(a => a.id === prevAsset.id);
+          return updatedAsset ? { ...prevAsset, ...updatedAsset } : prevAsset;
+        })
+      );
+    }
   }, [assets]);
   
   if (localAssets.length === 0) {
@@ -59,7 +74,7 @@ export const AssetTable = ({
   }
   
   const handleStatusColorChange = (assetId: string, newColor: StatusColor) => {
-    // Update the local state first to maintain order
+    // Update the local state immediately to maintain order
     setLocalAssets(prevAssets => 
       prevAssets.map(asset => 
         asset.id === assetId ? { ...asset, status_color: newColor } : asset
@@ -230,3 +245,4 @@ export const AssetTable = ({
     </div>
   );
 };
+

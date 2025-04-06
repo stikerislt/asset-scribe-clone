@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
 import { Button } from "@/components/ui/button";
@@ -35,10 +35,25 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
   const { toast } = useToast();
   const { logActivity } = useActivity();
   
-  // Update local assets when props change
-  if (JSON.stringify(assets) !== JSON.stringify(localAssets)) {
-    setLocalAssets(assets);
-  }
+  // Only update local assets on initial load or when asset IDs change
+  // This prevents reordering when only status colors change
+  useEffect(() => {
+    // Check if the assets array has different items (not just different properties)
+    const currentIds = localAssets.map(asset => asset.id).join(',');
+    const newIds = assets.map(asset => asset.id).join(',');
+    
+    if (currentIds !== newIds || localAssets.length !== assets.length) {
+      setLocalAssets(assets);
+    } else {
+      // Update properties of existing assets without changing order
+      setLocalAssets(prevAssets => 
+        prevAssets.map(prevAsset => {
+          const updatedAsset = assets.find(a => a.id === prevAsset.id);
+          return updatedAsset ? { ...prevAsset, ...updatedAsset } : prevAsset;
+        })
+      );
+    }
+  }, [assets]);
   
   if (isLoading) {
     return <p>Loading assets...</p>;
@@ -68,6 +83,13 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
     
   const handleStatusColorChange = async (assetId: string, newColor: StatusColor) => {
     try {
+      // Update local state immediately to maintain order
+      setLocalAssets(prevAssets => 
+        prevAssets.map(asset => 
+          asset.id === assetId ? { ...asset, status_color: newColor } : asset
+        )
+      );
+      
       // Update in the database
       const { error } = await supabase
         .from('assets')
@@ -75,13 +97,6 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
         .eq('id', assetId);
       
       if (error) throw error;
-      
-      // Update local state without changing order
-      setLocalAssets(prevAssets => 
-        prevAssets.map(asset => 
-          asset.id === assetId ? { ...asset, status_color: newColor } : asset
-        )
-      );
       
       toast({
         title: "Status updated",
