@@ -5,12 +5,13 @@ import { ExportAssetsButton } from "./export/ExportAssetsButton";
 
 interface AssetImportExportProps {
   assets: Asset[];
+  onImportComplete?: () => void;
 }
 
-export const AssetImportExport = ({ assets }: AssetImportExportProps) => {
+export const AssetImportExport = ({ assets, onImportComplete }: AssetImportExportProps) => {
   return (
     <div className="flex gap-2">
-      <ImportAssetsButton />
+      <ImportAssetsButton onImportComplete={onImportComplete} />
       <ExportAssetsButton assets={assets} />
     </div>
   );

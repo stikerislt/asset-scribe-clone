@@ -19,6 +19,10 @@ export const parseCSVLine = (line: string): string[] => {
         inQuotes = !inQuotes;
       }
     } else if (char === ',' && !inQuotes) {
+      // Clean up any trailing \r characters
+      if (current.endsWith('\r')) {
+        current = current.slice(0, -1);
+      }
       values.push(current);
       current = '';
     } else {
@@ -26,7 +30,11 @@ export const parseCSVLine = (line: string): string[] => {
     }
   }
   
-  values.push(current); // Add the last value
+  // Add the last value (and clean up any trailing \r)
+  if (current.endsWith('\r')) {
+    current = current.slice(0, -1);
+  }
+  values.push(current); 
   return values;
 };
 
@@ -40,7 +48,9 @@ export const csvToObjects = <T extends Record<string, any>>(csv: string): T[] =>
   if (lines.length <= 1) return [];
   
   // Parse header line using parseCSVLine for better UTF-8 support
-  const headers = parseCSVLine(lines[0]);
+  const headers = parseCSVLine(lines[0]).map(header => 
+    header.endsWith('\r') ? header.slice(0, -1) : header
+  );
   
   return lines.slice(1)
     .filter(line => line.trim() !== '')
@@ -66,7 +76,11 @@ export const parseCSV = (content: string): { headers: string[], data: string[][]
   const lines = content.split('\n');
   if (lines.length === 0) return { headers: [], data: [] };
   
-  const headers = parseCSVLine(lines[0]);
+  const rawHeaders = parseCSVLine(lines[0]);
+  // Clean up any trailing \r characters in headers
+  const headers = rawHeaders.map(header => 
+    header.endsWith('\r') ? header.slice(0, -1) : header
+  );
   
   const data = lines.slice(1)
     .filter(line => line.trim() !== '')
