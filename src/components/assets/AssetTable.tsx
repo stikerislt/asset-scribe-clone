@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Asset, AssetStatus } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
@@ -42,14 +43,32 @@ export const AssetTable = ({
 }: AssetTableProps) => {
   const { toast } = useToast();
   const { logActivity } = useActivity();
+  const [localAssets, setLocalAssets] = useState<Asset[]>(assets);
   
-  if (assets.length === 0) {
+  // Update local assets when props change
+  useEffect(() => {
+    setLocalAssets(assets);
+  }, [assets]);
+  
+  if (localAssets.length === 0) {
     return (
       <div className="text-center py-10 border rounded-md">
         <p className="text-muted-foreground">No assets found</p>
       </div>
     );
   }
+  
+  const handleStatusColorChange = (assetId: string, newColor: StatusColor) => {
+    // Update the local state first to maintain order
+    setLocalAssets(prevAssets => 
+      prevAssets.map(asset => 
+        asset.id === assetId ? { ...asset, status_color: newColor } : asset
+      )
+    );
+    
+    // Call the parent function to update the database
+    onStatusColorChange(assetId, newColor);
+  };
   
   return (
     <div className="border rounded-md">
@@ -67,7 +86,7 @@ export const AssetTable = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {assets.map((asset) => (
+          {localAssets.map((asset) => (
             <TableRow key={asset.id}>
               {columns.find(c => c.id === 'tag')?.isVisible && (
                 <TableCell>
@@ -127,7 +146,7 @@ export const AssetTable = ({
                   <RadioGroup 
                     value={asset.status_color || 'green'} 
                     className="flex flex-row"
-                    onValueChange={(value) => onStatusColorChange(asset.id, value as StatusColor)}
+                    onValueChange={(value) => handleStatusColorChange(asset.id, value as StatusColor)}
                   >
                     <div className="flex items-center space-x-1">
                       <RadioGroupItem 
