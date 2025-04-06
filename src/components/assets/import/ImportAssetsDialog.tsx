@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Asset, AssetStatus, VALID_ASSET_STATUSES } from "@/lib/api/assets";
 import { useActivity } from "@/hooks/useActivity";
 import { Package } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ImportAssetsDialogProps {
   isOpen: boolean;
@@ -24,12 +25,22 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { logActivity } = useActivity();
+  const { user } = useAuth();
 
   const handleImportConfirm = async () => {
     if (previewData.data.length === 0) {
       toast({
         title: "No data to import",
         description: "The file doesn't contain any valid data rows.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to import assets.",
         variant: "destructive",
       });
       return;
@@ -49,12 +60,14 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
           tag: string;
           category: string;
           status: AssetStatus;
+          user_id: string; // Add user_id field
           [key: string]: any;
         } = {
           name: '',           // Required field, default empty
           tag: '',            // Required field, default empty
           category: '',       // Required field, default empty
           status: 'ready' as AssetStatus,    // Required field, default 'ready'
+          user_id: user.id,   // Set the user_id to current user's ID
         };
         
         headers.forEach((header, index) => {
@@ -113,12 +126,15 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
         return asset;
       });
       
+      console.log("Importing assets:", assets);
+      
       // Insert assets into the database
       const { data, error } = await supabase
         .from('assets')
         .insert(assets);
       
       if (error) {
+        console.error("Supabase insert error:", error);
         throw error;
       }
       
@@ -142,9 +158,23 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
       onClose();
     } catch (error) {
       console.error("Import error:", error);
+      
+      let errorMessage = "An unknown error occurred during import.";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Handle specific Supabase errors
+        if (errorMessage.includes("violates row-level security policy")) {
+          errorMessage = "Failed to import due to security restrictions. Make sure you're properly authenticated.";
+        } else if (errorMessage.includes("duplicate key")) {
+          errorMessage = "Some assets couldn't be imported due to duplicate tags or IDs.";
+        }
+      }
+      
       toast({
         title: "Import failed",
-        description: error instanceof Error ? error.message : "An error occurred during import.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
