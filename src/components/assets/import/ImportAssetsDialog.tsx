@@ -5,7 +5,7 @@ import { CSVPreview } from "@/components/CSVPreview";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Asset, AssetStatus } from "@/lib/api/assets";
+import { Asset, AssetStatus, VALID_ASSET_STATUSES } from "@/lib/api/assets";
 import { useActivity } from "@/hooks/useActivity";
 import { Package } from "lucide-react";
 
@@ -54,7 +54,7 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
           name: '',           // Required field, default empty
           tag: '',            // Required field, default empty
           category: '',       // Required field, default empty
-          status: 'ready',    // Required field, default 'ready'
+          status: 'ready' as AssetStatus,    // Required field, default 'ready'
         };
         
         headers.forEach((header, index) => {
@@ -66,7 +66,15 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
             if (cleanHeader && row[index] !== '') {
               // Handle special case of status (always lowercase)
               if (cleanHeader === 'status') {
-                asset[cleanHeader] = row[index].toLowerCase();
+                // Ensure the status value is a valid AssetStatus
+                const statusValue = row[index].toLowerCase();
+                // Type guard: check if the status is valid
+                if (VALID_ASSET_STATUSES.includes(statusValue as AssetStatus)) {
+                  asset[cleanHeader] = statusValue as AssetStatus;
+                } else {
+                  // Default to 'ready' if invalid status
+                  asset[cleanHeader] = 'ready' as AssetStatus;
+                }
               }
               // Handle special case of status_color (always lowercase)
               else if (cleanHeader === 'status_color') {
@@ -94,7 +102,9 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
         if (!asset.name) asset.name = `Imported Asset ${row[0] || ''}`;
         if (!asset.tag) asset.tag = `IMP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         if (!asset.category) asset.category = 'General';
-        if (!asset.status) asset.status = 'ready';
+        if (!VALID_ASSET_STATUSES.includes(asset.status)) {
+          asset.status = 'ready' as AssetStatus;
+        }
         
         // Add created_at and updated_at
         asset.created_at = new Date().toISOString();
