@@ -43,14 +43,26 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
       
       // Transform CSV data to assets
       const assets = previewData.data.map(row => {
-        const asset: Record<string, any> = {};
+        // Create a properly typed asset object with required fields
+        const asset: {
+          name: string;
+          tag: string;
+          category: string;
+          status: AssetStatus;
+          [key: string]: any;
+        } = {
+          name: '',           // Required field, default empty
+          tag: '',            // Required field, default empty
+          category: '',       // Required field, default empty
+          status: 'ready',    // Required field, default 'ready'
+        };
         
         headers.forEach((header, index) => {
           if (header && row[index] !== undefined) {
             // Clean up the field name
             const cleanHeader = header.trim();
             
-            // Skip empty cells or the trailing \r column if present
+            // Skip empty cells
             if (cleanHeader && row[index] !== '') {
               // Handle special case of status (always lowercase)
               if (cleanHeader === 'status') {
@@ -78,9 +90,11 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
           }
         });
 
-        // Set default values for required fields if missing
+        // Set default values for required fields if they're empty
+        if (!asset.name) asset.name = `Imported Asset ${row[0] || ''}`;
+        if (!asset.tag) asset.tag = `IMP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        if (!asset.category) asset.category = 'General';
         if (!asset.status) asset.status = 'ready';
-        if (!asset.qty) asset.qty = 1;
         
         // Add created_at and updated_at
         asset.created_at = new Date().toISOString();
