@@ -10,7 +10,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
 
-// Form schemas
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
@@ -35,7 +34,6 @@ const Auth = () => {
   const { login, signup, user } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
 
-  // Set initial form mode based on the current path
   useEffect(() => {
     if (location.pathname === "/auth/signup") {
       setIsLogin(false);
@@ -44,13 +42,11 @@ const Auth = () => {
     }
   }, [location.pathname]);
 
-  // Check if we're already logged in
   if (user) {
     const from = location.state?.from?.pathname || "/dashboard";
     return <Navigate to={from} replace />;
   }
 
-  // Login form
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -59,7 +55,6 @@ const Auth = () => {
     },
   });
 
-  // Signup form
   const signupForm = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -148,12 +143,7 @@ const Auth = () => {
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="John Doe" 
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value)}
-                          value={field.value} 
-                        />
+                        <Input placeholder="John Doe" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -166,12 +156,7 @@ const Auth = () => {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="email@example.com" 
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value)}
-                          value={field.value} 
-                        />
+                        <Input placeholder="email@example.com" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -184,13 +169,7 @@ const Auth = () => {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="password" 
-                          placeholder="••••••" 
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value)}
-                          value={field.value} 
-                        />
+                        <Input type="password" placeholder="••••••" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -203,13 +182,7 @@ const Auth = () => {
                     <FormItem>
                       <FormLabel>Confirm Password</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="password" 
-                          placeholder="••••••" 
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value)}
-                          value={field.value} 
-                        />
+                        <Input type="password" placeholder="••••••" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
