@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLocation, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -149,7 +148,12 @@ const Auth = () => {
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} />
+                        <Input 
+                          placeholder="John Doe" 
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          value={field.value} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -162,7 +166,12 @@ const Auth = () => {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="email@example.com" {...field} />
+                        <Input 
+                          placeholder="email@example.com" 
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          value={field.value} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -175,7 +184,13 @@ const Auth = () => {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••" {...field} />
+                        <Input 
+                          type="password" 
+                          placeholder="••••••" 
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          value={field.value} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -188,7 +203,13 @@ const Auth = () => {
                     <FormItem>
                       <FormLabel>Confirm Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••" {...field} />
+                        <Input 
+                          type="password" 
+                          placeholder="••••••" 
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          value={field.value} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
