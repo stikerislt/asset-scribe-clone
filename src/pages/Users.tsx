@@ -60,9 +60,7 @@ import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-// Define user role type
-type UserRole = 'admin' | 'manager' | 'user';
+import { UserRole, isAdmin, updateUserRole } from "@/lib/api/userRoles";
 
 // Extended user type to include role from database
 interface EnhancedUser extends User {
@@ -87,13 +85,8 @@ const Users = () => {
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (currentUser) {
-        const { data, error } = await supabase.rpc('is_admin', {
-          user_id: currentUser.id
-        });
-        
-        if (!error && data) {
-          setIsCurrentUserAdmin(data);
-        }
+        const isAdminResult = await isAdmin(currentUser.id);
+        setIsCurrentUserAdmin(isAdminResult);
       }
     };
     
@@ -115,10 +108,8 @@ const Users = () => {
           throw profilesError;
         }
         
-        // Fetch user roles
-        const { data: roles, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('*');
+        // Get user roles using RPC
+        const { data: userRolesData, error: rolesError } = await supabase.rpc('get_all_user_roles');
         
         if (rolesError) {
           console.error('Error fetching roles:', rolesError);
@@ -127,8 +118,8 @@ const Users = () => {
         
         // Create a map of user_id to role
         const roleMap = new Map();
-        roles?.forEach(role => {
-          roleMap.set(role.user_id, role.role);
+        userRolesData?.forEach((userRole: any) => {
+          roleMap.set(userRole.user_id, userRole.role);
         });
         
         // Transform the profiles data to match the EnhancedUser type
@@ -137,7 +128,7 @@ const Users = () => {
           name: profile.full_name || 'Unnamed User',
           email: profile.email || 'No email provided',
           role: profile.id === currentUser?.id ? 'Admin' : 'User', // UI role
-          dbRole: roleMap.get(profile.id) || null, // Actual role from database
+          dbRole: roleMap.get(profile.id) as UserRole || null, // Actual role from database
           active: true
         }));
         
@@ -182,15 +173,10 @@ const Users = () => {
     setIsRoleUpdating(true);
     
     try {
-      // Insert or update role in the user_roles table
-      const { error } = await supabase
-        .from('user_roles')
-        .upsert({
-          user_id: selectedUser.id,
-          role: newRole
-        }, { onConflict: 'user_id' });
+      // Update role using our new function
+      const success = await updateUserRole(selectedUser.id, newRole);
       
-      if (error) throw error;
+      if (!success) throw new Error("Failed to update role");
       
       // Update local state
       setUsers(prev => prev.map(user => 
