@@ -59,7 +59,7 @@ import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserRole, isAdmin, updateUserRole, getAllUserRoles } from "@/lib/api/userRoles";
+import { UserRole, isAdmin, updateUserRole, getAllUserRoles, createUser } from "@/lib/api/userRoles";
 
 // Extended user type to include role from database
 interface EnhancedUser extends User {
@@ -75,6 +75,8 @@ const Users = () => {
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState<UserRole>('user');
   const [isRoleUpdating, setIsRoleUpdating] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [createUserError, setCreateUserError] = useState<string | undefined>();
   const { logActivity } = useActivity();
   const { user: currentUser } = useAuth();
   
@@ -93,48 +95,48 @@ const Users = () => {
   }, [currentUser]);
   
   // Fetch users from Supabase profiles table
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Fetch profiles
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*');
-        
-        if (profilesError) {
-          throw profilesError;
-        }
-        
-        // Get user roles using our updated function
-        const userRolesData = await getAllUserRoles();
-        
-        // Create a map of user_id to role
-        const roleMap = new Map();
-        userRolesData.forEach((userRole) => {
-          roleMap.set(userRole.user_id, userRole.role);
-        });
-        
-        // Transform the profiles data to match the EnhancedUser type
-        const formattedUsers: EnhancedUser[] = profiles.map(profile => ({
-          id: profile.id,
-          name: profile.full_name || 'Unnamed User',
-          email: profile.email || 'No email provided',
-          role: profile.id === currentUser?.id ? 'Admin' : 'User', // UI role
-          dbRole: roleMap.get(profile.id) as UserRole || null, // Actual role from database
-          active: true
-        }));
-        
-        setUsers(formattedUsers);
-      } catch (error: any) {
-        console.error('Error fetching users:', error);
-        toast.error('Failed to load users');
-      } finally {
-        setIsLoading(false);
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*');
+      
+      if (profilesError) {
+        throw profilesError;
       }
-    };
+      
+      // Get user roles using our updated function
+      const userRolesData = await getAllUserRoles();
+      
+      // Create a map of user_id to role
+      const roleMap = new Map();
+      userRolesData.forEach((userRole) => {
+        roleMap.set(userRole.user_id, userRole.role);
+      });
+      
+      // Transform the profiles data to match the EnhancedUser type
+      const formattedUsers: EnhancedUser[] = profiles.map(profile => ({
+        id: profile.id,
+        name: profile.full_name || 'Unnamed User',
+        email: profile.email || 'No email provided',
+        role: profile.id === currentUser?.id ? 'Admin' : 'User', // UI role
+        dbRole: roleMap.get(profile.id) as UserRole || null, // Actual role from database
+        active: true
+      }));
+      
+      setUsers(formattedUsers);
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to load users');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchUsers();
   }, [currentUser]);
   
@@ -144,15 +146,48 @@ const Users = () => {
     user?.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
-  const handleAddUser = (newUser: User) => {
-    // Add the new user to the state
-    setUsers(prev => [{...newUser, dbRole: null}, ...prev]);
+  const handleAddUser = async (formValues: any) => {
+    setIsCreatingUser(true);
+    setCreateUserError(undefined);
     
-    // Log the activity
-    logUserActivity("Created", newUser);
-    
-    // Close the dialog
-    setIsAddDialogOpen(false);
+    try {
+      // Map the role from UI format to database format
+      const dbRole = formValues.role.toLowerCase() as UserRole;
+      
+      // Create the user in Supabase Auth through our Edge Function
+      const result = await createUser(
+        formValues.email,
+        formValues.password,
+        formValues.name,
+        dbRole,
+        formValues.active
+      );
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create user');
+      }
+      
+      // Log the activity
+      logActivity({
+        title: "User Created",
+        description: `Created user account for ${formValues.name}`,
+        category: 'user',
+        icon: <UserPlus className="h-5 w-5 text-green-600" />
+      });
+      
+      toast.success(`User ${formValues.name} created successfully`);
+      
+      // Close the dialog and refresh user list
+      setIsAddDialogOpen(false);
+      fetchUsers();
+      
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      setCreateUserError(error.message);
+      toast.error(`Failed to create user: ${error.message}`);
+    } finally {
+      setIsCreatingUser(false);
+    }
   };
   
   const handleOpenRoleDialog = (user: EnhancedUser) => {
@@ -359,6 +394,8 @@ const Users = () => {
           <UserForm 
             onSubmit={handleAddUser}
             onCancel={() => setIsAddDialogOpen(false)}
+            isSubmitting={isCreatingUser}
+            error={createUserError}
           />
         </DialogContent>
       </Dialog>

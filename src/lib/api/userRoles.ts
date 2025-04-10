@@ -80,3 +80,41 @@ export const updateUserRole = async (userId: string, role: UserRole): Promise<bo
   
   return true;
 };
+
+// Create a new user with specified role via Edge Function
+export const createUser = async (
+  email: string, 
+  password: string, 
+  name: string, 
+  role: string, 
+  active: boolean
+): Promise<{success: boolean, data?: any, error?: string}> => {
+  try {
+    // Use Supabase Edge Function to create user
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        name,
+        role,
+        active
+      })
+    });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to create user');
+    }
+
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("Error creating user:", error);
+    return { success: false, error: error.message };
+  }
+};
