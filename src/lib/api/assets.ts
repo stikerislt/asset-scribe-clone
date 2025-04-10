@@ -74,9 +74,21 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
 export const updateAsset = async (assetId: string, assetData: Partial<Asset>): Promise<Asset> => {
   console.log("Updating asset with ID:", assetId, "Data:", assetData);
   
-  // Debugging: Check authentication status
-  const { data: session } = await supabase.auth.getSession();
-  console.log("Current session:", session?.session ? "Authenticated" : "Not authenticated");
+  // Get the current authenticated user's session
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError) {
+    console.error("Authentication error:", sessionError);
+    throw new Error(`Authentication failed: ${sessionError.message}`);
+  }
+  
+  if (!sessionData.session) {
+    console.error("No authenticated session found");
+    throw new Error("You must be logged in to update assets");
+  }
+  
+  const currentUserId = sessionData.session.user.id;
+  console.log("Current authenticated user ID:", currentUserId);
   
   // First check if asset exists and fetch current data
   const { data: existingAsset, error: fetchError } = await supabase
@@ -95,6 +107,12 @@ export const updateAsset = async (assetId: string, assetData: Partial<Asset>): P
   }
   
   console.log("Existing asset data:", existingAsset);
+  
+  // Check if the user is allowed to update this asset
+  if (existingAsset.user_id && existingAsset.user_id !== currentUserId) {
+    console.error("User does not have permission to update this asset");
+    throw new Error("You don't have permission to update this asset");
+  }
   
   // Prepare update data, ensuring all required fields are included from existing asset
   const updateData = {
@@ -117,17 +135,18 @@ export const updateAsset = async (assetId: string, assetData: Partial<Asset>): P
     wear: assetData.wear !== undefined ? assetData.wear : existingAsset.wear,
     qty: assetData.qty !== undefined ? assetData.qty : existingAsset.qty,
     
-    // Always include user_id and updated timestamp
-    user_id: assetData.user_id || existingAsset.user_id,
+    // Always set user_id to the current authenticated user
+    user_id: currentUserId,
     updated_at: new Date().toISOString()
   };
   
   console.log("Final update data to send:", updateData);
   
-  // Use UPSERT with ON CONFLICT strategy to ensure update works
+  // Use update instead of upsert to respect RLS policies
   const { data, error } = await supabase
     .from('assets')
-    .upsert(updateData)
+    .update(updateData)
+    .eq('id', assetId)
     .select()
     .single();
     

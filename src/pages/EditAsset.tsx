@@ -59,12 +59,8 @@ const EditAsset = () => {
     console.log("Submitting form data:", formData);
     
     try {
-      // Use the imported updateAsset function instead of direct supabase call
-      const updatedAsset = await updateAsset(id, {
-        ...formData,
-        user_id: asset?.user_id || user.id, // Keep existing user_id or set it to current user
-        updated_at: new Date().toISOString()
-      });
+      // The updateAsset function now handles setting the user_id to the current user
+      const updatedAsset = await updateAsset(id, formData);
       
       console.log("Asset updated successfully:", updatedAsset);
       
