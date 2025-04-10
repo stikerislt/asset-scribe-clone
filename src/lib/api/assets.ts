@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { StatusColor } from "@/lib/data";
 
@@ -108,8 +107,16 @@ export const updateAsset = async (assetId: string, assetData: Partial<Asset>): P
   
   console.log("Existing asset data:", existingAsset);
   
-  // Check if the user is allowed to update this asset
-  if (existingAsset.user_id && existingAsset.user_id !== currentUserId) {
+  // Check if user is admin (admins can edit any asset)
+  const { data: isAdminData } = await supabase.rpc('is_admin', {
+    user_id: currentUserId
+  });
+  
+  const isAdmin = isAdminData || false;
+  console.log("Is user admin?", isAdmin);
+  
+  // If user is not admin and not the owner, prevent update
+  if (!isAdmin && existingAsset.user_id && existingAsset.user_id !== currentUserId) {
     console.error("User does not have permission to update this asset");
     throw new Error("You don't have permission to update this asset");
   }
@@ -135,8 +142,9 @@ export const updateAsset = async (assetId: string, assetData: Partial<Asset>): P
     wear: assetData.wear !== undefined ? assetData.wear : existingAsset.wear,
     qty: assetData.qty !== undefined ? assetData.qty : existingAsset.qty,
     
-    // Always set user_id to the current authenticated user
-    user_id: currentUserId,
+    // If admin is editing someone else's asset, keep the original user_id
+    // Otherwise, set to current user
+    user_id: isAdmin && existingAsset.user_id ? existingAsset.user_id : currentUserId,
     updated_at: new Date().toISOString()
   };
   

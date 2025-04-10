@@ -29,7 +29,17 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Plus, 
   MoreHorizontal, 
@@ -40,7 +50,8 @@ import {
   UserPlus,
   Mail,
   ShieldCheck,
-  ShieldX
+  ShieldX,
+  Shield
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UserForm, User } from "@/components/UserForm";
@@ -50,33 +61,83 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// Define user role type
+type UserRole = 'admin' | 'manager' | 'user';
+
+// Extended user type to include role from database
+interface EnhancedUser extends User {
+  dbRole: UserRole | null;
+}
+
 const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<EnhancedUser[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<EnhancedUser | null>(null);
+  const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+  const [newRole, setNewRole] = useState<UserRole>('user');
+  const [isRoleUpdating, setIsRoleUpdating] = useState(false);
   const { logActivity } = useActivity();
   const { user: currentUser } = useAuth();
+  
+  // Check if current user is an admin
+  const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
+  
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (currentUser) {
+        const { data, error } = await supabase.rpc('is_admin', {
+          user_id: currentUser.id
+        });
+        
+        if (!error && data) {
+          setIsCurrentUserAdmin(data);
+        }
+      }
+    };
+    
+    checkAdminStatus();
+  }, [currentUser]);
   
   // Fetch users from Supabase profiles table
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setIsLoading(true);
-        const { data, error } = await supabase
+        
+        // Fetch profiles
+        const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*');
         
-        if (error) {
-          throw error;
+        if (profilesError) {
+          throw profilesError;
         }
         
-        // Transform the profiles data to match the User type
-        const formattedUsers: User[] = data.map(profile => ({
+        // Fetch user roles
+        const { data: roles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('*');
+        
+        if (rolesError) {
+          console.error('Error fetching roles:', rolesError);
+          // Continue anyway, we'll show users without roles
+        }
+        
+        // Create a map of user_id to role
+        const roleMap = new Map();
+        roles?.forEach(role => {
+          roleMap.set(role.user_id, role.role);
+        });
+        
+        // Transform the profiles data to match the EnhancedUser type
+        const formattedUsers: EnhancedUser[] = profiles.map(profile => ({
           id: profile.id,
           name: profile.full_name || 'Unnamed User',
           email: profile.email || 'No email provided',
-          role: profile.id === currentUser?.id ? 'Admin' : 'User', // Set current user as admin for demo
+          role: profile.id === currentUser?.id ? 'Admin' : 'User', // UI role
+          dbRole: roleMap.get(profile.id) || null, // Actual role from database
           active: true
         }));
         
@@ -100,7 +161,7 @@ const Users = () => {
   
   const handleAddUser = (newUser: User) => {
     // Add the new user to the state
-    setUsers(prev => [newUser, ...prev]);
+    setUsers(prev => [{...newUser, dbRole: null}, ...prev]);
     
     // Log the activity
     logUserActivity("Created", newUser);
@@ -108,6 +169,81 @@ const Users = () => {
     // Close the dialog
     setIsAddDialogOpen(false);
   };
+  
+  const handleOpenRoleDialog = (user: EnhancedUser) => {
+    setSelectedUser(user);
+    setNewRole(user.dbRole || 'user');
+    setIsRoleDialogOpen(true);
+  };
+  
+  const handleRoleUpdate = async () => {
+    if (!selectedUser || !currentUser || !isCurrentUserAdmin) return;
+    
+    setIsRoleUpdating(true);
+    
+    try {
+      // Insert or update role in the user_roles table
+      const { error } = await supabase
+        .from('user_roles')
+        .upsert({
+          user_id: selectedUser.id,
+          role: newRole
+        }, { onConflict: 'user_id' });
+      
+      if (error) throw error;
+      
+      // Update local state
+      setUsers(prev => prev.map(user => 
+        user.id === selectedUser.id 
+          ? { ...user, dbRole: newRole } 
+          : user
+      ));
+      
+      toast.success(`${selectedUser.name}'s role updated to ${newRole}`);
+      
+      logActivity({
+        title: "User Role Updated",
+        description: `Changed ${selectedUser.name}'s role to ${newRole}`,
+        category: 'user',
+        icon: <Shield className="h-5 w-5 text-blue-600" />
+      });
+      
+      setIsRoleDialogOpen(false);
+    } catch (error: any) {
+      console.error('Error updating role:', error);
+      toast.error(`Failed to update role: ${error.message}`);
+    } finally {
+      setIsRoleUpdating(false);
+    }
+  };
+  
+  const getRoleBadge = (user: EnhancedUser) => {
+    if (user.dbRole === 'admin') {
+      return (
+        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100/80">
+          <Shield className="h-3 w-3 mr-1" />
+          Admin
+        </Badge>
+      );
+    } else if (user.dbRole === 'manager') {
+      return (
+        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100/80">
+          <ShieldCheck className="h-3 w-3 mr-1" />
+          Manager
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100/80">
+          <ShieldCheck className="h-3 w-3 mr-1" />
+          User
+        </Badge>
+      );
+    }
+  };
+  
+  // Check if the current user is admin to show admin controls
+  const showAdminControls = isCurrentUserAdmin;
   
   return (
     <div className="animate-fade-in">
@@ -183,7 +319,7 @@ const Users = () => {
                           {user.email}
                         </div>
                       </TableCell>
-                      <TableCell>{user.role}</TableCell>
+                      <TableCell>{getRoleBadge(user)}</TableCell>
                       <TableCell>
                         {user.active ? (
                           <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80">
@@ -211,10 +347,12 @@ const Users = () => {
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <ShieldCheck className="mr-2 h-4 w-4" />
-                              Change Role
-                            </DropdownMenuItem>
+                            {showAdminControls && (
+                              <DropdownMenuItem onClick={() => handleOpenRoleDialog(user)}>
+                                <Shield className="mr-2 h-4 w-4" />
+                                Change Role
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-red-600">
                               <Trash className="mr-2 h-4 w-4" />
@@ -242,6 +380,45 @@ const Users = () => {
             onSubmit={handleAddUser}
             onCancel={() => setIsAddDialogOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Role Dialog */}
+      <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change User Role</DialogTitle>
+            <DialogDescription>
+              {selectedUser && `Update role for ${selectedUser.name}`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="role" className="text-sm font-medium">Select Role</label>
+              <Select value={newRole} onValueChange={(value) => setNewRole(value as UserRole)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="user">User</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRoleDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRoleUpdate} disabled={isRoleUpdating}>
+              {isRoleUpdating ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

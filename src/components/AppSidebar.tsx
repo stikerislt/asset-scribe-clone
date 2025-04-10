@@ -18,7 +18,8 @@ import {
   Tag, 
   Settings, 
   LogOut,
-  BarChart3
+  BarChart3,
+  Shield
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +53,11 @@ const settingsMenuItems = [
     title: "Categories",
     path: "/categories",
     icon: Tag,
+  },
+  {
+    title: "Users",
+    path: "/users",
+    icon: Shield,
   },
   {
     title: "Settings",
