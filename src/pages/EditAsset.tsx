@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -8,11 +9,13 @@ import { AssetForm } from "@/components/AssetForm";
 import { toast } from "sonner";
 import { Asset, AssetStatus } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
+import { useAuth } from "@/hooks/useAuth";
 
 const EditAsset = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth(); // Get the current authenticated user
 
   const { data: asset, isLoading, error } = useQuery({
     queryKey: ['asset', id],
@@ -26,6 +29,7 @@ const EditAsset = () => {
         .single();
       
       if (error) {
+        console.error("Error fetching asset:", error);
         throw new Error(error.message);
       }
       
@@ -45,23 +49,38 @@ const EditAsset = () => {
   });
 
   const handleSubmit = async (formData: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
-    if (!id) return;
+    if (!id || !user) return;
     
     setIsSubmitting(true);
+    console.log("Submitting form data:", formData);
     
     try {
-      const { error } = await supabase
+      // Prepare the update data, ensuring we preserve the user_id
+      const updateData = {
+        ...formData,
+        user_id: asset?.user_id || user.id, // Keep existing user_id or set it to current user
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log("Updating asset with data:", updateData);
+      
+      const { data, error } = await supabase
         .from('assets')
-        .update(formData)
-        .eq('id', id);
+        .update(updateData)
+        .eq('id', id)
+        .select();
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating asset:", error);
+        throw error;
+      }
       
+      console.log("Update response:", data);
       toast.success("Asset updated successfully");
       navigate(`/assets/${id}`);
-    } catch (error) {
-      toast.error("Failed to update asset");
-      console.error(error);
+    } catch (error: any) {
+      console.error("Failed to update asset:", error);
+      toast.error(`Failed to update asset: ${error.message || "Unknown error"}`);
     } finally {
       setIsSubmitting(false);
     }
