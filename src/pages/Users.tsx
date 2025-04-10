@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,7 +59,7 @@ import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserRole, isAdmin, updateUserRole } from "@/lib/api/userRoles";
+import { UserRole, isAdmin, updateUserRole, getAllUserRoles } from "@/lib/api/userRoles";
 
 // Extended user type to include role from database
 interface EnhancedUser extends User {
@@ -108,17 +107,12 @@ const Users = () => {
           throw profilesError;
         }
         
-        // Get user roles using RPC
-        const { data: userRolesData, error: rolesError } = await supabase.rpc('get_all_user_roles');
-        
-        if (rolesError) {
-          console.error('Error fetching roles:', rolesError);
-          // Continue anyway, we'll show users without roles
-        }
+        // Get user roles using our updated function
+        const userRolesData = await getAllUserRoles();
         
         // Create a map of user_id to role
         const roleMap = new Map();
-        userRolesData?.forEach((userRole: any) => {
+        userRolesData.forEach((userRole) => {
           roleMap.set(userRole.user_id, userRole.role);
         });
         
@@ -173,7 +167,7 @@ const Users = () => {
     setIsRoleUpdating(true);
     
     try {
-      // Update role using our new function
+      // Update role using our updated function
       const success = await updateUserRole(selectedUser.id, newRole);
       
       if (!success) throw new Error("Failed to update role");

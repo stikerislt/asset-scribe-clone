@@ -45,26 +45,33 @@ export const isAdmin = async (userId: string): Promise<boolean> => {
   return !!data;
 };
 
-// Get all user roles
+// Get all user roles - using a direct fetch instead of rpc
 export const getAllUserRoles = async (): Promise<UserRoleData[]> => {
-  // Must use rpc for user_roles table as it's not directly accessible via select
-  const { data: roles, error } = await supabase.rpc('get_user_roles');
+  // Use from() instead of rpc() since we're having type issues
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('*');
   
   if (error) {
     console.error("Error fetching user roles:", error);
     return [];
   }
   
-  return roles || [];
+  return data || [];
 };
 
-// Update a user's role
+// Update a user's role - using direct upsert instead of rpc
 export const updateUserRole = async (userId: string, role: UserRole): Promise<boolean> => {
-  // Use rpc to update role
-  const { error } = await supabase.rpc('update_user_role', {
-    p_user_id: userId,
-    p_role: role
-  });
+  // Use upsert instead of rpc
+  const { error } = await supabase
+    .from('user_roles')
+    .upsert({ 
+      user_id: userId, 
+      role: role,
+      updated_at: new Date().toISOString()
+    }, { 
+      onConflict: 'user_id' 
+    });
   
   if (error) {
     console.error("Error updating user role:", error);
