@@ -73,10 +73,45 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
 // Update an asset with proper error handling
 export const updateAsset = async (assetId: string, assetData: Partial<Asset>): Promise<Asset> => {
   console.log("Updating asset with ID:", assetId, "Data:", assetData);
+  
+  // Debugging: Check authentication status
+  const { data: session } = await supabase.auth.getSession();
+  console.log("Current session:", session?.session ? "Authenticated" : "Not authenticated");
+  
+  // First check if asset exists and fetch current data
+  const { data: existingAsset, error: fetchError } = await supabase
+    .from('assets')
+    .select('*')
+    .eq('id', assetId)
+    .single();
+    
+  if (fetchError) {
+    console.error("Error fetching existing asset:", fetchError);
+    throw fetchError;
+  }
+  
+  if (!existingAsset) {
+    throw new Error("Asset not found");
+  }
+  
+  console.log("Existing asset data:", existingAsset);
+  
+  // Prepare update data, making sure to include user_id if it exists
+  const updateData = {
+    ...assetData,
+    user_id: assetData.user_id || existingAsset.user_id,
+    updated_at: new Date().toISOString()
+  };
+  
+  console.log("Final update data to send:", updateData);
+  
+  // Use UPSERT with ON CONFLICT strategy to ensure update works
   const { data, error } = await supabase
     .from('assets')
-    .update(assetData)
-    .eq('id', assetId)
+    .upsert({
+      id: assetId,  // Ensure we specify which record to update
+      ...updateData
+    })
     .select()
     .single();
     
@@ -89,6 +124,8 @@ export const updateAsset = async (assetId: string, assetData: Partial<Asset>): P
     throw new Error("No data returned after update");
   }
   
+  console.log("Update successful, returned data:", data);
+  
   // Convert to proper Asset type
   const updatedAsset: Asset = {
     ...data,
@@ -98,6 +135,7 @@ export const updateAsset = async (assetId: string, assetData: Partial<Asset>): P
     notes: data.notes || null,
     wear: data.wear || null,
     qty: data.qty || 1,
+    user_id: data.user_id,
     // Handle categoryIcon separately since it might not exist in DB
     categoryIcon: (data as any).categoryIcon || null
   };

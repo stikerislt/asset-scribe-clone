@@ -1,13 +1,13 @@
 
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AssetForm } from "@/components/AssetForm";
 import { toast } from "sonner";
-import { Asset, AssetStatus } from "@/lib/api/assets";
+import { Asset, AssetStatus, updateAsset } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -16,6 +16,7 @@ const EditAsset = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth(); // Get the current authenticated user
+  const queryClient = useQueryClient();
 
   const { data: asset, isLoading, error } = useQuery({
     queryKey: ['asset', id],
@@ -49,33 +50,28 @@ const EditAsset = () => {
   });
 
   const handleSubmit = async (formData: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
-    if (!id || !user) return;
+    if (!id || !user) {
+      toast.error("Cannot update: Missing asset ID or user not authenticated");
+      return;
+    }
     
     setIsSubmitting(true);
     console.log("Submitting form data:", formData);
     
     try {
-      // Prepare the update data, ensuring we preserve the user_id
-      const updateData = {
+      // Use the imported updateAsset function instead of direct supabase call
+      const updatedAsset = await updateAsset(id, {
         ...formData,
         user_id: asset?.user_id || user.id, // Keep existing user_id or set it to current user
         updated_at: new Date().toISOString()
-      };
+      });
       
-      console.log("Updating asset with data:", updateData);
+      console.log("Asset updated successfully:", updatedAsset);
       
-      const { data, error } = await supabase
-        .from('assets')
-        .update(updateData)
-        .eq('id', id)
-        .select();
+      // Invalidate both the individual asset query and the assets list query
+      queryClient.invalidateQueries({ queryKey: ['asset', id] });
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
       
-      if (error) {
-        console.error("Error updating asset:", error);
-        throw error;
-      }
-      
-      console.log("Update response:", data);
       toast.success("Asset updated successfully");
       navigate(`/assets/${id}`);
     } catch (error: any) {
