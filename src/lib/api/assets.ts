@@ -96,9 +96,28 @@ export const updateAsset = async (assetId: string, assetData: Partial<Asset>): P
   
   console.log("Existing asset data:", existingAsset);
   
-  // Prepare update data, making sure to include user_id if it exists
+  // Prepare update data, ensuring all required fields are included from existing asset
   const updateData = {
-    ...assetData,
+    // Include required fields from existing asset
+    id: assetId,
+    name: assetData.name || existingAsset.name,
+    category: assetData.category || existingAsset.category,
+    tag: assetData.tag || existingAsset.tag,
+    status: assetData.status || existingAsset.status,
+    
+    // Include optional fields from update data or existing asset
+    status_color: assetData.status_color || existingAsset.status_color,
+    assigned_to: assetData.assigned_to !== undefined ? assetData.assigned_to : existingAsset.assigned_to,
+    model: assetData.model !== undefined ? assetData.model : existingAsset.model,
+    serial: assetData.serial !== undefined ? assetData.serial : existingAsset.serial,
+    purchase_date: assetData.purchase_date !== undefined ? assetData.purchase_date : existingAsset.purchase_date,
+    purchase_cost: assetData.purchase_cost !== undefined ? assetData.purchase_cost : existingAsset.purchase_cost,
+    location: assetData.location !== undefined ? assetData.location : existingAsset.location,
+    notes: assetData.notes !== undefined ? assetData.notes : existingAsset.notes,
+    wear: assetData.wear !== undefined ? assetData.wear : existingAsset.wear,
+    qty: assetData.qty !== undefined ? assetData.qty : existingAsset.qty,
+    
+    // Always include user_id and updated timestamp
     user_id: assetData.user_id || existingAsset.user_id,
     updated_at: new Date().toISOString()
   };
@@ -108,10 +127,7 @@ export const updateAsset = async (assetId: string, assetData: Partial<Asset>): P
   // Use UPSERT with ON CONFLICT strategy to ensure update works
   const { data, error } = await supabase
     .from('assets')
-    .upsert({
-      id: assetId,  // Ensure we specify which record to update
-      ...updateData
-    })
+    .upsert(updateData)
     .select()
     .single();
     
