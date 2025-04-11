@@ -59,7 +59,7 @@ import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserRole, isAdmin, updateUserRole, getAllUserRoles, createUser } from "@/lib/api/userRoles";
+import { UserRole, isAdmin, updateUserRole, updateUserRoleByEmail, getAllUserRoles, createUser } from "@/lib/api/userRoles";
 
 // Extended user type to include role from database
 interface EnhancedUser extends User {
@@ -77,10 +77,13 @@ const Users = () => {
   const [isRoleUpdating, setIsRoleUpdating] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [createUserError, setCreateUserError] = useState<string | undefined>();
+  const [isEmailRoleDialogOpen, setIsEmailRoleDialogOpen] = useState(false);
+  const [emailForRoleUpdate, setEmailForRoleUpdate] = useState("");
+  const [roleForEmail, setRoleForEmail] = useState<UserRole>("admin");
   const { logActivity } = useActivity();
   const { user: currentUser } = useAuth();
   
-  // Check if current user is an admin
+  // Check if current user is admin
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
   
   useEffect(() => {
@@ -93,6 +96,24 @@ const Users = () => {
     
     checkAdminStatus();
   }, [currentUser]);
+
+  // Check if we need to update licencijos@govilnius.lt to admin role on component mount
+  useEffect(() => {
+    const updateLicencijosRole = async () => {
+      try {
+        const result = await updateUserRoleByEmail('licencijos@govilnius.lt', 'admin');
+        if (result) {
+          toast.success('Successfully updated licencijos@govilnius.lt to admin role');
+          fetchUsers(); // Refresh the user list
+        }
+      } catch (error) {
+        console.error('Error updating user role:', error);
+      }
+    };
+    
+    // Uncomment this line if you want to automatically update the role on page load
+    // updateLicencijosRole();
+  }, []);
   
   // Fetch users from Supabase profiles table
   const fetchUsers = async () => {
@@ -139,6 +160,36 @@ const Users = () => {
   useEffect(() => {
     fetchUsers();
   }, [currentUser]);
+
+  // Handler for updating a user's role by email
+  const handleUpdateRoleByEmail = async () => {
+    if (!emailForRoleUpdate || !roleForEmail) return;
+    
+    setIsRoleUpdating(true);
+    
+    try {
+      const success = await updateUserRoleByEmail(emailForRoleUpdate, roleForEmail);
+      
+      if (!success) throw new Error("Failed to update role");
+      
+      toast.success(`User ${emailForRoleUpdate}'s role updated to ${roleForEmail}`);
+      
+      logActivity({
+        title: "User Role Updated by Email",
+        description: `Changed ${emailForRoleUpdate}'s role to ${roleForEmail}`,
+        category: 'user',
+        icon: <Shield className="h-5 w-5 text-blue-600" />
+      });
+      
+      setIsEmailRoleDialogOpen(false);
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Error updating role by email:', error);
+      toast.error(`Failed to update role: ${error.message}`);
+    } finally {
+      setIsRoleUpdating(false);
+    }
+  };
   
   const filteredUsers = users.filter(user => 
     user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -267,14 +318,22 @@ const Users = () => {
           <h1 className="text-3xl font-bold">Users</h1>
           <p className="text-muted-foreground mt-1">Manage user accounts and permissions</p>
         </div>
-        <Button 
-          className="mt-4 sm:mt-0" 
-          size="sm"
-          onClick={() => setIsAddDialogOpen(true)}
-        >
-          <UserPlus className="mr-2 h-4 w-4" />
-          Add User
-        </Button>
+        <div className="mt-4 sm:mt-0 flex flex-wrap gap-2">
+          <Button 
+            className="bg-purple-600 hover:bg-purple-700"
+            onClick={() => setIsEmailRoleDialogOpen(true)}
+          >
+            <Shield className="mr-2 h-4 w-4" />
+            Update Role By Email
+          </Button>
+          <Button 
+            size="sm"
+            onClick={() => setIsAddDialogOpen(true)}
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add User
+          </Button>
+        </div>
       </div>
       
       <Card className="mb-8">
@@ -434,6 +493,55 @@ const Users = () => {
             </Button>
             <Button onClick={handleRoleUpdate} disabled={isRoleUpdating}>
               {isRoleUpdating ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Role by Email Dialog */}
+      <Dialog open={isEmailRoleDialogOpen} onOpenChange={setIsEmailRoleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update User Role by Email</DialogTitle>
+            <DialogDescription>
+              Enter the user's email address and select the new role to assign
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="emailForRole" className="text-sm font-medium">Email Address</label>
+              <Input 
+                id="emailForRole"
+                placeholder="user@example.com"
+                value={emailForRoleUpdate}
+                onChange={(e) => setEmailForRoleUpdate(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="roleForEmail" className="text-sm font-medium">Select Role</label>
+              <Select value={roleForEmail} onValueChange={(value) => setRoleForEmail(value as UserRole)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="user">User</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEmailRoleDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateRoleByEmail} disabled={isRoleUpdating || !emailForRoleUpdate}>
+              {isRoleUpdating ? 'Updating...' : 'Update Role'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -118,3 +118,33 @@ export const createUser = async (
     return { success: false, error: error.message };
   }
 };
+
+// Update user role by email
+export const updateUserRoleByEmail = async (email: string, role: UserRole): Promise<boolean> => {
+  try {
+    // First fetch the user profile by email
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .limit(1);
+    
+    if (profileError) {
+      console.error("Error finding user profile:", profileError);
+      return false;
+    }
+    
+    if (!profiles || profiles.length === 0) {
+      console.error("User profile not found for email:", email);
+      return false;
+    }
+    
+    // Update the user's role
+    const userId = profiles[0].id;
+    return await updateUserRole(userId, role);
+    
+  } catch (error) {
+    console.error("Error updating user role by email:", error);
+    return false;
+  }
+};
