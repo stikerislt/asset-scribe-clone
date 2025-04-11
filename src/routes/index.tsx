@@ -1,4 +1,3 @@
-
 import { RouteObject } from "react-router-dom";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
@@ -14,17 +13,18 @@ import Users from "@/pages/Users";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 import { AppLayout } from "@/components/AppLayout";
+import UpdatePassword from "@/pages/UpdatePassword";
 
 /**
  * Public routes accessible to all users
  */
-export const publicRoutes: RouteObject[] = [
+export const publicRoutes = [
   {
     path: "/",
     element: <Index />
   },
   {
-    path: "/auth",
+    path: "/auth/*",
     element: <Auth />
   },
   {
@@ -34,6 +34,14 @@ export const publicRoutes: RouteObject[] = [
   {
     path: "/auth/signup",
     element: <Auth />
+  },
+  {
+    path: "/auth/forgot-password",
+    element: <Auth />
+  },
+  {
+    path: "/auth/update-password",
+    element: <UpdatePassword />
   }
 ];
 
@@ -96,4 +104,3 @@ export const catchAllRoute: RouteObject = {
   path: "*",
   element: <NotFound />
 };
-

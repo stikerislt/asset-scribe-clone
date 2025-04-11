@@ -16,7 +16,11 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-const LoginForm = () => {
+interface LoginFormProps {
+  onForgotPassword?: () => void;
+}
+
+const LoginForm = ({ onForgotPassword }: LoginFormProps) => {
   const { toast } = useToast();
   const { login } = useAuth();
 
@@ -61,7 +65,18 @@ const LoginForm = () => {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel>Password</FormLabel>
+                {onForgotPassword && (
+                  <button 
+                    type="button" 
+                    onClick={onForgotPassword}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
               <FormControl>
                 <Input type="password" placeholder="••••••" {...field} />
               </FormControl>
