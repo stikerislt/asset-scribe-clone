@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Asset, AssetStatus } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
@@ -45,6 +44,18 @@ export const AssetTable = ({
   const { logActivity } = useActivity();
   const [localAssets, setLocalAssets] = useState<Asset[]>(assets);
   
+  // Sort assets to prioritize yellow status_color
+  const sortAssetsByPriority = (assetsToSort: Asset[]): Asset[] => {
+    return [...assetsToSort].sort((a, b) => {
+      // First prioritize yellow status
+      if (a.status_color === 'yellow' && b.status_color !== 'yellow') return -1;
+      if (a.status_color !== 'yellow' && b.status_color === 'yellow') return 1;
+      
+      // If both have same priority, maintain existing order
+      return 0;
+    });
+  };
+  
   // Only update local assets on initial load or when the asset IDs change
   // This prevents reordering when only the status colors change
   useEffect(() => {
@@ -53,15 +64,18 @@ export const AssetTable = ({
     const newIds = assets.map(asset => asset.id).join(',');
     
     if (currentIds !== newIds || localAssets.length !== assets.length) {
-      setLocalAssets(assets);
+      // Sort the assets immediately when we get new data
+      setLocalAssets(sortAssetsByPriority(assets));
     } else {
       // Update properties of existing assets without changing order
-      setLocalAssets(prevAssets => 
-        prevAssets.map(prevAsset => {
+      // But then resort to ensure yellow items stay on top
+      setLocalAssets(prevAssets => {
+        const updatedAssets = prevAssets.map(prevAsset => {
           const updatedAsset = assets.find(a => a.id === prevAsset.id);
           return updatedAsset ? { ...prevAsset, ...updatedAsset } : prevAsset;
-        })
-      );
+        });
+        return sortAssetsByPriority(updatedAssets);
+      });
     }
   }, [assets]);
   
@@ -75,11 +89,13 @@ export const AssetTable = ({
   
   const handleStatusColorChange = (assetId: string, newColor: StatusColor) => {
     // Update the local state immediately to maintain order
-    setLocalAssets(prevAssets => 
-      prevAssets.map(asset => 
+    setLocalAssets(prevAssets => {
+      const updatedAssets = prevAssets.map(asset => 
         asset.id === assetId ? { ...asset, status_color: newColor } : asset
-      )
-    );
+      );
+      // Resort to maintain yellow assets at the top
+      return sortAssetsByPriority(updatedAssets);
+    });
     
     // Call the parent function to update the database
     onStatusColorChange(assetId, newColor);
@@ -245,4 +261,3 @@ export const AssetTable = ({
     </div>
   );
 };
-

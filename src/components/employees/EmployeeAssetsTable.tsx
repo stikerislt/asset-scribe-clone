@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
@@ -37,19 +36,28 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
   const queryClient = useQueryClient();
   const { logActivity } = useActivity();
   
+  const sortAssetsByPriority = (assetsToSort: Asset[]): Asset[] => {
+    return [...assetsToSort].sort((a, b) => {
+      if (a.status_color === 'yellow' && b.status_color !== 'yellow') return -1;
+      if (a.status_color !== 'yellow' && b.status_color === 'yellow') return 1;
+      return 0;
+    });
+  };
+  
   useEffect(() => {
     const currentIds = localAssets.map(asset => asset.id).join(',');
     const newIds = assets.map(asset => asset.id).join(',');
     
     if (currentIds !== newIds || localAssets.length !== assets.length) {
-      setLocalAssets(assets);
+      setLocalAssets(sortAssetsByPriority(assets));
     } else {
-      setLocalAssets(prevAssets => 
-        prevAssets.map(prevAsset => {
+      setLocalAssets(prevAssets => {
+        const updatedAssets = prevAssets.map(prevAsset => {
           const updatedAsset = assets.find(a => a.id === prevAsset.id);
           return updatedAsset ? { ...prevAsset, ...updatedAsset } : prevAsset;
-        })
-      );
+        });
+        return sortAssetsByPriority(updatedAssets);
+      });
     }
   }, [assets]);
   
@@ -81,11 +89,12 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
     
   const handleStatusColorChange = async (assetId: string, newColor: StatusColor) => {
     try {
-      setLocalAssets(prevAssets => 
-        prevAssets.map(asset => 
+      setLocalAssets(prevAssets => {
+        const updatedAssets = prevAssets.map(asset => 
           asset.id === assetId ? { ...asset, status_color: newColor } : asset
-        )
-      );
+        );
+        return sortAssetsByPriority(updatedAssets);
+      });
       
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData?.session?.user?.id;
@@ -116,7 +125,6 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
       
       if (error) throw error;
       
-      // Direct insert instead of accessing table by string name
       await supabase.from('asset_history').insert({
         asset_id: assetId,
         field_name: 'Status Color',

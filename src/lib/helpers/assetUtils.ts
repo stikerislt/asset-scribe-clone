@@ -15,7 +15,8 @@ export const getFilterOptions = (assets: Asset[], key: keyof Asset) => {
 };
 
 export const filterAssets = (assets: Asset[], searchTerm: string, activeFilters: Filters) => {
-  return assets.filter(asset => {
+  // First filter assets based on search and filters
+  const filteredAssets = assets.filter(asset => {
     const matchesSearch = 
       (asset?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
        asset?.tag?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -47,6 +48,16 @@ export const filterAssets = (assets: Asset[], searchTerm: string, activeFilters:
        activeFilters.purchaseCost.includes(`$${asset.purchase_cost.toFixed(2)}`));
     
     return tagMatch && nameMatch && categoryMatch && assignedToMatch && purchaseDateMatch && wearMatch && costMatch;
+  });
+  
+  // Then sort to prioritize yellow status_color
+  return filteredAssets.sort((a, b) => {
+    // First prioritize yellow status
+    if (a.status_color === 'yellow' && b.status_color !== 'yellow') return -1;
+    if (a.status_color !== 'yellow' && b.status_color === 'yellow') return 1;
+    
+    // If both have same priority, maintain existing order
+    return 0;
   });
 };
 
