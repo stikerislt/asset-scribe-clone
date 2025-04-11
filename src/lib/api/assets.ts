@@ -122,7 +122,7 @@ export const getAssetHistory = async (assetId: string): Promise<AssetHistory[]> 
     throw error;
   }
   
-  return data as AssetHistory[];
+  return (data || []) as unknown as AssetHistory[];
 };
 
 // Update an asset with proper error handling

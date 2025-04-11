@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
@@ -13,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useActivity } from "@/hooks/useActivity";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface Asset {
   id: string;
@@ -32,9 +34,8 @@ interface EmployeeAssetsTableProps {
 export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssetsTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [localAssets, setLocalAssets] = useState<Asset[]>(assets);
-  const { toast } = useToast();
-  const { logActivity } = useActivity();
   const queryClient = useQueryClient();
+  const { logActivity } = useActivity();
   
   useEffect(() => {
     const currentIds = localAssets.map(asset => asset.id).join(',');
@@ -115,6 +116,7 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
       
       if (error) throw error;
       
+      // Direct insert instead of accessing table by string name
       await supabase.from('asset_history').insert({
         asset_id: assetId,
         field_name: 'Status Color',
@@ -127,8 +129,7 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
       queryClient.invalidateQueries({ queryKey: ['asset', assetId] });
       queryClient.invalidateQueries({ queryKey: ['asset-history', assetId] });
       
-      toast({
-        title: "Status updated",
+      toast("Status updated", {
         description: `Asset status color has been updated to ${newColor}`,
       });
       
@@ -140,10 +141,8 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
       });
     } catch (error) {
       console.error('Error updating status color:', error);
-      toast({
-        title: "Error",
+      toast("Error", {
         description: "Failed to update status color",
-        variant: "destructive",
       });
     }
   };
