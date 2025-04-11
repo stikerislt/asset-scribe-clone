@@ -124,8 +124,14 @@ export const updateUserRoleByEmail = async (email: string, role: UserRole): Prom
   try {
     console.log(`Calling edge function to update role for ${email} to ${role}`);
     
-    // Use the new edge function to update the role with admin privileges
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-role`, {
+    // Fix: Explicitly construct the full URL with /functions/v1/ path
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/update-user-role`;
+    
+    console.log("Edge function URL:", edgeFunctionUrl);
+    
+    // Use the edge function to update the role with admin privileges
+    const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -137,13 +143,14 @@ export const updateUserRoleByEmail = async (email: string, role: UserRole): Prom
       })
     });
 
-    const result = await response.json();
-    
     if (!response.ok) {
-      console.error("Edge function error:", result.error);
-      throw new Error(result.error || 'Failed to update role');
+      const errorText = await response.text();
+      console.error("Edge function response error:", response.status, errorText);
+      throw new Error(`Failed to update role: HTTP ${response.status}`);
     }
 
+    const result = await response.json();
+    
     console.log("Edge function response:", result);
     return true;
   } catch (error) {
