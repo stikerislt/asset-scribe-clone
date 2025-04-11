@@ -30,8 +30,12 @@ const ForgotPasswordForm = () => {
   const handleSubmit = async (data: ForgotPasswordFormValues) => {
     setIsSubmitting(true);
     try {
+      // Get the current domain from the window location
+      const currentDomain = window.location.origin;
+      const redirectUrl = `${currentDomain}/auth/update-password`;
+      
       const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
+        redirectTo: redirectUrl,
       });
       
       if (error) {
