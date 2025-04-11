@@ -119,30 +119,33 @@ export const createUser = async (
   }
 };
 
-// Update user role by email
+// Update user role by email - using edge function to bypass RLS
 export const updateUserRoleByEmail = async (email: string, role: UserRole): Promise<boolean> => {
   try {
-    // First fetch the user profile by email
-    const { data: profiles, error: profileError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .limit(1);
+    console.log(`Calling edge function to update role for ${email} to ${role}`);
     
-    if (profileError) {
-      console.error("Error finding user profile:", profileError);
-      return false;
+    // Use the new edge function to update the role with admin privileges
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-role`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({
+        email,
+        role
+      })
+    });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      console.error("Edge function error:", result.error);
+      throw new Error(result.error || 'Failed to update role');
     }
-    
-    if (!profiles || profiles.length === 0) {
-      console.error("User profile not found for email:", email);
-      return false;
-    }
-    
-    // Update the user's role
-    const userId = profiles[0].id;
-    return await updateUserRole(userId, role);
-    
+
+    console.log("Edge function response:", result);
+    return true;
   } catch (error) {
     console.error("Error updating user role by email:", error);
     return false;

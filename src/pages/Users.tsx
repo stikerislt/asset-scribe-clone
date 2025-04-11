@@ -61,7 +61,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UserRole, isAdmin, updateUserRole, updateUserRoleByEmail, getAllUserRoles, createUser } from "@/lib/api/userRoles";
 
-// Extended user type to include role from database
 interface EnhancedUser extends User {
   dbRole: UserRole | null;
 }
@@ -83,7 +82,6 @@ const Users = () => {
   const { logActivity } = useActivity();
   const { user: currentUser } = useAuth();
   
-  // Check if current user is admin
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
   
   useEffect(() => {
@@ -97,10 +95,10 @@ const Users = () => {
     checkAdminStatus();
   }, [currentUser]);
 
-  // Check if we need to update licencijos@govilnius.lt to admin role on component mount
   useEffect(() => {
     const updateLicencijosRole = async () => {
       try {
+        console.log("Attempting to update licencijos@govilnius.lt to admin role");
         const result = await updateUserRoleByEmail('licencijos@govilnius.lt', 'admin');
         if (result) {
           toast.success('Successfully updated licencijos@govilnius.lt to admin role');
@@ -111,16 +109,13 @@ const Users = () => {
       }
     };
     
-    // Uncomment this line if you want to automatically update the role on page load
-    // updateLicencijosRole();
+    updateLicencijosRole();
   }, []);
-  
-  // Fetch users from Supabase profiles table
+
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
       
-      // Fetch profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*');
@@ -129,22 +124,19 @@ const Users = () => {
         throw profilesError;
       }
       
-      // Get user roles using our updated function
       const userRolesData = await getAllUserRoles();
       
-      // Create a map of user_id to role
       const roleMap = new Map();
       userRolesData.forEach((userRole) => {
         roleMap.set(userRole.user_id, userRole.role);
       });
       
-      // Transform the profiles data to match the EnhancedUser type
       const formattedUsers: EnhancedUser[] = profiles.map(profile => ({
         id: profile.id,
         name: profile.full_name || 'Unnamed User',
         email: profile.email || 'No email provided',
-        role: profile.id === currentUser?.id ? 'Admin' : 'User', // UI role
-        dbRole: roleMap.get(profile.id) as UserRole || null, // Actual role from database
+        role: profile.id === currentUser?.id ? 'Admin' : 'User',
+        dbRole: roleMap.get(profile.id) as UserRole || null,
         active: true
       }));
       
@@ -161,51 +153,19 @@ const Users = () => {
     fetchUsers();
   }, [currentUser]);
 
-  // Handler for updating a user's role by email
-  const handleUpdateRoleByEmail = async () => {
-    if (!emailForRoleUpdate || !roleForEmail) return;
-    
-    setIsRoleUpdating(true);
-    
-    try {
-      const success = await updateUserRoleByEmail(emailForRoleUpdate, roleForEmail);
-      
-      if (!success) throw new Error("Failed to update role");
-      
-      toast.success(`User ${emailForRoleUpdate}'s role updated to ${roleForEmail}`);
-      
-      logActivity({
-        title: "User Role Updated by Email",
-        description: `Changed ${emailForRoleUpdate}'s role to ${roleForEmail}`,
-        category: 'user',
-        icon: <Shield className="h-5 w-5 text-blue-600" />
-      });
-      
-      setIsEmailRoleDialogOpen(false);
-      fetchUsers();
-    } catch (error: any) {
-      console.error('Error updating role by email:', error);
-      toast.error(`Failed to update role: ${error.message}`);
-    } finally {
-      setIsRoleUpdating(false);
-    }
-  };
-  
   const filteredUsers = users.filter(user => 
     user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user?.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  
+
   const handleAddUser = async (formValues: any) => {
     setIsCreatingUser(true);
     setCreateUserError(undefined);
     
     try {
-      // Map the role from UI format to database format
       const dbRole = formValues.role.toLowerCase() as UserRole;
       
-      // Create the user in Supabase Auth through our Edge Function
       const result = await createUser(
         formValues.email,
         formValues.password,
@@ -218,7 +178,6 @@ const Users = () => {
         throw new Error(result.error || 'Failed to create user');
       }
       
-      // Log the activity
       logActivity({
         title: "User Created",
         description: `Created user account for ${formValues.name}`,
@@ -228,7 +187,6 @@ const Users = () => {
       
       toast.success(`User ${formValues.name} created successfully`);
       
-      // Close the dialog and refresh user list
       setIsAddDialogOpen(false);
       fetchUsers();
       
@@ -240,25 +198,23 @@ const Users = () => {
       setIsCreatingUser(false);
     }
   };
-  
+
   const handleOpenRoleDialog = (user: EnhancedUser) => {
     setSelectedUser(user);
     setNewRole(user.dbRole || 'user');
     setIsRoleDialogOpen(true);
   };
-  
+
   const handleRoleUpdate = async () => {
     if (!selectedUser || !currentUser || !isCurrentUserAdmin) return;
     
     setIsRoleUpdating(true);
     
     try {
-      // Update role using our updated function
       const success = await updateUserRole(selectedUser.id, newRole);
       
       if (!success) throw new Error("Failed to update role");
       
-      // Update local state
       setUsers(prev => prev.map(user => 
         user.id === selectedUser.id 
           ? { ...user, dbRole: newRole } 
@@ -282,7 +238,7 @@ const Users = () => {
       setIsRoleUpdating(false);
     }
   };
-  
+
   const getRoleBadge = (user: EnhancedUser) => {
     if (user.dbRole === 'admin') {
       return (
@@ -307,10 +263,40 @@ const Users = () => {
       );
     }
   };
-  
-  // Check if the current user is admin to show admin controls
+
   const showAdminControls = isCurrentUserAdmin;
-  
+
+  const handleUpdateRoleByEmail = async () => {
+    if (!emailForRoleUpdate || !roleForEmail) return;
+    
+    setIsRoleUpdating(true);
+    
+    try {
+      console.log(`Attempting to update ${emailForRoleUpdate} to ${roleForEmail} role`);
+      
+      const success = await updateUserRoleByEmail(emailForRoleUpdate, roleForEmail);
+      
+      if (!success) throw new Error("Failed to update role");
+      
+      toast.success(`User ${emailForRoleUpdate}'s role updated to ${roleForEmail}`);
+      
+      logActivity({
+        title: "User Role Updated by Email",
+        description: `Changed ${emailForRoleUpdate}'s role to ${roleForEmail}`,
+        category: 'user',
+        icon: <Shield className="h-5 w-5 text-blue-600" />
+      });
+      
+      setIsEmailRoleDialogOpen(false);
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating role by email:', error);
+      toast.error(`Failed to update role: ${error.message}`);
+    } finally {
+      setIsRoleUpdating(false);
+    }
+  };
+
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
@@ -444,7 +430,6 @@ const Users = () => {
         </CardContent>
       </Card>
 
-      {/* Add User Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -459,7 +444,6 @@ const Users = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Change Role Dialog */}
       <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -498,7 +482,6 @@ const Users = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Update Role by Email Dialog */}
       <Dialog open={isEmailRoleDialogOpen} onOpenChange={setIsEmailRoleDialogOpen}>
         <DialogContent>
           <DialogHeader>
