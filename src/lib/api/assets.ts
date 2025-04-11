@@ -26,6 +26,18 @@ export interface Asset {
   user_id: string | null;
 }
 
+// Define history entry interface
+export interface AssetHistory {
+  id: string;
+  asset_id: string;
+  field_name: string;
+  old_value: string | null;
+  new_value: string;
+  user_id: string | null;
+  changed_by: string | null;
+  created_at: string;
+}
+
 // Valid status values for validation
 export const VALID_ASSET_STATUSES: AssetStatus[] = [
   'ready', 
@@ -69,6 +81,50 @@ export const getAssetsByEmployeeName = async (employeeName: string): Promise<Ass
   });
 };
 
+// Record a change in the asset history table
+export const recordAssetHistory = async (
+  assetId: string,
+  fieldName: string,
+  oldValue: string | null,
+  newValue: string,
+  userId: string | null,
+  changedBy: string | null
+): Promise<void> => {
+  console.log(`Recording history for asset ${assetId}, field ${fieldName}: ${oldValue} -> ${newValue}`);
+  
+  const { error } = await supabase
+    .from('asset_history')
+    .insert({
+      asset_id: assetId,
+      field_name: fieldName,
+      old_value: oldValue,
+      new_value: newValue,
+      user_id: userId,
+      changed_by: changedBy
+    });
+  
+  if (error) {
+    console.error('Error recording asset history:', error);
+    throw error;
+  }
+};
+
+// Get history for an asset
+export const getAssetHistory = async (assetId: string): Promise<AssetHistory[]> => {
+  const { data, error } = await supabase
+    .from('asset_history')
+    .select('*')
+    .eq('asset_id', assetId)
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    console.error('Error fetching asset history:', error);
+    throw error;
+  }
+  
+  return data as AssetHistory[];
+};
+
 // Update an asset with proper error handling
 export const updateAsset = async (assetId: string, assetData: Partial<Asset>): Promise<Asset> => {
   console.log("Updating asset with ID:", assetId, "Data:", assetData);
@@ -106,6 +162,60 @@ export const updateAsset = async (assetId: string, assetData: Partial<Asset>): P
   }
   
   console.log("Existing asset data:", existingAsset);
+  
+  // Get user email for history records
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('email, full_name')
+    .eq('id', currentUserId)
+    .single();
+  
+  const changedBy = profileData?.full_name || profileData?.email || 'Unknown user';
+  
+  // Record history for changed fields
+  const recordHistory = async () => {
+    // Check for changes in each field and record history
+    for (const [key, newValue] of Object.entries(assetData)) {
+      const oldValue = existingAsset[key];
+      
+      // Skip if values are the same or if newValue is undefined
+      if (newValue === undefined || newValue === oldValue) continue;
+      
+      // Convert values to strings for storage
+      const oldValueStr = oldValue === null || oldValue === undefined 
+        ? null 
+        : String(oldValue);
+      
+      const newValueStr = String(newValue);
+      
+      // Record history (with user-friendly field names for display)
+      let fieldDisplayName = key;
+      switch (key) {
+        case 'assigned_to':
+          fieldDisplayName = 'Assigned To';
+          break;
+        case 'status':
+          fieldDisplayName = 'Status';
+          break;
+        case 'location':
+          fieldDisplayName = 'Location';
+          break;
+        case 'notes':
+          fieldDisplayName = 'Notes';
+          break;
+        // Add more mappings as needed
+      }
+      
+      await recordAssetHistory(
+        assetId,
+        fieldDisplayName,
+        oldValueStr,
+        newValueStr,
+        currentUserId,
+        changedBy
+      );
+    }
+  };
   
   // Check if user is admin (admins can edit any asset)
   const { data: isAdminData } = await supabase.rpc('is_admin', {
@@ -150,38 +260,46 @@ export const updateAsset = async (assetId: string, assetData: Partial<Asset>): P
   
   console.log("Final update data to send:", updateData);
   
-  // Use update instead of upsert to respect RLS policies
-  const { data, error } = await supabase
-    .from('assets')
-    .update(updateData)
-    .eq('id', assetId)
-    .select()
-    .single();
+  try {
+    // Record history before updating
+    await recordHistory();
     
-  if (error) {
-    console.error("Error updating asset:", error);
+    // Use update instead of upsert to respect RLS policies
+    const { data, error } = await supabase
+      .from('assets')
+      .update(updateData)
+      .eq('id', assetId)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error("Error updating asset:", error);
+      throw error;
+    }
+    
+    if (!data) {
+      throw new Error("No data returned after update");
+    }
+    
+    console.log("Update successful, returned data:", data);
+    
+    // Convert to proper Asset type
+    const updatedAsset: Asset = {
+      ...data,
+      status: data.status as AssetStatus,
+      status_color: data.status_color as StatusColor | null,
+      location: data.location || null,
+      notes: data.notes || null,
+      wear: data.wear || null,
+      qty: data.qty || 1,
+      user_id: data.user_id,
+      // Handle categoryIcon separately since it might not exist in DB
+      categoryIcon: (data as any).categoryIcon || null
+    };
+    
+    return updatedAsset;
+  } catch (error) {
+    console.error("Error in update process:", error);
     throw error;
   }
-  
-  if (!data) {
-    throw new Error("No data returned after update");
-  }
-  
-  console.log("Update successful, returned data:", data);
-  
-  // Convert to proper Asset type
-  const updatedAsset: Asset = {
-    ...data,
-    status: data.status as AssetStatus,
-    status_color: data.status_color as StatusColor | null,
-    location: data.location || null,
-    notes: data.notes || null,
-    wear: data.wear || null,
-    qty: data.qty || 1,
-    user_id: data.user_id,
-    // Handle categoryIcon separately since it might not exist in DB
-    categoryIcon: (data as any).categoryIcon || null
-  };
-  
-  return updatedAsset;
 };

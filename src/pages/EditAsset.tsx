@@ -60,12 +60,15 @@ const EditAsset = () => {
     
     try {
       // The updateAsset function now handles setting the user_id to the current user
+      // and also records asset history
       const updatedAsset = await updateAsset(id, formData);
       
       console.log("Asset updated successfully:", updatedAsset);
       
       // Invalidate both the individual asset query and the assets list query
+      // Also invalidate asset history
       queryClient.invalidateQueries({ queryKey: ['asset', id] });
+      queryClient.invalidateQueries({ queryKey: ['asset-history', id] });
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       
       toast.success("Asset updated successfully");

@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      asset_history: {
+        Row: {
+          asset_id: string
+          changed_by: string | null
+          created_at: string
+          field_name: string
+          id: string
+          new_value: string
+          old_value: string | null
+          user_id: string | null
+        }
+        Insert: {
+          asset_id: string
+          changed_by?: string | null
+          created_at?: string
+          field_name: string
+          id?: string
+          new_value: string
+          old_value?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          asset_id?: string
+          changed_by?: string | null
+          created_at?: string
+          field_name?: string
+          id?: string
+          new_value?: string
+          old_value?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_history_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           assigned_to: string | null

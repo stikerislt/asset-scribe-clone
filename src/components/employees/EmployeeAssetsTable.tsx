@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AssetStatusBadge } from "@/components/AssetStatusBadge";
@@ -13,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useActivity } from "@/hooks/useActivity";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Asset {
   id: string;
@@ -34,18 +34,15 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
   const [localAssets, setLocalAssets] = useState<Asset[]>(assets);
   const { toast } = useToast();
   const { logActivity } = useActivity();
+  const queryClient = useQueryClient();
   
-  // Only update local assets on initial load or when asset IDs change
-  // This prevents reordering when only status colors change
   useEffect(() => {
-    // Check if the assets array has different items (not just different properties)
     const currentIds = localAssets.map(asset => asset.id).join(',');
     const newIds = assets.map(asset => asset.id).join(',');
     
     if (currentIds !== newIds || localAssets.length !== assets.length) {
       setLocalAssets(assets);
     } else {
-      // Update properties of existing assets without changing order
       setLocalAssets(prevAssets => 
         prevAssets.map(prevAsset => {
           const updatedAsset = assets.find(a => a.id === prevAsset.id);
@@ -83,20 +80,52 @@ export function EmployeeAssetsTable({ assets, isLoading, error }: EmployeeAssets
     
   const handleStatusColorChange = async (assetId: string, newColor: StatusColor) => {
     try {
-      // Update local state immediately to maintain order
       setLocalAssets(prevAssets => 
         prevAssets.map(asset => 
           asset.id === assetId ? { ...asset, status_color: newColor } : asset
         )
       );
       
-      // Update in the database
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user?.id;
+      
+      let changedBy = 'Unknown user';
+      if (userId) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', userId)
+          .single();
+        
+        changedBy = profileData?.full_name || profileData?.email || 'Unknown user';
+      }
+      
+      const { data: currentAsset } = await supabase
+        .from('assets')
+        .select('status_color')
+        .eq('id', assetId)
+        .single();
+      
+      const oldColor = currentAsset?.status_color || null;
+      
       const { error } = await supabase
         .from('assets')
         .update({ status_color: newColor })
         .eq('id', assetId);
       
       if (error) throw error;
+      
+      await supabase.from('asset_history').insert({
+        asset_id: assetId,
+        field_name: 'Status Color',
+        old_value: oldColor,
+        new_value: newColor,
+        user_id: userId,
+        changed_by: changedBy
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['asset', assetId] });
+      queryClient.invalidateQueries({ queryKey: ['asset-history', assetId] });
       
       toast({
         title: "Status updated",
