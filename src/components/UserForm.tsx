@@ -31,7 +31,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 const userFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  password: z.string().optional(),
   role: z.enum(["Admin", "Manager", "User"], {
     required_error: "Please select a user role.",
   }),
@@ -56,13 +56,24 @@ interface UserFormProps {
   onCancel: () => void;
   error?: string;
   isSubmitting: boolean;
+  defaultValues?: Partial<UserFormValues>;
+  isEditMode?: boolean;
 }
 
-export function UserForm({ onSubmit, onCancel, error, isSubmitting }: UserFormProps) {
+export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValues, isEditMode = false }: UserFormProps) {
+  // Define validation schema based on mode
+  const schema = isEditMode 
+    ? userFormSchema.omit({ password: true }).merge(
+        z.object({
+          password: z.string().optional()
+        })
+      )
+    : userFormSchema;
+
   // Initialize the form
   const form = useForm<UserFormValues>({
-    resolver: zodResolver(userFormSchema),
-    defaultValues: {
+    resolver: zodResolver(schema),
+    defaultValues: defaultValues || {
       name: "",
       email: "",
       password: "",
@@ -112,9 +123,11 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting }: UserFormPr
                   {...field} 
                 />
               </FormControl>
-              <FormDescription>
-                User will receive an invitation at this email address.
-              </FormDescription>
+              {!isEditMode && (
+                <FormDescription>
+                  User will receive an invitation at this email address.
+                </FormDescription>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -125,17 +138,19 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting }: UserFormPr
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>{isEditMode ? "New Password (optional)" : "Password"}</FormLabel>
               <FormControl>
                 <Input 
                   type="password" 
-                  placeholder="Enter a strong password" 
+                  placeholder={isEditMode ? "Leave blank to keep current password" : "Enter a strong password"}
                   {...field} 
                 />
               </FormControl>
-              <FormDescription>
-                Must be at least 6 characters.
-              </FormDescription>
+              {!isEditMode && (
+                <FormDescription>
+                  Must be at least 6 characters.
+                </FormDescription>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -150,6 +165,7 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting }: UserFormPr
               <Select 
                 onValueChange={field.onChange} 
                 defaultValue={field.value}
+                value={field.value}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -205,7 +221,7 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting }: UserFormPr
             type="submit" 
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Creating..." : "Create User"}
+            {isSubmitting ? (isEditMode ? "Updating..." : "Creating...") : (isEditMode ? "Update User" : "Create User")}
           </Button>
         </div>
       </form>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,9 @@ const Users = () => {
   const [isEmailRoleDialogOpen, setIsEmailRoleDialogOpen] = useState(false);
   const [emailForRoleUpdate, setEmailForRoleUpdate] = useState("");
   const [roleForEmail, setRoleForEmail] = useState<UserRole>("admin");
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+  const [updateUserError, setUpdateUserError] = useState<string | undefined>();
   const { logActivity } = useActivity();
   const { user: currentUser } = useAuth();
   
@@ -203,6 +207,67 @@ const Users = () => {
     setSelectedUser(user);
     setNewRole(user.dbRole || 'user');
     setIsRoleDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (user: EnhancedUser) => {
+    setSelectedUser(user);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditUser = async (formValues: any) => {
+    if (!selectedUser) return;
+    
+    setIsUpdatingUser(true);
+    setUpdateUserError(undefined);
+    
+    try {
+      // Update the profile in the database
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formValues.name,
+          email: formValues.email
+        })
+        .eq('id', selectedUser.id);
+      
+      if (error) throw error;
+      
+      // Update user role if changed
+      const newDbRole = formValues.role.toLowerCase() as UserRole;
+      if (selectedUser.dbRole !== newDbRole) {
+        const success = await updateUserRole(selectedUser.id, newDbRole);
+        if (!success) throw new Error("Failed to update role");
+      }
+      
+      logActivity({
+        title: "User Updated",
+        description: `Updated ${formValues.name}'s account information`,
+        category: 'user',
+        icon: <Edit className="h-5 w-5 text-blue-600" />
+      });
+      
+      toast.success(`User ${formValues.name} updated successfully`);
+      
+      setUsers(prev => prev.map(user => 
+        user.id === selectedUser.id 
+          ? { 
+              ...user, 
+              name: formValues.name, 
+              email: formValues.email, 
+              dbRole: newDbRole, 
+              active: formValues.active 
+            } 
+          : user
+      ));
+      
+      setIsEditDialogOpen(false);
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      setUpdateUserError(error.message);
+      toast.error(`Failed to update user: ${error.message}`);
+    } finally {
+      setIsUpdatingUser(false);
+    }
   };
 
   const handleRoleUpdate = async () => {
@@ -403,7 +468,7 @@ const Users = () => {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenEditDialog(user)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
@@ -430,6 +495,7 @@ const Users = () => {
         </CardContent>
       </Card>
 
+      {/* Add User Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -444,6 +510,37 @@ const Users = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Edit User Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              {selectedUser && `Update information for ${selectedUser.name}`}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <UserForm 
+              onSubmit={handleEditUser}
+              onCancel={() => setIsEditDialogOpen(false)}
+              isSubmitting={isUpdatingUser}
+              error={updateUserError}
+              defaultValues={{
+                name: selectedUser.name,
+                email: selectedUser.email,
+                password: "",
+                role: selectedUser.dbRole ? 
+                  selectedUser.dbRole.charAt(0).toUpperCase() + selectedUser.dbRole.slice(1) : 
+                  "User",
+                active: selectedUser.active
+              }}
+              isEditMode={true}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Role Dialog */}
       <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -482,6 +579,7 @@ const Users = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Update Role by Email Dialog */}
       <Dialog open={isEmailRoleDialogOpen} onOpenChange={setIsEmailRoleDialogOpen}>
         <DialogContent>
           <DialogHeader>
