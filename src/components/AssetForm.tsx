@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +14,8 @@ import { Asset, AssetStatus } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { StatusColorIndicator } from "@/components/StatusColorIndicator";
+import { fetchCategories } from "@/lib/data";
+import { toast } from "sonner";
 
 interface AssetFormProps {
   initialData?: Partial<Asset>;
@@ -37,7 +38,22 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
   const [purchaseDate, setPurchaseDate] = useState(initialData?.purchase_date || '');
   const [purchaseCost, setPurchaseCost] = useState(initialData?.purchase_cost?.toString() || '');
   const [wear, setWear] = useState(initialData?.wear || '');
-  const [qty, setQty] = useState(initialData?.qty?.toString() || '1');  // Added qty state
+  const [qty, setQty] = useState(initialData?.qty?.toString() || '1');
+  const [categories, setCategories] = useState<{ name: string }[]>([]);
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const fetchedCategories = await fetchCategories();
+        setCategories(fetchedCategories);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        toast.error("Failed to load categories");
+      }
+    };
+
+    loadCategories();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +72,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
       purchase_date: purchaseDate,
       purchase_cost: parseFloat(purchaseCost) || null,
       wear,
-      qty: parseInt(qty) || 1,  // Include qty in form submission
+      qty: parseInt(qty) || 1,
     });
   };
 
@@ -138,11 +154,25 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <Label htmlFor="category">Category</Label>
-          <Input 
-            id="category" 
+          <Select 
             value={category} 
-            onChange={(e) => setCategory(e.target.value)} 
-          />
+            onValueChange={setCategory}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="hardware">Hardware</SelectItem>
+              <SelectItem value="software">Software</SelectItem>
+              <SelectItem value="peripherals">Peripherals</SelectItem>
+              <SelectItem value="network">Network Equipment</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.name} value={cat.name}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         
         <div className="space-y-2">
@@ -219,7 +249,6 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
         </div>
       </div>
 
-      {/* Add Quantity field */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <Label htmlFor="qty">Quantity</Label>

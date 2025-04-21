@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,10 +68,9 @@ const Categories = () => {
       try {
         const categories = await fetchCategories();
         
-        // Set default icons for categories that don't have one
         const categoriesWithIcons = categories.map(cat => ({
           ...cat,
-          icon: cat.icon || "archive"  // Default icon if none is provided
+          icon: cat.icon || "archive"
         }));
         
         setLocalCategories(categoriesWithIcons);
@@ -274,7 +272,6 @@ const Categories = () => {
         </CardContent>
       </Card>
 
-      {/* Add Category Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -287,7 +284,6 @@ const Categories = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Category Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
