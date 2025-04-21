@@ -27,6 +27,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -67,7 +68,14 @@ const Categories = () => {
 
       try {
         const categories = await fetchCategories();
-        setLocalCategories(categories);
+        
+        // Set default icons for categories that don't have one
+        const categoriesWithIcons = categories.map(cat => ({
+          ...cat,
+          icon: cat.icon || "archive"  // Default icon if none is provided
+        }));
+        
+        setLocalCategories(categoriesWithIcons);
       } catch (error) {
         console.error("Error in fetchCategories:", error);
         toast.error("An error occurred while loading categories");

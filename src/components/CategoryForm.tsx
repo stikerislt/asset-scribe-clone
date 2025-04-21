@@ -83,26 +83,20 @@ export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = fa
     try {
       // Create a new category with a unique ID
       const categoryId = initialValues?.id || crypto.randomUUID();
-      const categoryData = {
+      
+      // Prepare data for Supabase - omit the icon field that doesn't exist in the database
+      const supabaseData = {
         id: categoryId,
         name: values.name,
         type: values.type,
-        count: initialValues?.count || 0, // New categories start with 0 items
-        user_id: user.id,
-        icon: values.icon
+        count: initialValues?.count || 0,
+        user_id: user.id
       };
 
       // Save to Supabase
       const { error } = await supabase
         .from('categories')
-        .upsert({
-          id: categoryId,
-          name: values.name,
-          type: values.type,
-          count: initialValues?.count || 0,
-          user_id: user.id,
-          icon: values.icon
-        });
+        .upsert(supabaseData);
 
       if (error) {
         console.error("Error saving category:", error);
@@ -111,8 +105,14 @@ export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = fa
         return;
       }
 
+      // For the UI, include the icon
+      const categoryData = {
+        ...supabaseData,
+        icon: values.icon
+      };
+
       // Submit the form and reset
-      onSubmit(categoryData);
+      onSubmit(categoryData as Category);
       form.reset();
       toast.success(`Category ${isEditing ? 'updated' : 'created'} successfully`);
     } catch (error) {
