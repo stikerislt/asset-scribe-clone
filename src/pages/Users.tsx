@@ -1,69 +1,19 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { 
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { 
-  Plus, 
-  MoreHorizontal, 
-  Search, 
-  Edit, 
-  Trash,
-  Users as UsersIcon,
-  UserPlus,
-  Mail,
-  ShieldCheck,
-  ShieldX,
-  Shield
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { UserForm, User } from "@/components/UserForm";
-import { logUserActivity } from "@/lib/data";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UserPlus, Shield } from "lucide-react";
+import { UserForm } from "@/components/UserForm";
 import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UserRole, isAdmin, updateUserRole, updateUserRoleByEmail, getAllUserRoles, createUser } from "@/lib/api/userRoles";
-
-interface EnhancedUser extends User {
-  dbRole: UserRole | null;
-}
+import { EnhancedUser } from "@/types/user";
+import { UserSearch } from "@/components/users/UserSearch";
+import { UsersTable } from "@/components/users/UsersTable";
+import { getRoleDisplayName } from "@/utils/roleUtils";
 
 const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -84,9 +34,8 @@ const Users = () => {
   const [updateUserError, setUpdateUserError] = useState<string | undefined>();
   const { logActivity } = useActivity();
   const { user: currentUser } = useAuth();
-  
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
-  
+
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (currentUser) {
@@ -220,7 +169,6 @@ const Users = () => {
     setUpdateUserError(undefined);
     
     try {
-      // Update the profile in the database
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -231,7 +179,6 @@ const Users = () => {
       
       if (error) throw error;
       
-      // Update user role if changed
       const newDbRole = formValues.role.toLowerCase() as UserRole;
       if (selectedUser.dbRole !== newDbRole) {
         const success = await updateUserRole(selectedUser.id, newDbRole);
@@ -303,33 +250,6 @@ const Users = () => {
     }
   };
 
-  const getRoleBadge = (user: EnhancedUser) => {
-    if (user.dbRole === 'admin') {
-      return (
-        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100/80">
-          <Shield className="h-3 w-3 mr-1" />
-          Admin
-        </Badge>
-      );
-    } else if (user.dbRole === 'manager') {
-      return (
-        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100/80">
-          <ShieldCheck className="h-3 w-3 mr-1" />
-          Manager
-        </Badge>
-      );
-    } else {
-      return (
-        <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100/80">
-          <ShieldCheck className="h-3 w-3 mr-1" />
-          User
-        </Badge>
-      );
-    }
-  };
-
-  const showAdminControls = isCurrentUserAdmin;
-
   const handleUpdateRoleByEmail = async () => {
     if (!emailForRoleUpdate || !roleForEmail) return;
     
@@ -392,104 +312,17 @@ const Users = () => {
         </CardHeader>
         <CardContent>
           <div className="mb-4">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search users..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+            <UserSearch value={searchTerm} onChange={setSearchTerm} />
           </div>
           
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mb-2"></div>
-                        <p className="text-muted-foreground">Loading users...</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : filteredUsers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
-                      <div className="flex flex-col items-center justify-center text-muted-foreground">
-                        <UsersIcon className="h-12 w-12 mb-2 text-muted-foreground/50" />
-                        <p>No users found. Click the Add User button to get started.</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
-                          {user.email}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getRoleBadge(user)}</TableCell>
-                      <TableCell>
-                        {user.active ? (
-                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80">
-                            <ShieldCheck className="h-3 w-3 mr-1" />
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-red-100 text-red-800 hover:bg-red-100/80">
-                            <ShieldX className="h-3 w-3 mr-1" />
-                            Inactive
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleOpenEditDialog(user)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            {showAdminControls && (
-                              <DropdownMenuItem onClick={() => handleOpenRoleDialog(user)}>
-                                <Shield className="mr-2 h-4 w-4" />
-                                Change Role
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
-                              <Trash className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <UsersTable
+              users={filteredUsers}
+              isLoading={isLoading}
+              onEditUser={handleOpenEditDialog}
+              onChangeRole={handleOpenRoleDialog}
+              showAdminControls={isCurrentUserAdmin}
+            />
           </div>
         </CardContent>
       </Card>
@@ -528,9 +361,7 @@ const Users = () => {
                 name: selectedUser.name,
                 email: selectedUser.email,
                 password: "",
-                role: selectedUser.dbRole ? 
-                  (selectedUser.dbRole.charAt(0).toUpperCase() + selectedUser.dbRole.slice(1)) as "Admin" | "Manager" | "User" : 
-                  "User",
+                role: getRoleDisplayName(selectedUser.dbRole),
                 active: selectedUser.active
               }}
               isEditMode={true}
