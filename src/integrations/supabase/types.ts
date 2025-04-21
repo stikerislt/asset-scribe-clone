@@ -143,6 +143,44 @@ export type Database = {
         }
         Relationships: []
       }
+      employees: {
+        Row: {
+          created_at: string | null
+          department: string | null
+          hire_date: string | null
+          id: string
+          profile_id: string | null
+          role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          department?: string | null
+          hire_date?: string | null
+          id?: string
+          profile_id?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          department?: string | null
+          hire_date?: string | null
+          id?: string
+          profile_id?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -150,6 +188,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          role: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -157,6 +196,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          role?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -164,6 +204,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          role?: string | null
         }
         Relationships: []
       }
@@ -204,6 +245,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
+      is_admin_user: {
         Args: { user_id: string }
         Returns: boolean
       }

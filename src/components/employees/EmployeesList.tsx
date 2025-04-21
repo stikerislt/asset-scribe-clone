@@ -26,7 +26,7 @@ interface EmployeesListProps {
 export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: EmployeesListProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
-  const [editedValues, setEditedValues] = useState<Record<string, { email?: string, role?: string }>>({});
+  const [editedValues, setEditedValues] = useState<Record<string, { email?: string, role?: string, department?: string }>>({});
   const [savingEmployee, setSavingEmployee] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -35,14 +35,19 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
   const filteredEmployees = employees?.filter(employee =>
     employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     employee.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    employee.role?.toLowerCase().includes(searchQuery.toLowerCase())
+    employee.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    employee.department?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const startEditing = (employee: Employee) => {
     setEditingEmployeeId(employee.id);
     setEditedValues({
       ...editedValues,
-      [employee.id]: { email: employee.email || "", role: employee.role || "" }
+      [employee.id]: { 
+        email: employee.email || "", 
+        role: employee.role || "", 
+        department: employee.department || "" 
+      }
     });
   };
 
@@ -50,7 +55,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
     setEditingEmployeeId(null);
   };
 
-  const handleInputChange = (employeeId: string, field: 'email' | 'role', value: string) => {
+  const handleInputChange = (employeeId: string, field: 'email' | 'role' | 'department', value: string) => {
     setEditedValues({
       ...editedValues,
       [employeeId]: { 
@@ -68,7 +73,8 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
     try {
       await updateEmployee(employee.name, {
         email: updates.email,
-        role: updates.role
+        role: updates.role,
+        department: updates.department
       });
       
       toast({
@@ -133,6 +139,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Department</TableHead>
                 <TableHead>Assets</TableHead>
                 <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
@@ -167,6 +174,18 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
                       />
                     ) : (
                       employee.role || "—"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingEmployeeId === employee.id ? (
+                      <Input 
+                        value={editedValues[employee.id]?.department || ""}
+                        onChange={(e) => handleInputChange(employee.id, 'department', e.target.value)}
+                        placeholder="Department"
+                        className="max-w-[200px]"
+                      />
+                    ) : (
+                      employee.department || "—"
                     )}
                   </TableCell>
                   <TableCell>

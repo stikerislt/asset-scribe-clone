@@ -17,7 +17,9 @@ export const AddEmployeeDialog = ({ isOpen, onOpenChange }: AddEmployeeDialogPro
   const [newEmployee, setNewEmployee] = useState({
     fullName: "",
     email: "",
-    role: ""
+    role: "",
+    department: "",
+    hire_date: ""
   });
   
   const queryClient = useQueryClient();
@@ -27,7 +29,7 @@ export const AddEmployeeDialog = ({ isOpen, onOpenChange }: AddEmployeeDialogPro
     onSuccess: () => {
       toast.success("Employee added successfully");
       onOpenChange(false);
-      setNewEmployee({ fullName: "", email: "", role: "" });
+      setNewEmployee({ fullName: "", email: "", role: "", department: "", hire_date: "" });
       queryClient.invalidateQueries({ queryKey: ['employees'] });
     },
     onError: (error: Error) => {
@@ -81,6 +83,24 @@ export const AddEmployeeDialog = ({ isOpen, onOpenChange }: AddEmployeeDialogPro
               placeholder="Software Engineer"
               value={newEmployee.role}
               onChange={(e) => setNewEmployee({...newEmployee, role: e.target.value})}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="department">Department</Label>
+            <Input 
+              id="department"
+              placeholder="Engineering"
+              value={newEmployee.department}
+              onChange={(e) => setNewEmployee({...newEmployee, department: e.target.value})}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="hire_date">Hire Date</Label>
+            <Input 
+              id="hire_date"
+              type="date"
+              value={newEmployee.hire_date}
+              onChange={(e) => setNewEmployee({...newEmployee, hire_date: e.target.value})}
             />
           </div>
         </div>
