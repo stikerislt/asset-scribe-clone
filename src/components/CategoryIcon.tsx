@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Archive, Package, Computer, Menu, Copyright, Monitor, Printer } from "lucide-react";
+import { Archive, Package, Computer, Menu, Copyright, Monitor, Printer, Phone, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CategoryIconProps {
@@ -32,6 +32,10 @@ export const CategoryIcon = ({ category, className, size = 18, iconType }: Categ
           return <Computer size={size} className={cn("text-cyan-600", className)} />;
         case "archive":
           return <Archive size={size} className={cn("text-blue-600", className)} />;
+        case "phone":
+          return <Phone size={size} className={cn("text-green-600", className)} />;
+        case "globe":
+          return <Globe size={size} className={cn("text-purple-600", className)} />;
       }
     }
     
@@ -59,6 +63,15 @@ export const CategoryIcon = ({ category, className, size = 18, iconType }: Categ
     if (categoryLower.includes("computer") || categoryLower.includes("pc") || 
         categoryLower.includes("laptop")) {
       return <Computer size={size} className={cn("text-cyan-600", className)} />;
+    }
+    
+    if (categoryLower.includes("phone") || categoryLower.includes("mobile")) {
+      return <Phone size={size} className={cn("text-green-600", className)} />;
+    }
+    
+    if (categoryLower.includes("www") || categoryLower.includes("web") || 
+        categoryLower.includes("website")) {
+      return <Globe size={size} className={cn("text-purple-600", className)} />;
     }
     
     // Default icon for unknown categories
