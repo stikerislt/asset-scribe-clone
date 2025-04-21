@@ -203,19 +203,26 @@ export const addEmployee = async (employee: NewEmployee) => {
 // Update an employee
 export const updateEmployee = async (employeeName: string, updates: Partial<NewEmployee>) => {
   try {
+    console.log("Updating employee:", employeeName, "with updates:", updates);
+    
     // First find if this employee exists in profiles table
-    const { data: profiles } = await supabase
+    const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, full_name')
       .eq('full_name', employeeName)
       .limit(1);
 
+    if (profilesError) {
+      console.error("Error fetching profile:", profilesError);
+      throw new Error("Failed to fetch employee profile");
+    }
+
     if (profiles && profiles.length > 0) {
       const profileId = profiles[0].id;
+      console.log("Found existing profile with ID:", profileId);
       
       // Update the profile
       const profileUpdates: any = {};
-      if (updates.fullName) profileUpdates.full_name = updates.fullName;
       if (updates.email) profileUpdates.email = updates.email;
       if (updates.role) profileUpdates.role = updates.role;
       
@@ -227,7 +234,7 @@ export const updateEmployee = async (employeeName: string, updates: Partial<NewE
         
         if (profileError) {
           console.error("Error updating profile:", profileError);
-          throw profileError;
+          throw new Error("Failed to update employee profile");
         }
       }
       
@@ -242,7 +249,6 @@ export const updateEmployee = async (employeeName: string, updates: Partial<NewE
       const employeeUpdates: any = {};
       if (updates.role) employeeUpdates.role = updates.role;
       if (updates.department) employeeUpdates.department = updates.department;
-      if (updates.hire_date) employeeUpdates.hire_date = updates.hire_date;
       
       if (Object.keys(employeeUpdates).length > 0) {
         if (employeeRecords && employeeRecords.length > 0) {
@@ -254,53 +260,61 @@ export const updateEmployee = async (employeeName: string, updates: Partial<NewE
           
           if (employeeError) {
             console.error("Error updating employee record:", employeeError);
-            throw employeeError;
+            throw new Error("Failed to update employee record");
           }
         } else {
           // Create new employee record
           const { error: newEmployeeError } = await supabase
             .from('employees')
-            .insert([{
+            .insert({
               profile_id: profileId,
               ...employeeUpdates
-            }]);
+            });
           
           if (newEmployeeError) {
             console.error("Error creating employee record:", newEmployeeError);
-            throw newEmployeeError;
+            throw new Error("Failed to create employee record");
           }
         }
-      }
-
-      // If name was updated, also update assets references
-      if (updates.fullName && updates.fullName !== employeeName) {
-        const { error: assetsError } = await supabase
-          .from('assets')
-          .update({ assigned_to: updates.fullName })
-          .eq('assigned_to', employeeName);
-        
-        if (assetsError) throw assetsError;
       }
       
       return { success: true };
     } else {
-      // Create a new profile if it doesn't exist
-      try {
-        const result = await addEmployee({
-          fullName: updates.fullName || employeeName,
-          email: updates.email || '',
-          role: updates.role,
-          department: updates.department,
-          hire_date: updates.hire_date
-        });
-        return result;
-      } catch (error) {
-        console.error("Error creating new employee:", error);
-        throw error;
+      // If no profile exists, create one
+      console.log("No existing profile found, creating new profile for:", employeeName);
+      const { data: newProfile, error: createProfileError } = await supabase
+        .from('profiles')
+        .insert({
+          full_name: employeeName,
+          email: updates.email,
+          role: updates.role
+        })
+        .select()
+        .single();
+      
+      if (createProfileError) {
+        console.error("Error creating profile:", createProfileError);
+        throw new Error("Failed to create employee profile");
       }
+      
+      // Create employee record
+      const { error: createEmployeeError } = await supabase
+        .from('employees')
+        .insert({
+          profile_id: newProfile.id,
+          role: updates.role,
+          department: updates.department
+        });
+      
+      if (createEmployeeError) {
+        console.error("Error creating employee record:", createEmployeeError);
+        throw new Error("Failed to create employee record");
+      }
+      
+      return { success: true };
     }
   } catch (error) {
-    console.error("Error updating employee:", error);
+    console.error("Error in updateEmployee:", error);
     throw error;
   }
 };
