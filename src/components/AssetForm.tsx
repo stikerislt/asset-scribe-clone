@@ -14,6 +14,7 @@ import { Asset, AssetStatus } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { StatusColorIndicator } from "@/components/StatusColorIndicator";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { fetchCategories } from "@/lib/data";
 import { toast } from "sonner";
 
@@ -40,6 +41,17 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
   const [wear, setWear] = useState(initialData?.wear || '');
   const [qty, setQty] = useState(initialData?.qty?.toString() || '1');
   const [categories, setCategories] = useState<{ name: string }[]>([]);
+
+  const defaultCategories = [
+    { name: "Computer", icon: "computer" },
+    { name: "Phone", icon: "phone" },
+    { name: "Inventory", icon: "archive" },
+    { name: "WWW", icon: "www" },
+    { name: "Tablet", icon: "tablet" },
+    { name: "License", icon: "license" },
+    { name: "Monitor", icon: "monitor" },
+    { name: "Accessories", icon: "accessories" }
+  ];
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -162,13 +174,16 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="hardware">Hardware</SelectItem>
-              <SelectItem value="software">Software</SelectItem>
-              <SelectItem value="peripherals">Peripherals</SelectItem>
-              <SelectItem value="network">Network Equipment</SelectItem>
+              {defaultCategories.map((cat) => (
+                <SelectItem key={cat.name} value={cat.name}>
+                  <div className="flex items-center gap-2">
+                    <CategoryIcon category={cat.name} iconType={cat.icon} />
+                  </div>
+                </SelectItem>
+              ))}
               {categories.map((cat) => (
                 <SelectItem key={cat.name} value={cat.name}>
-                  {cat.name}
+                  <CategoryIcon category={cat.name} iconType={cat.icon} />
                 </SelectItem>
               ))}
             </SelectContent>
