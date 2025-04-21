@@ -20,7 +20,7 @@ const EmployeeDetails = () => {
     error: employeeError
   } = useQuery({
     queryKey: ['employee', id],
-    queryFn: () => getEmployeeById(id as string)
+    queryFn: () => getEmployeeById(id as string),
   });
 
   const {

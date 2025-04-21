@@ -71,6 +71,9 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
 
     setSavingEmployee(employee.id);
     try {
+      // Log the data being sent to help debug
+      console.log("Updating employee:", employee.name, "with data:", updates);
+      
       await updateEmployee(employee.name, {
         email: updates.email,
         role: updates.role,
@@ -88,6 +91,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
       
       setEditingEmployeeId(null);
     } catch (error) {
+      console.error("Error updating employee:", error);
       toast({
         title: "Update failed",
         description: error instanceof Error ? error.message : "Failed to update employee information.",
