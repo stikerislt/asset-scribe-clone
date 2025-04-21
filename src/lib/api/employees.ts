@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Employee {
@@ -282,15 +283,18 @@ export const updateEmployee = async (employeeName: string, updates: Partial<NewE
     } else {
       // If no profile exists, create one
       console.log("No existing profile found, creating new profile for:", employeeName);
-      const { data: newProfile, error: createProfileError } = await supabase
+      
+      // Generate a UUID for the new profile
+      const profileId = crypto.randomUUID();
+      
+      const { error: createProfileError } = await supabase
         .from('profiles')
         .insert({
+          id: profileId,  // Explicitly provide the required id field
           full_name: employeeName,
-          email: updates.email,
-          role: updates.role
-        })
-        .select()
-        .single();
+          email: updates.email || null,
+          role: updates.role || null
+        });
       
       if (createProfileError) {
         console.error("Error creating profile:", createProfileError);
@@ -301,9 +305,9 @@ export const updateEmployee = async (employeeName: string, updates: Partial<NewE
       const { error: createEmployeeError } = await supabase
         .from('employees')
         .insert({
-          profile_id: newProfile.id,
-          role: updates.role,
-          department: updates.department
+          profile_id: profileId,
+          role: updates.role || null,
+          department: updates.department || null
         });
       
       if (createEmployeeError) {
