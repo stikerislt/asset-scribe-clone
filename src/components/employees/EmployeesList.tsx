@@ -12,6 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Employee, updateEmployee } from "@/lib/api/employees";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -55,12 +62,22 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
     setEditingEmployeeId(null);
   };
 
-  const handleInputChange = (employeeId: string, field: 'email' | 'role' | 'department', value: string) => {
+  const handleInputChange = (employeeId: string, field: 'email' | 'department', value: string) => {
     setEditedValues({
       ...editedValues,
       [employeeId]: { 
         ...editedValues[employeeId],
         [field]: value
+      }
+    });
+  };
+
+  const handleRoleChange = (employeeId: string, role: string) => {
+    setEditedValues({
+      ...editedValues,
+      [employeeId]: { 
+        ...editedValues[employeeId],
+        role
       }
     });
   };
@@ -170,12 +187,19 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
                   </TableCell>
                   <TableCell>
                     {editingEmployeeId === employee.id ? (
-                      <Input 
+                      <Select 
                         value={editedValues[employee.id]?.role || ""}
-                        onChange={(e) => handleInputChange(employee.id, 'role', e.target.value)}
-                        placeholder="Role/Position"
-                        className="max-w-[200px]"
-                      />
+                        onValueChange={(value) => handleRoleChange(employee.id, value)}
+                      >
+                        <SelectTrigger className="max-w-[200px]">
+                          <SelectValue placeholder="Select a role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="user">User</SelectItem>
+                        </SelectContent>
+                      </Select>
                     ) : (
                       employee.role || "—"
                     )}
