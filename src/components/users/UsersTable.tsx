@@ -1,7 +1,7 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Mail } from "lucide-react";
+import { Mail, Users, ShieldCheck, ShieldX } from "lucide-react";
 import { EnhancedUser } from "@/types/user";
 import { UserRoleBadge } from "./UserRoleBadge";
 import { UserActionsDropdown } from "./UserActionsDropdown";
@@ -39,7 +39,7 @@ export const UsersTable = ({
       <TableRow>
         <TableCell colSpan={5} className="text-center py-8">
           <div className="flex flex-col items-center justify-center text-muted-foreground">
-            <UsersIcon className="h-12 w-12 mb-2 text-muted-foreground/50" />
+            <Users className="h-12 w-12 mb-2 text-muted-foreground/50" />
             <p>No users found. Click the Add User button to get started.</p>
           </div>
         </TableCell>
