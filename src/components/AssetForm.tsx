@@ -52,11 +52,12 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
     { name: "Computer", icon: "computer" },
     { name: "Phone", icon: "phone" },
     { name: "Inventory", icon: "archive" },
-    { name: "WWW", icon: "www" },
+    { name: "WWW", icon: "globe" },
     { name: "Tablet", icon: "tablet" },
-    { name: "License", icon: "license" },
+    { name: "License", icon: "file-text" },
     { name: "Monitor", icon: "monitor" },
-    { name: "Accessories", icon: "accessories" }
+    { name: "Accessories", icon: "package" },
+    { name: "Printer", icon: "printer" }
   ];
 
   useEffect(() => {
