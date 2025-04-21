@@ -37,7 +37,7 @@ const EmployeeDetails = () => {
     return <EmployeeDetailsLoading />;
   }
 
-  if (employeeError) {
+  if (employeeError || !employee) {
     return <EmployeeDetailsError />;
   }
 
@@ -50,14 +50,14 @@ const EmployeeDetails = () => {
             Back
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">{employee?.name}</h1>
+        <h1 className="text-3xl font-bold">{employee.name}</h1>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Employee Info Card */}
         <div className="md:col-span-1">
           <EmployeeProfileCard 
-            employee={employee || { name: '' }} 
+            employee={employee} 
             assetsCount={assets?.length || 0} 
           />
         </div>

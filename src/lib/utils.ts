@@ -6,10 +6,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatDate(dateString: string): string {
-  if (!dateString) return '';
+export function formatDate(dateInput: string | Date): string {
+  if (!dateInput) return '';
   
-  const date = new Date(dateString);
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',

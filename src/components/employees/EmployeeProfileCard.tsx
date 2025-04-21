@@ -45,7 +45,7 @@ export const EmployeeProfileCard = ({ employee, assetsCount }: EmployeeProfileCa
         {employee.hire_date && (
           <div className="flex items-center space-x-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>Hired: {formatDate(new Date(employee.hire_date))}</span>
+            <span>Hired: {formatDate(employee.hire_date)}</span>
           </div>
         )}
         
