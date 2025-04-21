@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,10 +52,10 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
   const defaultCategories = [
     { name: "Computer", icon: "computer" },
     { name: "Phone", icon: "phone" },
-    { name: "Inventory", icon: "archive" },
+    { name: "Inventory", icon: "menu" },
     { name: "WWW", icon: "globe" },
     { name: "Tablet", icon: "tablet" },
-    { name: "License", icon: "file-text" },
+    { name: "License", icon: "copyright" },
     { name: "Monitor", icon: "monitor" },
     { name: "Accessories", icon: "package" },
     { name: "Printer", icon: "printer" }
