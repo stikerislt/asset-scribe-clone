@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -530,7 +529,7 @@ const Users = () => {
                 email: selectedUser.email,
                 password: "",
                 role: selectedUser.dbRole ? 
-                  selectedUser.dbRole.charAt(0).toUpperCase() + selectedUser.dbRole.slice(1) : 
+                  (selectedUser.dbRole.charAt(0).toUpperCase() + selectedUser.dbRole.slice(1)) as "Admin" | "Manager" | "User" : 
                   "User",
                 active: selectedUser.active
               }}
