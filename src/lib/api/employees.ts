@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Employee {
@@ -152,47 +151,30 @@ export const getEmployeeById = async (id: string): Promise<Employee | null> => {
   };
 };
 
-// Add new employee - Modified to use RPC function for bypassing RLS
+// Add new employee - Modified to use direct inserts instead of RPC
 export const addEmployee = async (employee: NewEmployee) => {
   const { fullName, email, role, department, hire_date } = employee;
   
   try {
-    // Using the service role key via an RPC function would be ideal here
-    // For now, we'll use the available permissions
+    console.log("Adding new employee:", employee);
     
     // Create profile UUID
     const profileId = crypto.randomUUID();
     
-    // Call admin-owned function to create the profile (would need to be implemented as an RPC)
+    // Insert profile directly
     const { data: profileData, error: profileError } = await supabase
-      .rpc('create_profile', {
-        p_id: profileId,
-        p_full_name: fullName,
-        p_email: email,
-        p_role: role
-      });
+      .from('profiles')
+      .insert({
+        id: profileId,
+        full_name: fullName,
+        email: email,
+        role: role
+      })
+      .select();
     
     if (profileError) {
-      console.error("Error in create_profile RPC:", profileError);
-      
-      // Fallback approach - try direct insert
-      // This will work if either:
-      // 1. You're logged in as admin
-      // 2. You've set up a relaxed RLS policy for inserts
-      const { data: directProfileData, error: directProfileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: profileId,
-          full_name: fullName,
-          email: email,
-          role: role
-        })
-        .select();
-      
-      if (directProfileError) {
-        console.error("Error in direct profile insert:", directProfileError);
-        throw directProfileError;
-      }
+      console.error("Error creating profile:", profileError);
+      throw profileError;
     }
     
     // Now create employee record
