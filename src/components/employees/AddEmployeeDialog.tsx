@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addEmployee } from "@/lib/api/employees";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface AddEmployeeDialogProps {
   isOpen: boolean;
@@ -78,12 +85,19 @@ export const AddEmployeeDialog = ({ isOpen, onOpenChange }: AddEmployeeDialogPro
           </div>
           <div className="grid gap-2">
             <Label htmlFor="role">Role</Label>
-            <Input 
-              id="role"
-              placeholder="Software Engineer"
+            <Select
               value={newEmployee.role}
-              onChange={(e) => setNewEmployee({...newEmployee, role: e.target.value})}
-            />
+              onValueChange={(value) => setNewEmployee({...newEmployee, role: value})}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="department">Department</Label>
