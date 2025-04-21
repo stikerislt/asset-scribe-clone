@@ -1,6 +1,5 @@
-
 import React from "react";
-import { Archive, Package, Computer, Menu, Copyright, Monitor, Printer, Phone, Globe } from "lucide-react";
+import { Archive, Package, Computer, Menu, Copyright, Monitor, Printer, Phone, Globe, Tablet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CategoryIconProps {
@@ -13,9 +12,7 @@ interface CategoryIconProps {
 export const CategoryIcon = ({ category, className, size = 18, iconType }: CategoryIconProps) => {
   const categoryLower = category?.toLowerCase() || "";
   
-  // Get icon based on iconType if provided, otherwise infer from category name
   const getIcon = () => {
-    // If explicit icon type is provided, use that
     if (iconType) {
       switch (iconType) {
         case "menu":
@@ -36,10 +33,11 @@ export const CategoryIcon = ({ category, className, size = 18, iconType }: Categ
           return <Phone size={size} className={cn("text-green-600", className)} />;
         case "globe":
           return <Globe size={size} className={cn("text-purple-600", className)} />;
+        case "tablet":
+          return <Tablet size={size} className={cn("text-indigo-600", className)} />;
       }
     }
     
-    // Check category names for icon mapping
     if (categoryLower.includes("inventory")) {
       return <Menu size={size} className={cn("text-blue-600", className)} />;
     }
@@ -74,7 +72,10 @@ export const CategoryIcon = ({ category, className, size = 18, iconType }: Categ
       return <Globe size={size} className={cn("text-purple-600", className)} />;
     }
     
-    // Default icon for unknown categories
+    if (categoryLower.includes("tablet")) {
+      return <Tablet size={size} className={cn("text-indigo-600", className)} />;
+    }
+    
     return <Archive size={size} className={cn("text-gray-500", className)} />;
   };
 
