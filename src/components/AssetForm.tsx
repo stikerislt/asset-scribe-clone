@@ -25,6 +25,12 @@ interface AssetFormProps {
   isSubmitting?: boolean;
 }
 
+// Create an extended category interface to support icons
+interface CategoryWithIcon {
+  name: string;
+  icon?: string;
+}
+
 export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = false }: AssetFormProps) => {
   const [name, setName] = useState(initialData?.name || '');
   const [tag, setTag] = useState(initialData?.tag || '');
@@ -40,7 +46,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
   const [purchaseCost, setPurchaseCost] = useState(initialData?.purchase_cost?.toString() || '');
   const [wear, setWear] = useState(initialData?.wear || '');
   const [qty, setQty] = useState(initialData?.qty?.toString() || '1');
-  const [categories, setCategories] = useState<{ name: string }[]>([]);
+  const [categories, setCategories] = useState<CategoryWithIcon[]>([]);
 
   const defaultCategories = [
     { name: "Computer", icon: "computer" },
@@ -57,7 +63,14 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
     const loadCategories = async () => {
       try {
         const fetchedCategories = await fetchCategories();
-        setCategories(fetchedCategories);
+        
+        // Transform the fetched categories to include an icon property
+        const categoriesWithIcons = fetchedCategories.map(cat => ({
+          name: cat.name,
+          icon: cat.icon || "archive" // Default icon if none provided
+        }));
+        
+        setCategories(categoriesWithIcons);
       } catch (error) {
         console.error("Error fetching categories:", error);
         toast.error("Failed to load categories");
