@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Employee {
@@ -206,115 +205,85 @@ export const updateEmployee = async (employeeName: string, updates: Partial<NewE
   try {
     console.log("Updating employee:", employeeName, "with updates:", updates);
     
-    // First find if this employee exists in profiles table
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .eq('full_name', employeeName)
-      .limit(1);
-
-    if (profilesError) {
-      console.error("Error fetching profile:", profilesError);
-      throw new Error("Failed to fetch employee profile");
-    }
-
-    if (profiles && profiles.length > 0) {
-      const profileId = profiles[0].id;
-      console.log("Found existing profile with ID:", profileId);
-      
-      // Update the profile
-      const profileUpdates: any = {};
-      if (updates.email) profileUpdates.email = updates.email;
-      if (updates.role) profileUpdates.role = updates.role;
-      
-      if (Object.keys(profileUpdates).length > 0) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update(profileUpdates)
-          .eq('id', profileId);
-        
-        if (profileError) {
-          console.error("Error updating profile:", profileError);
-          throw new Error("Failed to update employee profile");
-        }
-      }
-      
-      // Check if this profile is linked to an employee record
-      const { data: employeeRecords } = await supabase
-        .from('employees')
+    // First, check if there's an existing auth user with the given email
+    if (updates.email) {
+      const { data: authUser, error: authError } = await supabase
+        .from('auth.users')
         .select('id')
-        .eq('profile_id', profileId)
-        .limit(1);
-      
-      // Update or create employee record
-      const employeeUpdates: any = {};
-      if (updates.role) employeeUpdates.role = updates.role;
-      if (updates.department) employeeUpdates.department = updates.department;
-      
-      if (Object.keys(employeeUpdates).length > 0) {
-        if (employeeRecords && employeeRecords.length > 0) {
-          // Update existing employee record
-          const { error: employeeError } = await supabase
-            .from('employees')
-            .update(employeeUpdates)
-            .eq('profile_id', profileId);
-          
-          if (employeeError) {
-            console.error("Error updating employee record:", employeeError);
-            throw new Error("Failed to update employee record");
-          }
-        } else {
-          // Create new employee record
-          const { error: newEmployeeError } = await supabase
-            .from('employees')
-            .insert({
-              profile_id: profileId,
-              ...employeeUpdates
-            });
-          
-          if (newEmployeeError) {
-            console.error("Error creating employee record:", newEmployeeError);
-            throw new Error("Failed to create employee record");
-          }
-        }
+        .eq('email', updates.email)
+        .limit(1)
+        .maybeSingle();
+
+      if (authError) {
+        console.error("Error fetching auth user:", authError);
+        throw new Error("Could not verify user account status");
       }
-      
-      return { success: true };
-    } else {
-      // If no profile exists, create one
-      console.log("No existing profile found, creating new profile for:", employeeName);
-      
-      // Generate a UUID for the new profile
-      const profileId = crypto.randomUUID();
-      
-      const { error: createProfileError } = await supabase
+
+      if (!authUser) {
+        throw new Error("No user account exists with this email. The user must create an account before being added as an employee.");
+      }
+
+      // Use the auth user's ID for the profile
+      const { error: profileError } = await supabase
         .from('profiles')
-        .insert({
-          id: profileId,  // Explicitly provide the required id field
+        .upsert({
+          id: authUser.id,
           full_name: employeeName,
-          email: updates.email || null,
+          email: updates.email,
           role: updates.role || null
+        }, {
+          onConflict: 'id'
         });
-      
-      if (createProfileError) {
-        console.error("Error creating profile:", createProfileError);
-        throw new Error("Failed to create employee profile");
+
+      if (profileError) {
+        console.error("Error creating/updating profile:", profileError);
+        throw new Error("Failed to update employee profile");
       }
-      
-      // Create employee record
-      const { error: createEmployeeError } = await supabase
+
+      // Update or create employee record
+      const { error: employeeError } = await supabase
         .from('employees')
-        .insert({
-          profile_id: profileId,
+        .upsert({
+          profile_id: authUser.id,
           role: updates.role || null,
           department: updates.department || null
+        }, {
+          onConflict: 'profile_id'
         });
-      
-      if (createEmployeeError) {
-        console.error("Error creating employee record:", createEmployeeError);
-        throw new Error("Failed to create employee record");
+
+      if (employeeError) {
+        console.error("Error updating employee record:", employeeError);
+        throw new Error("Failed to update employee record");
       }
-      
+
+      return { success: true };
+    } else {
+      // If no email provided, just try to update existing profile by name
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('full_name', employeeName)
+        .limit(1)
+        .single();
+
+      if (profileError || !existingProfile) {
+        throw new Error("Cannot update employee without an email or existing profile");
+      }
+
+      // Update employee record
+      const { error: employeeError } = await supabase
+        .from('employees')
+        .update({
+          role: updates.role || null,
+          department: updates.department || null
+        })
+        .eq('profile_id', existingProfile.id);
+
+      if (employeeError) {
+        console.error("Error updating employee record:", employeeError);
+        throw new Error("Failed to update employee record");
+      }
+
       return { success: true };
     }
   } catch (error) {
