@@ -1,6 +1,6 @@
 
 import { useState, useRef } from "react";
-import { Upload } from "lucide-react";
+import { Upload, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { generateEmployeeImportTemplate } from "@/lib/csv/employee-import-template";
@@ -44,6 +44,19 @@ export const ImportEmployeesButton = ({ onImportComplete }: ImportEmployeesButto
       try {
         const content = event.target?.result as string;
         const parsed = parseCSV(content);
+        
+        // Check for required columns
+        const hasNameColumn = parsed.headers.some(h => h.toLowerCase() === 'name');
+        const hasEmailColumn = parsed.headers.some(h => h.toLowerCase() === 'email');
+        
+        if (!hasNameColumn || !hasEmailColumn) {
+          toast({
+            title: "Invalid format",
+            description: "The CSV file must contain both 'name' and 'email' columns.",
+            variant: "destructive",
+          });
+        }
+        
         setCsvData(parsed);
         setIsImportDialogOpen(true);
       } catch (error) {
