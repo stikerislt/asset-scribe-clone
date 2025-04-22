@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,7 +21,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Initialize auth state
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
@@ -32,7 +30,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
@@ -42,7 +39,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Login function
   const login = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -61,10 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Signup function
   const signup = async (email: string, password: string, fullName: string) => {
     try {
-      const { error } = await supabase.auth.signUp({ 
+      const { data: authData, error: authError } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
@@ -73,11 +68,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       });
-      if (error) throw error;
+      
+      if (authError) throw authError;
+
+      if (authData.user) {
+        const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+          .insert({
+            name: `${fullName}'s Organization`,
+            description: 'Default organization'
+          })
+          .select()
+          .single();
+
+        if (tenantError) throw tenantError;
+
+        const { error: membershipError } = await supabase
+          .from('tenant_memberships')
+          .insert({
+            user_id: authData.user.id,
+            tenant_id: tenantData.id,
+            role: 'admin',
+            is_primary: true
+          });
+
+        if (membershipError) throw membershipError;
+      }
+
       toast({
         title: "Signup successful",
         description: "Your account has been created. You'll receive an email to confirm your registration.",
       });
+      
       navigate("/auth/login");
     } catch (error: any) {
       toast({
@@ -88,7 +110,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Logout function
   const logout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {

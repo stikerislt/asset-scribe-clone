@@ -18,7 +18,7 @@ export interface NewEmployee {
   hire_date?: string;
 }
 
-// Get employees 
+// Get employees with tenant context
 export const getEmployees = async (): Promise<Employee[]> => {
   // First check if we can get employees from the employees table
   const { data: employeesData, error: employeesError } = await supabase
@@ -37,7 +37,6 @@ export const getEmployees = async (): Promise<Employee[]> => {
     `);
   
   if (employeesData && employeesData.length > 0) {
-    // Map employees data to our Employee interface
     return employeesData.map(emp => ({
       id: emp.id,
       name: emp.profiles?.full_name || '',
@@ -49,7 +48,7 @@ export const getEmployees = async (): Promise<Employee[]> => {
     }));
   }
   
-  // Fall back to the legacy approach if employees table is empty or error occurs
+  // Fall back to the legacy approach if employees table is empty
   const { data: assets, error } = await supabase
     .from('assets')
     .select('assigned_to')
@@ -57,7 +56,6 @@ export const getEmployees = async (): Promise<Employee[]> => {
   
   if (error) throw error;
   
-  // Get unique employee names
   const uniqueEmployees = Array.from(
     new Set(
       assets
@@ -69,12 +67,10 @@ export const getEmployees = async (): Promise<Employee[]> => {
     name: name as string 
   }));
   
-  // Get profiles data to merge with employees
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, full_name, email, role');
   
-  // Combine data if available
   const employeesList = uniqueEmployees.map(employee => {
     const profileMatch = profiles?.find(profile => profile.full_name === employee.name);
     if (profileMatch) {

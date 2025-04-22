@@ -18,6 +18,7 @@ export type Database = {
           id: string
           new_value: string
           old_value: string | null
+          tenant_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -28,6 +29,7 @@ export type Database = {
           id?: string
           new_value: string
           old_value?: string | null
+          tenant_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -38,6 +40,7 @@ export type Database = {
           id?: string
           new_value?: string
           old_value?: string | null
+          tenant_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -46,6 +49,13 @@ export type Database = {
             columns: ["asset_id"]
             isOneToOne: false
             referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -67,6 +77,7 @@ export type Database = {
           status: string
           status_color: string | null
           tag: string
+          tenant_id: string | null
           updated_at: string
           user_id: string | null
           wear: string | null
@@ -87,6 +98,7 @@ export type Database = {
           status: string
           status_color?: string | null
           tag: string
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
           wear?: string | null
@@ -107,11 +119,20 @@ export type Database = {
           status?: string
           status_color?: string | null
           tag?: string
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
           wear?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "assets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       categories: {
         Row: {
@@ -119,6 +140,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          tenant_id: string | null
           type: string
           updated_at: string
           user_id: string
@@ -128,6 +150,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          tenant_id?: string | null
           type: string
           updated_at?: string
           user_id: string
@@ -137,11 +160,20 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          tenant_id?: string | null
           type?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       employees: {
         Row: {
@@ -151,6 +183,7 @@ export type Database = {
           id: string
           profile_id: string | null
           role: string | null
+          tenant_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -160,6 +193,7 @@ export type Database = {
           id?: string
           profile_id?: string | null
           role?: string | null
+          tenant_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -169,6 +203,7 @@ export type Database = {
           id?: string
           profile_id?: string | null
           role?: string | null
+          tenant_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -177,6 +212,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -189,6 +231,7 @@ export type Database = {
           full_name: string | null
           id: string
           role: string | null
+          tenant_id: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -197,6 +240,7 @@ export type Database = {
           full_name?: string | null
           id: string
           role?: string | null
+          tenant_id?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -205,6 +249,80 @@ export type Database = {
           full_name?: string | null
           id?: string
           role?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_memberships: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          role: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          role?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          role?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_memberships_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          subscription_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          subscription_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          subscription_status?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -237,6 +355,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      belongs_to_tenant: {
+        Args: { tenant_id: string }
+        Returns: boolean
+      }
+      get_active_tenant: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       has_role: {
         Args: {
           user_id: string
@@ -250,6 +376,10 @@ export type Database = {
       }
       is_admin_user: {
         Args: { user_id: string }
+        Returns: boolean
+      }
+      set_active_tenant: {
+        Args: { tenant_id: string }
         Returns: boolean
       }
     }
