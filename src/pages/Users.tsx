@@ -292,6 +292,7 @@ const Users = () => {
 
   const syncUsersToTenant = async () => {
     if (!currentTenant) return;
+    
     // 1. Get all user_roles with admin/manager/user for this tenant
     const { data: userRoles, error: rolesError } = await supabase
       .from('user_roles')
@@ -324,28 +325,31 @@ const Users = () => {
     for (const userId of userIds) {
       if (!existingProfileIds.has(userId)) {
         // We need to insert a profile for this userId and tenant
-        // Get user metadata if possible
-        const { data: userObj } = await supabase
-          .from('auth.users')
-          .select('email, raw_user_meta_data')
+        // Since we can't access auth.users directly, we'll use what info we have
+        // and create basic profiles
+        
+        // Get existing profile data (might be in another tenant)
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('email, full_name')
           .eq('id', userId)
           .maybeSingle();
-
-        let email = userObj?.email ?? "";
-        let full_name = userObj?.raw_user_meta_data?.full_name ?? "";
-
-        // Insert profile
+        
+        // Insert profile with available data
         await supabase.from('profiles').insert({
           id: userId,
-          email,
-          full_name,
+          email: existingProfile?.email || "",
+          full_name: existingProfile?.full_name || "",
           tenant_id: currentTenant.id,
         });
+        
         added++;
       }
     }
+    
     if (added > 0) {
       toast.info(`Added ${added} missing users to the organization.`);
+      fetchUsers(); // Refresh the user list
     }
   };
 
