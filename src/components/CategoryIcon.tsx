@@ -1,5 +1,6 @@
+
 import React from "react";
-import { Archive, Package, Computer, Menu, Copyright, Monitor, Printer, Phone, Globe, Tablet } from "lucide-react";
+import { Archive, Package, Computer, Menu, Copyright, Monitor, Printer, Phone, Globe, Tablet, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CategoryIconProps {
@@ -13,6 +14,7 @@ export const CategoryIcon = ({ category, className, size = 18, iconType }: Categ
   const categoryLower = category?.toLowerCase() || "";
   
   const getIcon = () => {
+    // First priority: use the explicitly set iconType if available
     if (iconType) {
       switch (iconType) {
         case "menu":
@@ -30,7 +32,8 @@ export const CategoryIcon = ({ category, className, size = 18, iconType }: Categ
         case "archive":
           return <Archive size={size} className={cn("text-blue-600", className)} />;
         case "phone":
-          return <Phone size={size} className={cn("text-green-600", className)} />;
+        case "smartphone":
+          return <Smartphone size={size} className={cn("text-green-600", className)} />;
         case "globe":
           return <Globe size={size} className={cn("text-purple-600", className)} />;
         case "tablet":
@@ -38,6 +41,7 @@ export const CategoryIcon = ({ category, className, size = 18, iconType }: Categ
       }
     }
     
+    // Second priority: try to determine from category name
     if (categoryLower.includes("inventory")) {
       return <Menu size={size} className={cn("text-blue-600", className)} />;
     }
@@ -64,7 +68,7 @@ export const CategoryIcon = ({ category, className, size = 18, iconType }: Categ
     }
     
     if (categoryLower.includes("phone") || categoryLower.includes("mobile")) {
-      return <Phone size={size} className={cn("text-green-600", className)} />;
+      return <Smartphone size={size} className={cn("text-green-600", className)} />;
     }
     
     if (categoryLower.includes("www") || categoryLower.includes("web") || 
@@ -76,6 +80,7 @@ export const CategoryIcon = ({ category, className, size = 18, iconType }: Categ
       return <Tablet size={size} className={cn("text-indigo-600", className)} />;
     }
     
+    // Default fallback
     return <Archive size={size} className={cn("text-gray-500", className)} />;
   };
 

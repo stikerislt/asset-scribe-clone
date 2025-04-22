@@ -45,6 +45,7 @@ import { Category, logCategoryActivity, fetchCategories } from "@/lib/data";
 import { useActivity } from "@/hooks/useActivity";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
 import { CategoryIcon } from "@/components/CategoryIcon";
 
@@ -57,6 +58,7 @@ const Categories = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { logActivity } = useActivity();
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
 
   useEffect(() => {
     const getCategoriesWithSync = async () => {
@@ -69,87 +71,98 @@ const Categories = () => {
         // 1. Fetch all categories in the categories table (for this user/tenant)
         const existingCategories: Category[] = await fetchCategories();
 
-        // 2. Fetch all unique categories from assets table
-        const { data: assetCategories, error: catError } = await supabase
+        // 2. Fetch all unique categories from assets table and their counts
+        const { data: assetCategoriesData, error: catError } = await supabase
           .from('assets')
-          .select('category')
-          .neq('category', null);
+          .select('category, count(*)')
+          .neq('category', null)
+          .group('category');
 
         if (catError) {
           console.error("Error fetching asset categories:", catError);
+          toast.error("Failed to load category data");
+          setIsLoading(false);
+          return;
         }
 
-        // Form a Set of existing lowercased category names
-        const existingNamesSet = new Set(
-          existingCategories.map((cat) => cat.name.trim().toLowerCase())
+        // Format the asset categories data
+        const assetCategories = assetCategoriesData.map(item => ({
+          name: item.category.trim(),
+          count: parseInt(item.count)
+        }));
+
+        // Form a Map of existing lowercased category names to their full objects
+        const existingCategoriesMap = new Map(
+          existingCategories.map((cat) => [cat.name.trim().toLowerCase(), cat])
         );
 
         // For all distinct categories in assets table, insert any not present in the categories table
-        const assetCatNames = Array.isArray(assetCategories)
-          ? Array.from(
-              new Set(
-                assetCategories
-                  .map((a) => String(a.category ?? "").trim())
-                  .filter((v) => v.length > 0)
-              )
-            )
-          : [];
-
-        // Filter out categories already present in categories table
-        const missingCatNames = assetCatNames.filter(
-          (catName) => !existingNamesSet.has(catName.toLowerCase())
+        const missingCategories = assetCategories.filter(
+          (assetCat) => !existingCategoriesMap.has(assetCat.name.toLowerCase())
         );
 
         // Batch insert missing categories
-        if (missingCatNames.length > 0) {
-          // Insert with default icon & type "asset"
-          const toInsert = missingCatNames.map((name) => ({
-            id: crypto.randomUUID(),
-            name,
-            type: "asset",
-            icon: "archive",
-            count: 0,
-            user_id: user.id,
-          }));
+        if (missingCategories.length > 0) {
+          // Insert with determined icon & type "asset"
+          const toInsert = missingCategories.map(item => {
+            // Determine icon using the same logic as CategoryIcon component
+            const categoryName = item.name.toLowerCase();
+            let icon = 'archive';
+            
+            if (categoryName.includes("inventory")) icon = "menu";
+            else if (categoryName.includes("license")) icon = "copyright";
+            else if (categoryName.includes("monitor")) icon = "monitor";
+            else if (categoryName.includes("printer")) icon = "printer";
+            else if (categoryName.includes("accessories")) icon = "package";
+            else if (categoryName.includes("computer") || categoryName.includes("pc") || categoryName.includes("laptop")) icon = "computer";
+            else if (categoryName.includes("phone") || categoryName.includes("mobile")) icon = "phone";
+            else if (categoryName.includes("www") || categoryName.includes("web") || categoryName.includes("website")) icon = "globe";
+            else if (categoryName.includes("tablet")) icon = "tablet";
+            
+            return {
+              id: crypto.randomUUID(),
+              name: item.name,
+              type: "asset",
+              icon: icon,
+              count: item.count,
+              user_id: user.id,
+              tenant_id: currentTenant?.id,
+            };
+          });
 
           const { error: insertError } = await supabase
             .from('categories')
             .insert(toInsert);
 
           if (insertError) {
-            console.error("Failed to insert missing categories from assets:", insertError);
+            console.error("Failed to insert missing categories:", insertError);
             toast.error("Failed to sync categories with assets.");
           } else {
-            toast.success(`${missingCatNames.length} categories auto-added from assets.`);
+            toast.success(`${missingCategories.length} categories auto-added from assets.`);
           }
         }
 
         // Now, refetch categories to ensure the latest are included
         const syncedCategories: Category[] = await fetchCategories();
 
-        // If count field is not up to date, we can update count from the assets table:
-        if (syncedCategories.length > 0) {
-          // Build map of category name to count from assets
-          const nameCountMap: { [cat: string]: number } = {};
-          for (const aName of assetCatNames) {
-            const lower = aName.toLowerCase();
-            nameCountMap[lower] = (nameCountMap[lower] ?? 0) + 1;
-          }
+        // Update categories with accurate counts from assets
+        const categoryCountMap = new Map(
+          assetCategories.map(item => [item.name.toLowerCase(), item.count])
+        );
 
-          // Patch the count on the client side
-          setLocalCategories(
-            syncedCategories.map((cat) => ({
-              ...cat,
-              count:
-                nameCountMap[cat.name.trim().toLowerCase()] ??
-                cat.count ??
-                0,
-              icon: cat.icon || "archive",
-            }))
-          );
-        } else {
-          setLocalCategories([]);
-        }
+        // Update the counts in the local state
+        const categoriesWithUpdatedCounts = syncedCategories.map(cat => {
+          const lowerCaseName = cat.name.trim().toLowerCase();
+          const assetCount = categoryCountMap.get(lowerCaseName);
+          
+          return {
+            ...cat,
+            count: assetCount ?? cat.count ?? 0,
+            icon: cat.icon || "archive",
+          };
+        });
+
+        setLocalCategories(categoriesWithUpdatedCounts);
       } catch (error) {
         console.error("Error in category/asset sync:", error);
         toast.error("An error occurred while loading categories");
@@ -159,7 +172,7 @@ const Categories = () => {
     };
 
     getCategoriesWithSync();
-  }, [user]);
+  }, [user, currentTenant]);
 
   const filteredCategories = localCategories.filter(category => 
     category?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

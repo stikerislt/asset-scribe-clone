@@ -96,10 +96,15 @@ export const debugAssetAccess = async () => {
 // Helper for working with category data from Supabase
 export const fetchCategories = async () => {
   try {
-    const { data, error } = await supabase
+    // Get the current tenant ID from the session
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    let query = supabase
       .from('categories')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('name', { ascending: true });
+    
+    const { data, error } = await query;
       
     if (error) {
       console.error("Error fetching categories:", error);

@@ -26,7 +26,8 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Archive, Smartphone, Globe, Tablet, Package, Computer } from "lucide-react";
+import { useTenant } from "@/hooks/useTenant";
+import { Archive, Smartphone, Globe, Tablet, Package, Computer, Monitor, Printer, Copyright, Menu } from "lucide-react";
 
 // Define the schema for form validation
 const categoryFormSchema = z.object({
@@ -48,19 +49,24 @@ interface CategoryFormProps {
   isEditing?: boolean;
 }
 
-// Icon options for the form
+// Icon options for the form - expanded to match CategoryIcon component
 const iconOptions = [
-  { value: "archive", label: "Inventory", icon: Archive },
-  { value: "smartphone", label: "Mobile Phone", icon: Smartphone },
-  { value: "globe", label: "Website", icon: Globe },
+  { value: "archive", label: "Archive/Default", icon: Archive },
+  { value: "smartphone", label: "Phone/Mobile", icon: Smartphone },
+  { value: "globe", label: "Website/Web", icon: Globe },
   { value: "tablet", label: "Tablet", icon: Tablet },
   { value: "package", label: "Accessories", icon: Package },
-  { value: "computer", label: "Computer", icon: Computer },
+  { value: "computer", label: "Computer/PC/Laptop", icon: Computer },
+  { value: "monitor", label: "Monitor", icon: Monitor },
+  { value: "printer", label: "Printer", icon: Printer },
+  { value: "copyright", label: "License", icon: Copyright },
+  { value: "menu", label: "Inventory", icon: Menu },
 ];
 
 export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = false }: CategoryFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
 
   // Initialize the form
   const form = useForm<CategoryFormValues>({
@@ -84,13 +90,15 @@ export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = fa
       // Create a new category with a unique ID
       const categoryId = initialValues?.id || crypto.randomUUID();
       
-      // Prepare data for Supabase - omit the icon field that doesn't exist in the database
+      // Prepare data for Supabase - include the icon field
       const supabaseData = {
         id: categoryId,
         name: values.name,
         type: values.type,
+        icon: values.icon,
         count: initialValues?.count || 0,
-        user_id: user.id
+        user_id: user.id,
+        tenant_id: currentTenant?.id
       };
 
       // Save to Supabase
@@ -105,14 +113,8 @@ export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = fa
         return;
       }
 
-      // For the UI, include the icon
-      const categoryData = {
-        ...supabaseData,
-        icon: values.icon
-      };
-
       // Submit the form and reset
-      onSubmit(categoryData as Category);
+      onSubmit(supabaseData as Category);
       form.reset();
       toast.success(`Category ${isEditing ? 'updated' : 'created'} successfully`);
     } catch (error) {
