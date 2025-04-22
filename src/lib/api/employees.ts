@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Employee {
@@ -196,26 +197,133 @@ export const addEmployee = async (employee: NewEmployee) => {
   }
 };
 
+// Find employee ID by name - helper function to resolve name to UUID
+export const findEmployeeIdByName = async (fullName: string): Promise<string | null> => {
+  console.log(`Looking up employee ID for name: ${fullName}`);
+  
+  // First check if the employee exists in the employees+profiles tables
+  const { data: employeeData } = await supabase
+    .from('employees')
+    .select(`
+      id,
+      profiles!inner (
+        full_name
+      )
+    `)
+    .eq('profiles.full_name', fullName)
+    .limit(1)
+    .maybeSingle();
+    
+  if (employeeData) {
+    console.log(`Found employee ID ${employeeData.id} for ${fullName} in modern tables`);
+    return employeeData.id;
+  }
+  
+  // If not found in employees table, check if they exist in the legacy assigned_to field
+  // This is just to verify if they exist in legacy data
+  const { data: assets } = await supabase
+    .from('assets')
+    .select('assigned_to')
+    .eq('assigned_to', fullName)
+    .limit(1);
+    
+  if (assets && assets.length > 0) {
+    console.log(`Found employee ${fullName} in legacy data but no modern record exists`);
+    return null; // Return null to indicate we need to create a new record
+  }
+  
+  console.log(`Employee ${fullName} not found in any tables`);
+  return null;
+};
+
 // Update an employee
 export const updateEmployee = async (
-  employeeId: string, // Accept employeeId (uuid) instead of employeeName
+  employeeId: string, // Accept employeeId (uuid) or name (string)
   updates: Partial<NewEmployee>
 ) => {
   try {
     console.log("Updating employee:", employeeId, "with updates:", updates);
 
-    // Find the employee by id (uuid)
-    // First, get the employee row including profile_id
+    // Check if employeeId is a UUID (modern) or a name (legacy)
+    let isUuid = false;
+    try {
+      // Test if the ID is a valid UUID
+      const uuid = employeeId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      isUuid = !!uuid;
+    } catch (e) {
+      isUuid = false;
+    }
+
+    let targetEmployeeId = employeeId;
+    let profileId: string | null = null;
+
+    if (!isUuid) {
+      // This is a name, not a UUID - we need to find or create the proper employee record
+      console.log(`Employee ID ${employeeId} appears to be a name, not UUID. Looking up or creating employee.`);
+      
+      // First attempt to find the employee by name
+      const existingEmployeeId = await findEmployeeIdByName(employeeId);
+      
+      if (existingEmployeeId) {
+        targetEmployeeId = existingEmployeeId;
+      } else {
+        // No existing employee found, we need to create a new employee record
+        console.log(`No existing employee found for ${employeeId}. Creating new employee record.`);
+        
+        // Create a new profile record
+        const newProfileId = crypto.randomUUID();
+        
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: newProfileId,
+            full_name: employeeId, // Use the name provided
+            email: updates.email || null,
+            role: updates.role || null
+          });
+          
+        if (profileError) {
+          console.error("Error creating profile for new employee:", profileError);
+          throw new Error("Could not create profile for new employee: " + profileError.message);
+        }
+        
+        // Create a new employee record linked to the profile
+        const { data: newEmployee, error: employeeError } = await supabase
+          .from('employees')
+          .insert({
+            profile_id: newProfileId,
+            role: updates.role || null,
+            department: updates.department || null,
+            hire_date: updates.hire_date || null
+          })
+          .select('id')
+          .single();
+          
+        if (employeeError || !newEmployee) {
+          console.error("Error creating employee record:", employeeError);
+          throw new Error("Could not create employee record: " + (employeeError?.message || "Unknown error"));
+        }
+        
+        console.log(`Created new employee with ID ${newEmployee.id} for ${employeeId}`);
+        return { success: true, created: true, id: newEmployee.id };
+      }
+    }
+
+    // At this point we have a valid employee UUID in targetEmployeeId
+    // Find the employee row including profile_id
     const { data: employeeRow, error: employeeRowError } = await supabase
       .from('employees')
       .select('id, profile_id')
-      .eq('id', employeeId)
+      .eq('id', targetEmployeeId)
       .single();
 
     if (employeeRowError || !employeeRow) {
+      console.error("Could not find employee for updating:", employeeRowError);
       throw new Error("Could not find employee for updating.");
     }
-    const profileId = employeeRow.profile_id;
+    
+    profileId = employeeRow.profile_id;
+    console.log(`Found employee record with ID ${targetEmployeeId} and profile ID ${profileId}`);
 
     // Update profile if relevant fields present (full_name, email, role)
     if (updates.fullName || updates.email || updates.role) {
@@ -234,6 +342,7 @@ export const updateEmployee = async (
         if (profileUpdateErr) {
           throw new Error("Failed to update employee profile: " + profileUpdateErr.message);
         }
+        console.log(`Updated profile information for ${targetEmployeeId}`);
       }
     }
 
@@ -247,14 +356,15 @@ export const updateEmployee = async (
       const { error: employeeUpdateErr } = await supabase
         .from('employees')
         .update(employeeUpdate)
-        .eq('id', employeeId);
+        .eq('id', targetEmployeeId);
 
       if (employeeUpdateErr) {
         throw new Error("Failed to update employee record: " + employeeUpdateErr.message);
       }
+      console.log(`Updated employee information for ${targetEmployeeId}`);
     }
 
-    return { success: true };
+    return { success: true, id: targetEmployeeId };
   } catch (error) {
     console.error("Error in updateEmployee:", error);
     throw error;
@@ -285,17 +395,39 @@ export const importEmployeesFromCSV = async (headers: string[], data: string[][]
     const hire_date = hireDateIndex !== -1 ? row[hireDateIndex]?.trim() : undefined;
     
     try {
-      await updateEmployee(name, { fullName: name, email, role, department, hire_date });
-      results.push({ name, success: true });
+      // Instead of directly calling updateEmployee with a name, find or create the employee first
+      console.log(`Importing employee: ${name}`);
+      const result = await updateEmployee(name, { 
+        fullName: name, 
+        email, 
+        role, 
+        department, 
+        hire_date 
+      });
+      
+      results.push({ 
+        name, 
+        success: true, 
+        created: result.created || false,
+        id: result.id
+      });
+      
     } catch (error) {
       console.error(`Error importing employee ${name}:`, error);
-      results.push({ name, success: false, error });
+      results.push({ 
+        name, 
+        success: false, 
+        error: error instanceof Error ? error.message : String(error) 
+      });
     }
   }
   
+  // Check for failures and report them
   const failedImports = results.filter(r => !r.success);
   if (failedImports.length > 0) {
-    throw new Error(`Failed to import ${failedImports.length} employees.`);
+    const errorMessage = `Failed to import ${failedImports.length} out of ${results.length} employees.`;
+    console.error(errorMessage, failedImports);
+    throw new Error(errorMessage);
   }
   
   return results;

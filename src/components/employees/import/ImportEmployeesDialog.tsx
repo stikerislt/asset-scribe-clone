@@ -26,10 +26,23 @@ export const ImportEmployeesDialog = ({
   const handleConfirmImport = async () => {
     setIsLoading(true);
     try {
-      await importEmployeesFromCSV(headers, data);
+      const results = await importEmployeesFromCSV(headers, data);
+      
+      // Count created vs. updated records
+      const created = results.filter(r => r.created).length;
+      const updated = results.length - created;
+      
+      let message = `Successfully imported ${results.length} employees.`;
+      if (created > 0) {
+        message += ` Created ${created} new records.`;
+      }
+      if (updated > 0) {
+        message += ` Updated ${updated} existing records.`;
+      }
+      
       toast({
         title: "Import successful",
-        description: `${data.length} employees have been imported.`,
+        description: message,
       });
       onImportComplete?.();
     } catch (error) {
