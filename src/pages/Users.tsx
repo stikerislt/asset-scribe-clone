@@ -192,7 +192,7 @@ const Users = () => {
       
       const newDbRole = formValues.role.toLowerCase() as UserRole;
       if (selectedUser.dbRole !== newDbRole) {
-        const success = await updateUserRole(selectedUser.id, newDbRole);
+        const success = await updateUserRole(selectedUser.id, newRole);
         if (!success) throw new Error("Failed to update role");
       }
       
@@ -426,30 +426,47 @@ const Users = () => {
           .insert({
             user_id: currentUser.id,
             tenant_id: currentTenant.id,
-            role: "member",
-            is_primary: false
+            role: "admin",
+            is_primary: true
           });
+        
         if (insertMembershipError) {
-          toast.error("Failed to add your user to organization (tenant_memberships error)");
+          toast.error("Failed to add your user to organization");
           console.error("Insert tenant_membership error", insertMembershipError);
           return;
         }
-        toast.info("Added you as a member of this organization.");
+        toast.info("Added you as an admin of this organization.");
       }
 
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: currentUser.id,
-        email: currentUser.email,
-        full_name: currentUser.user_metadata?.full_name,
-        tenant_id: currentTenant.id
-      }, { onConflict: 'id' });
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: currentUser.id,
+          email: currentUser.email,
+          full_name: currentUser.user_metadata?.full_name || currentUser.email,
+          tenant_id: currentTenant.id,
+          role: 'admin'
+        }, { onConflict: 'id' });
+
       if (profileError) {
-        toast.error("Failed to upsert your user profile");
-        console.error("Upsert profile error", profileError);
+        toast.error("Failed to update user profile");
+        console.error("Profile update error", profileError);
         return;
       }
 
-      toast.success("Successfully added your user to this organization");
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .upsert({
+          user_id: currentUser.id,
+          role: 'admin'
+        }, { onConflict: 'user_id' });
+
+      if (roleError) {
+        toast.error("Failed to set user role");
+        console.error("User role error", roleError);
+      }
+
+      toast.success("Successfully added and configured your user account");
       fetchUsers(); // Refresh the list
     } catch (error) {
       console.error('Error adding current user:', error);
