@@ -76,7 +76,8 @@ const Categories = () => {
           .from('assets')
           .select('category, count(*)')
           .neq('category', null)
-          .group('category');
+          .order('category')
+          .throwOnError();
 
         if (catError) {
           console.error("Error fetching asset categories:", catError);
@@ -85,21 +86,30 @@ const Categories = () => {
           return;
         }
 
-        // Format the asset categories data
-        const assetCategories = assetCategoriesData.map(item => ({
-          name: item.category.trim(),
-          count: parseInt(item.count)
-        }));
+        // Get distinct categories with counts
+        const categoryCounts = new Map<string, number>();
+        assetCategoriesData?.forEach(item => {
+          const category = item.category.trim();
+          const count = parseInt(item.count);
+          categoryCounts.set(category.toLowerCase(), count);
+        });
 
         // Form a Map of existing lowercased category names to their full objects
         const existingCategoriesMap = new Map(
           existingCategories.map((cat) => [cat.name.trim().toLowerCase(), cat])
         );
 
-        // For all distinct categories in assets table, insert any not present in the categories table
-        const missingCategories = assetCategories.filter(
-          (assetCat) => !existingCategoriesMap.has(assetCat.name.toLowerCase())
-        );
+        // Find missing categories (in assets but not in categories table)
+        const missingCategories: { name: string, count: number }[] = [];
+        
+        categoryCounts.forEach((count, categoryName) => {
+          if (!existingCategoriesMap.has(categoryName)) {
+            missingCategories.push({
+              name: categoryName,
+              count: count
+            });
+          }
+        });
 
         // Batch insert missing categories
         if (missingCategories.length > 0) {
@@ -145,24 +155,19 @@ const Categories = () => {
         // Now, refetch categories to ensure the latest are included
         const syncedCategories: Category[] = await fetchCategories();
 
-        // Update categories with accurate counts from assets
-        const categoryCountMap = new Map(
-          assetCategories.map(item => [item.name.toLowerCase(), item.count])
-        );
-
-        // Update the counts in the local state
-        const categoriesWithUpdatedCounts = syncedCategories.map(cat => {
+        // Update the counts in the local state using the correct counts from assets
+        const updatedCategories = syncedCategories.map(cat => {
           const lowerCaseName = cat.name.trim().toLowerCase();
-          const assetCount = categoryCountMap.get(lowerCaseName);
+          const assetCount = categoryCounts.get(lowerCaseName);
           
           return {
             ...cat,
-            count: assetCount ?? cat.count ?? 0,
+            count: typeof assetCount === 'number' ? assetCount : (cat.count ?? 0),
             icon: cat.icon || "archive",
-          };
+          } as Category; // Explicit cast to Category
         });
 
-        setLocalCategories(categoriesWithUpdatedCounts);
+        setLocalCategories(updatedCategories);
       } catch (error) {
         console.error("Error in category/asset sync:", error);
         toast.error("An error occurred while loading categories");

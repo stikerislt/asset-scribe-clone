@@ -1,3 +1,4 @@
+
 import { useActivity, getActivityIcon } from "@/hooks/useActivity";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +14,7 @@ export type Asset = ApiAsset;
 export type StatusColor = "green" | "yellow" | "red";
 
 // Define Category type based on what we expect from Supabase
+// Ensure count is explicitly a number to avoid type issues
 export interface Category {
   id: string;
   name: string;
@@ -20,6 +22,7 @@ export interface Category {
   count: number;
   user_id?: string;
   icon?: string;
+  tenant_id?: string;
 }
 
 // Empty arrays instead of sample data
@@ -111,7 +114,11 @@ export const fetchCategories = async () => {
       throw error;
     }
     
-    return data as Category[];
+    // Ensure proper type casting for count
+    return (data || []).map(cat => ({
+      ...cat,
+      count: typeof cat.count === 'number' ? cat.count : 0
+    })) as Category[];
   } catch (error) {
     console.error("Error in fetchCategories:", error);
     throw error;
