@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,9 +73,10 @@ const Categories = () => {
         const existingCategories: Category[] = await fetchCategories();
 
         // 2. Fetch all unique categories from assets table and their counts
+        // Fix: Use a different approach to get category counts that's compatible with TypeScript
         const { data: assetCategoriesData, error: catError } = await supabase
           .from('assets')
-          .select('category, count(*)')
+          .select('category')
           .neq('category', null)
           .order('category')
           .throwOnError();
@@ -86,12 +88,13 @@ const Categories = () => {
           return;
         }
 
-        // Get distinct categories with counts
+        // Count occurrences of each category manually
         const categoryCounts = new Map<string, number>();
         assetCategoriesData?.forEach(item => {
-          const category = item.category.trim();
-          const count = parseInt(item.count);
-          categoryCounts.set(category.toLowerCase(), count);
+          if (item && item.category) {
+            const category = item.category.trim().toLowerCase();
+            categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+          }
         });
 
         // Form a Map of existing lowercased category names to their full objects
