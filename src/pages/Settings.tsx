@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent, 
@@ -21,35 +21,36 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { 
-  Settings as SettingsIcon, 
-  Building, 
   User, 
   Bell, 
   Database, 
-  Lock 
+  Lock,
+  Loader2
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { isAdmin } from "@/lib/api/userRoles";
 
-// Schema for general settings
-const generalSettingsSchema = z.object({
-  companyName: z.string().min(2, { message: "Company name must be at least 2 characters." }),
-  adminEmail: z.string().email({ message: "Please enter a valid email address." }),
-  siteUrl: z.string().url({ message: "Please enter a valid URL." }),
-  timezone: z.string().min(1, { message: "Please select a timezone." }),
+// Schema for account settings
+const accountSettingsSchema = z.object({
+  currentPassword: z.string().min(6, { message: "Current password is required" }),
+  newPassword: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  confirmPassword: z.string().min(6, { message: "Password must be at least 6 characters" }),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });
 
-type GeneralSettingsValues = z.infer<typeof generalSettingsSchema>;
+type AccountSettingsValues = z.infer<typeof accountSettingsSchema>;
 
 // Schema for notification settings
 const notificationSettingsSchema = z.object({
-  emailNotifications: z.boolean().default(true),
-  checkoutAlerts: z.boolean().default(true),
-  checkoutEmails: z.boolean().default(true),
+  assetAlerts: z.boolean().default(true),
   lowInventoryAlerts: z.boolean().default(false),
   lowInventoryThreshold: z.number().min(1).default(5),
 });
@@ -57,16 +58,18 @@ const notificationSettingsSchema = z.object({
 type NotificationSettingsValues = z.infer<typeof notificationSettingsSchema>;
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState("account");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { user } = useAuth();
   
-  // General settings form
-  const generalForm = useForm<GeneralSettingsValues>({
-    resolver: zodResolver(generalSettingsSchema),
+  // Account settings form
+  const accountForm = useForm<AccountSettingsValues>({
+    resolver: zodResolver(accountSettingsSchema),
     defaultValues: {
-      companyName: "ekspeer.com Inventory",
-      adminEmail: "admin@example.com",
-      siteUrl: "https://ekspeer.com",
-      timezone: "UTC",
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
     },
   });
 
@@ -74,17 +77,63 @@ const Settings = () => {
   const notificationForm = useForm<NotificationSettingsValues>({
     resolver: zodResolver(notificationSettingsSchema),
     defaultValues: {
-      emailNotifications: true,
-      checkoutAlerts: true,
-      checkoutEmails: true,
+      assetAlerts: true,
       lowInventoryAlerts: false,
       lowInventoryThreshold: 5,
     },
   });
+  
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      
+      try {
+        const adminStatus = await isAdmin(user.id);
+        setIsAdmin(adminStatus);
+      } catch (error) {
+        console.error("Error checking admin status:", error);
+        setIsAdmin(false);
+      }
+    };
+    
+    checkAdminStatus();
+  }, [user]);
 
-  const onSaveGeneralSettings = (data: GeneralSettingsValues) => {
-    console.log("General settings saved:", data);
-    toast.success("General settings saved successfully");
+  const onSaveAccountSettings = async (data: AccountSettingsValues) => {
+    setIsLoading(true);
+    try {
+      // First verify the current password by attempting a password sign-in
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: user?.email || '',
+        password: data.currentPassword,
+      });
+      
+      if (verifyError) {
+        toast.error("Current password is incorrect");
+        setIsLoading(false);
+        return;
+      }
+      
+      // If verification passed, update the password
+      const { error } = await supabase.auth.updateUser({
+        password: data.newPassword
+      });
+      
+      if (error) {
+        toast.error("Failed to update password: " + error.message);
+      } else {
+        toast.success("Password updated successfully");
+        accountForm.reset();
+      }
+    } catch (error) {
+      console.error("Password update error:", error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const onSaveNotificationSettings = (data: NotificationSettingsValues) => {
@@ -101,10 +150,6 @@ const Settings = () => {
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="general">
-            <Building className="mr-2 h-4 w-4" />
-            General
-          </TabsTrigger>
           <TabsTrigger value="account">
             <User className="mr-2 h-4 w-4" />
             Account
@@ -113,102 +158,13 @@ const Settings = () => {
             <Bell className="mr-2 h-4 w-4" />
             Notifications
           </TabsTrigger>
-          <TabsTrigger value="database">
-            <Database className="mr-2 h-4 w-4" />
-            Database
-          </TabsTrigger>
-          <TabsTrigger value="security">
-            <Lock className="mr-2 h-4 w-4" />
-            Security
-          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="security">
+              <Lock className="mr-2 h-4 w-4" />
+              Security
+            </TabsTrigger>
+          )}
         </TabsList>
-        
-        {/* General Settings */}
-        <TabsContent value="general" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Company Information</CardTitle>
-              <CardDescription>
-                Configure basic company information and branding
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...generalForm}>
-                <form onSubmit={generalForm.handleSubmit(onSaveGeneralSettings)} className="space-y-4">
-                  <FormField
-                    control={generalForm.control}
-                    name="companyName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Company Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          This will be displayed in the application title and emails.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={generalForm.control}
-                    name="adminEmail"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Admin Email</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          System notifications will be sent to this address.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={generalForm.control}
-                    name="siteUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Site URL</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          The URL where your application is hosted.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={generalForm.control}
-                    name="timezone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Timezone</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          All dates and times will be displayed in this timezone.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <Button type="submit">Save Changes</Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
         
         {/* Account Settings */}
         <TabsContent value="account" className="space-y-4">
@@ -216,53 +172,81 @@ const Settings = () => {
             <CardHeader>
               <CardTitle>Account Settings</CardTitle>
               <CardDescription>
-                Manage your profile and account preferences
+                Manage your profile and password
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Profile Information</Label>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="font-medium">Profile Information</h3>
                 <div className="grid gap-4 py-2">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                      Name
-                    </Label>
-                    <Input id="name" value="Admin User" className="col-span-3" />
-                  </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="email" className="text-right">
                       Email
                     </Label>
-                    <Input id="email" value="admin@example.com" className="col-span-3" />
+                    <Input id="email" value={user?.email || ''} className="col-span-3" disabled />
                   </div>
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <Label>Change Password</Label>
-                <div className="grid gap-4 py-2">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="current-password" className="text-right">
-                      Current Password
-                    </Label>
-                    <Input id="current-password" type="password" className="col-span-3" />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="new-password" className="text-right">
-                      New Password
-                    </Label>
-                    <Input id="new-password" type="password" className="col-span-3" />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="confirm-password" className="text-right">
-                      Confirm Password
-                    </Label>
-                    <Input id="confirm-password" type="password" className="col-span-3" />
-                  </div>
-                </div>
+              <div className="space-y-4">
+                <h3 className="font-medium">Change Password</h3>
+                <Form {...accountForm}>
+                  <form onSubmit={accountForm.handleSubmit(onSaveAccountSettings)} className="space-y-4">
+                    <FormField
+                      control={accountForm.control}
+                      name="currentPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Current Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={accountForm.control}
+                      name="newPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={accountForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm New Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <Button type="submit" disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Updating...
+                        </>
+                      ) : (
+                        "Update Password"
+                      )}
+                    </Button>
+                  </form>
+                </Form>
               </div>
-              
-              <Button>Save Account Changes</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -273,7 +257,7 @@ const Settings = () => {
             <CardHeader>
               <CardTitle>Notification Preferences</CardTitle>
               <CardDescription>
-                Configure how and when you receive notifications
+                Configure inventory alerts and notifications
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -281,32 +265,11 @@ const Settings = () => {
                 <form onSubmit={notificationForm.handleSubmit(onSaveNotificationSettings)} className="space-y-4">
                   <FormField
                     control={notificationForm.control}
-                    name="emailNotifications"
+                    name="assetAlerts"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-base">Email Notifications</FormLabel>
-                          <FormDescription>
-                            Receive email notifications for important events
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={notificationForm.control}
-                    name="checkoutAlerts"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">Checkout Alerts</FormLabel>
+                          <FormLabel className="text-base">Asset Checkout Alerts</FormLabel>
                           <FormDescription>
                             Receive notifications when assets are checked out
                           </FormDescription>
@@ -371,109 +334,58 @@ const Settings = () => {
           </Card>
         </TabsContent>
         
-        {/* Database Settings */}
-        <TabsContent value="database" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Database Management</CardTitle>
-              <CardDescription>
-                Manage your data and backups
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Data Backup</Label>
-                <div className="rounded-lg border p-4">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Create a backup of your database. This includes all assets, users, and configuration data.
-                  </p>
-                  <Button>
-                    <Database className="mr-2 h-4 w-4" />
-                    Create Backup
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Database Reset</Label>
-                <div className="rounded-lg border p-4">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Warning: This will permanently erase all data. This action cannot be undone.
-                  </p>
-                  <Button variant="destructive">
-                    Reset Database
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Security Settings */}
-        <TabsContent value="security" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
-              <CardDescription>
-                Configure authentication and security options
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Password Policy</Label>
-                <div className="grid gap-4 py-2">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label>Minimum Password Length</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Set the minimum character requirement for passwords
-                      </p>
+        {/* Security Settings - Only shown to admin users */}
+        {isAdmin && (
+          <TabsContent value="security" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Security Settings</CardTitle>
+                <CardDescription>
+                  Configure organization-wide security policies
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Password Policy</Label>
+                  <div className="grid gap-4 py-2">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Minimum Password Length</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Set the minimum character requirement for passwords
+                        </p>
+                      </div>
+                      <Input 
+                        type="number" 
+                        value="8"
+                        min={8}
+                        max={64}
+                        className="w-20 text-right"
+                      />
                     </div>
-                    <Input 
-                      type="number" 
-                      value="8"
-                      min={8}
-                      max={64}
-                      className="w-20 text-right"
-                    />
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch id="require-uppercase" />
-                    <Label htmlFor="require-uppercase">Require uppercase letters</Label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch id="require-numbers" defaultChecked />
-                    <Label htmlFor="require-numbers">Require numbers</Label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch id="require-symbols" />
-                    <Label htmlFor="require-symbols">Require special characters</Label>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Two-Factor Authentication (2FA)</Label>
-                <div className="rounded-lg border p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <p className="font-medium">Require 2FA for all users</p>
-                      <p className="text-sm text-muted-foreground">
-                        Enforce two-factor authentication for added security
-                      </p>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Switch id="require-uppercase" />
+                      <Label htmlFor="require-uppercase">Require uppercase letters</Label>
                     </div>
-                    <Switch id="require-2fa" />
+                    
+                    <div className="flex items-center space-x-2">
+                      <Switch id="require-numbers" defaultChecked />
+                      <Label htmlFor="require-numbers">Require numbers</Label>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Switch id="require-symbols" />
+                      <Label htmlFor="require-symbols">Require special characters</Label>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <Button>Save Security Settings</Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                
+                <Button>Save Security Settings</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
