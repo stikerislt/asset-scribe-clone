@@ -6,8 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Asset, AssetStatus, VALID_ASSET_STATUSES } from "@/lib/api/assets";
-import { useActivity } from "@/hooks/useActivity";
 import { Package } from "lucide-react";
+import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
 
 interface ImportAssetsDialogProps {
@@ -26,6 +26,11 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
   const queryClient = useQueryClient();
   const { logActivity } = useActivity();
   const { user } = useAuth();
+
+  // Helper function to normalize column names (preserve underscores, lowercase)
+  const normalizeColumnName = (header: string): string => {
+    return header.toLowerCase().trim();
+  };
 
   const handleImportConfirm = async () => {
     if (previewData.data.length === 0) {
@@ -49,8 +54,9 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
     setIsImporting(true);
 
     try {
-      // Map headers to lowercase for consistent key access
-      const headers = previewData.headers.map(h => h.toLowerCase());
+      // Normalize headers (lowercase and preserve underscores)
+      const headers = previewData.headers.map(h => normalizeColumnName(h));
+      console.log("Normalized headers:", headers);
 
       // Transform CSV data to assets
       const assets = previewData.data.map(row => {
@@ -72,30 +78,30 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
 
         headers.forEach((header, index) => {
           if (header && row[index] !== undefined) {
-            const cleanHeader = header.trim();
-            if (cleanHeader && row[index] !== '') {
-              if (cleanHeader === 'status') {
+            // Skip empty cells or headers
+            if (header && row[index] !== '') {
+              if (header === 'status') {
                 const statusValue = row[index].toLowerCase();
                 if (VALID_ASSET_STATUSES.includes(statusValue as AssetStatus)) {
-                  asset[cleanHeader] = statusValue as AssetStatus;
+                  asset[header] = statusValue as AssetStatus;
                 } else {
-                  asset[cleanHeader] = 'ready' as AssetStatus;
+                  asset[header] = 'ready' as AssetStatus;
                 }
               }
-              else if (cleanHeader === 'status_color') {
-                asset[cleanHeader] = row[index].toLowerCase();
+              else if (header === 'status_color') {
+                asset[header] = row[index].toLowerCase();
               }
-              else if (cleanHeader === 'qty') {
-                asset[cleanHeader] = parseInt(row[index], 10) || 1;
+              else if (header === 'qty') {
+                asset[header] = parseInt(row[index], 10) || 1;
               }
-              else if (cleanHeader === 'purchase_cost') {
-                asset[cleanHeader] = parseFloat(row[index]) || null;
+              else if (header === 'purchase_cost') {
+                asset[header] = parseFloat(row[index]) || null;
               }
-              else if (cleanHeader === 'wear') {
-                asset[cleanHeader] = parseInt(row[index], 10) || null;
+              else if (header === 'wear') {
+                asset[header] = parseInt(row[index], 10) || null;
               }
               else {
-                asset[cleanHeader] = row[index];
+                asset[header] = row[index];
               }
             }
           }
@@ -125,6 +131,17 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
         // Log extra error info if present
         console.error("Supabase insert error:", error);
         let backendErrorInfo = error.message;
+        
+        // More detailed error message for column not found errors
+        if (error.message.includes("column") && error.message.includes("schema cache")) {
+          const match = error.message.match(/Could not find the '(.+?)' column/);
+          if (match && match[1]) {
+            const problematicColumn = match[1];
+            const suggestedColumn = problematicColumn.replace(/ /g, "_");
+            backendErrorInfo = `Column name error: "${problematicColumn}" doesn't exist in the database. Did you mean "${suggestedColumn}"? Make sure your CSV headers match database column names exactly (e.g., "assigned_to" not "assigned to").`;
+          }
+        }
+        
         if (error.code) backendErrorInfo += ` (code: ${error.code})`;
         if (error.details) backendErrorInfo += ` Details: ${error.details}`;
         if (error.hint) backendErrorInfo += ` Hint: ${error.hint}`;
