@@ -454,16 +454,14 @@ const Users = () => {
         return;
       }
 
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .upsert({
-          user_id: currentUser.id,
-          role: 'admin'
-        }, { onConflict: 'user_id' });
-
-      if (roleError) {
+      console.log("Calling edge function to update user role to admin");
+      const success = await updateUserRoleByEmail(currentUser.email, 'admin');
+      
+      if (!success) {
         toast.error("Failed to set user role");
-        console.error("User role error", roleError);
+        console.error("Edge function user role update error");
+      } else {
+        console.log("Edge function successfully updated user role");
       }
 
       toast.success("Successfully added and configured your user account");
