@@ -59,8 +59,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = async (email: string, password: string, fullName: string) => {
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({ 
-        email, 
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
         password,
         options: {
           data: {
@@ -68,38 +68,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       });
-      
       if (authError) throw authError;
 
-      if (authData.user) {
-        const { data: tenantData, error: tenantError } = await supabase
-          .from('tenants')
-          .insert({
-            name: `${fullName}'s Organization`,
-            description: 'Default organization'
-          })
-          .select()
-          .single();
+      if (!authData.user) throw new Error("Signup failed. Please try again.");
 
-        if (tenantError) throw tenantError;
+      const tenantName = `${fullName}'s Organization`;
+      const { data: tenantData, error: tenantError } = await supabase
+        .from('tenants')
+        .insert({
+          name: tenantName,
+          description: 'Default organization'
+        })
+        .select()
+        .single();
+      if (tenantError || !tenantData) throw tenantError || new Error("Tenant creation failed.");
 
-        const { error: membershipError } = await supabase
-          .from('tenant_memberships')
-          .insert({
-            user_id: authData.user.id,
-            tenant_id: tenantData.id,
-            role: 'admin',
-            is_primary: true
-          });
-
-        if (membershipError) throw membershipError;
-      }
+      const { error: membershipError } = await supabase
+        .from('tenant_memberships')
+        .insert({
+          user_id: authData.user.id,
+          tenant_id: tenantData.id,
+          role: 'admin',
+          is_primary: true
+        });
+      if (membershipError) throw membershipError;
 
       toast({
         title: "Signup successful",
-        description: "Your account has been created. You'll receive an email to confirm your registration.",
+        description:
+          "Your account and organization have been created. You'll receive an email to confirm your registration.",
       });
-      
+
       navigate("/auth/login");
     } catch (error: any) {
       toast({
