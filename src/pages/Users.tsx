@@ -290,6 +290,70 @@ const Users = () => {
     }
   };
 
+  const syncUsersToTenant = async () => {
+    if (!currentTenant) return;
+    // 1. Get all user_roles with admin/manager/user for this tenant
+    const { data: userRoles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('user_id, role');
+
+    if (rolesError || !userRoles) {
+      console.error('Error fetching user roles for sync:', rolesError);
+      return;
+    }
+
+    // 2. Find all Auth users with roles, who should have a profile in this tenant
+    // (we do not know tenant for user_roles, but let's check all user_ids present)
+    const userIds = userRoles.map(ur => ur.user_id);
+
+    // 3. Get all existing profiles for this tenant
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('tenant_id', currentTenant.id);
+
+    if (profilesError || !profiles) {
+      console.error('Error fetching profiles for sync:', profilesError);
+      return;
+    }
+
+    const existingProfileIds = new Set(profiles.map(p => p.id));
+
+    // 4. Add missing profiles for this tenant
+    let added = 0;
+    for (const userId of userIds) {
+      if (!existingProfileIds.has(userId)) {
+        // We need to insert a profile for this userId and tenant
+        // Get user metadata if possible
+        const { data: userObj } = await supabase
+          .from('auth.users')
+          .select('email, raw_user_meta_data')
+          .eq('id', userId)
+          .maybeSingle();
+
+        let email = userObj?.email ?? "";
+        let full_name = userObj?.raw_user_meta_data?.full_name ?? "";
+
+        // Insert profile
+        await supabase.from('profiles').insert({
+          id: userId,
+          email,
+          full_name,
+          tenant_id: currentTenant.id,
+        });
+        added++;
+      }
+    }
+    if (added > 0) {
+      toast.info(`Added ${added} missing users to the organization.`);
+    }
+  };
+
+  useEffect(() => {
+    syncUsersToTenant();
+    // eslint-disable-next-line
+  }, [currentTenant]);
+
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
