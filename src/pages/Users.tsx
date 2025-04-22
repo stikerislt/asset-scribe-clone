@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { UserPlus, Shield, Edit } from "lucide-react";
+import { UserPlus, Shield, Edit, AlertCircle } from "lucide-react";
 import { UserForm } from "@/components/UserForm";
 import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,6 +35,8 @@ const Users = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [updateUserError, setUpdateUserError] = useState<string | undefined>();
+  const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   const { logActivity } = useActivity();
   const { user: currentUser } = useAuth();
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
@@ -293,63 +295,103 @@ const Users = () => {
   const syncUsersToTenant = async () => {
     if (!currentTenant) return;
     
-    // 1. Get all user_roles with admin/manager/user for this tenant
-    const { data: userRoles, error: rolesError } = await supabase
-      .from('user_roles')
-      .select('user_id, role');
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const currentAuthUser = session?.session?.user;
+      
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
 
-    if (rolesError || !userRoles) {
-      console.error('Error fetching user roles for sync:', rolesError);
-      return;
-    }
-
-    // 2. Find all Auth users with roles, who should have a profile in this tenant
-    // (we do not know tenant for user_roles, but let's check all user_ids present)
-    const userIds = userRoles.map(ur => ur.user_id);
-
-    // 3. Get all existing profiles for this tenant
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('tenant_id', currentTenant.id);
-
-    if (profilesError || !profiles) {
-      console.error('Error fetching profiles for sync:', profilesError);
-      return;
-    }
-
-    const existingProfileIds = new Set(profiles.map(p => p.id));
-
-    // 4. Add missing profiles for this tenant
-    let added = 0;
-    for (const userId of userIds) {
-      if (!existingProfileIds.has(userId)) {
-        // We need to insert a profile for this userId and tenant
-        // Since we can't access auth.users directly, we'll use what info we have
-        // and create basic profiles
-        
-        // Get existing profile data (might be in another tenant)
-        const { data: existingProfile } = await supabase
-          .from('profiles')
-          .select('email, full_name')
-          .eq('id', userId)
-          .maybeSingle();
-        
-        // Insert profile with available data
-        await supabase.from('profiles').insert({
-          id: userId,
-          email: existingProfile?.email || "",
-          full_name: existingProfile?.full_name || "",
-          tenant_id: currentTenant.id,
-        });
-        
-        added++;
+      if (rolesError) {
+        console.error('Error fetching user roles for sync:', rolesError);
+        toast.error('Failed to sync user roles');
+        return;
       }
-    }
-    
-    if (added > 0) {
-      toast.info(`Added ${added} missing users to the organization.`);
-      fetchUsers(); // Refresh the user list
+
+      const { data: allProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, tenant_id');
+
+      if (profilesError) {
+        console.error('Error fetching all profiles for sync:', profilesError);
+        toast.error('Failed to sync profiles');
+        return;
+      }
+
+      const { data: tenantProfiles, error: tenantProfilesError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('tenant_id', currentTenant.id);
+
+      if (tenantProfilesError) {
+        console.error('Error fetching tenant profiles for sync:', tenantProfilesError);
+        toast.error('Failed to sync profiles');
+        return;
+      }
+
+      const existingProfileIds = new Set(tenantProfiles?.map(p => p.id) || []);
+      
+      const profilesById = new Map();
+      allProfiles?.forEach(profile => {
+        profilesById.set(profile.id, profile);
+      });
+      
+      const userIds = userRoles?.map(ur => ur.user_id) || [];
+      
+      if (currentAuthUser && !userIds.includes(currentAuthUser.id)) {
+        userIds.push(currentAuthUser.id);
+      }
+
+      const debugData = {
+        currentUser: currentAuthUser,
+        currentTenant,
+        userRoles,
+        allProfiles,
+        tenantProfiles,
+        existingProfileIds: Array.from(existingProfileIds),
+        userIds
+      };
+      setDebugInfo(debugData);
+
+      let added = 0;
+      for (const userId of userIds) {
+        if (!existingProfileIds.has(userId)) {
+          const existingProfile = profilesById.get(userId);
+          
+          await supabase.from('profiles').insert({
+            id: userId,
+            email: existingProfile?.email || (userId === currentAuthUser?.id ? currentAuthUser.email : ""),
+            full_name: existingProfile?.full_name || "",
+            tenant_id: currentTenant.id,
+          });
+          
+          added++;
+        }
+      }
+      
+      if (added > 0) {
+        toast.info(`Added ${added} missing users to the organization.`);
+        fetchUsers(); // Refresh the user list
+      }
+      
+      if (currentAuthUser) {
+        const currentUserInTenant = existingProfileIds.has(currentAuthUser.id);
+        if (!currentUserInTenant) {
+          await supabase.from('profiles').upsert({
+            id: currentAuthUser.id,
+            email: currentAuthUser.email,
+            tenant_id: currentTenant.id
+          }, { onConflict: 'id' });
+          
+          toast.info("Added your user profile to the current organization.");
+          fetchUsers(); // Refresh the list
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error syncing users to tenant:', error);
+      toast.error('Failed to sync users to organization');
     }
   };
 
@@ -357,6 +399,27 @@ const Users = () => {
     syncUsersToTenant();
     // eslint-disable-next-line
   }, [currentTenant]);
+
+  const forceAddCurrentUser = async () => {
+    try {
+      if (!currentUser || !currentTenant) {
+        toast.error("No current user or tenant found");
+        return;
+      }
+      
+      await supabase.from('profiles').upsert({
+        id: currentUser.id,
+        email: currentUser.email,
+        tenant_id: currentTenant.id
+      }, { onConflict: 'id' });
+      
+      toast.success("Successfully added your user to this organization");
+      fetchUsers(); // Refresh the list
+    } catch (error) {
+      console.error('Error adding current user:', error);
+      toast.error('Failed to add user to organization');
+    }
+  };
 
   return (
     <div className="animate-fade-in">
@@ -366,6 +429,22 @@ const Users = () => {
           <p className="text-muted-foreground mt-1">Manage user accounts and permissions</p>
         </div>
         <div className="mt-4 sm:mt-0 flex flex-wrap gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => setIsDebugDialogOpen(true)}
+            className="bg-amber-50 text-amber-800"
+          >
+            <AlertCircle className="mr-2 h-4 w-4" />
+            Debug Users
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={forceAddCurrentUser}
+            className="bg-blue-50 text-blue-800"
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add My User
+          </Button>
           <Button 
             className="bg-purple-600 hover:bg-purple-700"
             onClick={() => setIsEmailRoleDialogOpen(true)}
@@ -404,7 +483,6 @@ const Users = () => {
         </CardContent>
       </Card>
 
-      {/* Add User Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -419,7 +497,6 @@ const Users = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit User Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -447,7 +524,6 @@ const Users = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Role Dialog */}
       <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -486,7 +562,6 @@ const Users = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Update Role by Email Dialog */}
       <Dialog open={isEmailRoleDialogOpen} onOpenChange={setIsEmailRoleDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -530,6 +605,49 @@ const Users = () => {
             </Button>
             <Button onClick={handleUpdateRoleByEmail} disabled={isRoleUpdating || !emailForRoleUpdate}>
               {isRoleUpdating ? 'Updating...' : 'Update Role'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDebugDialogOpen} onOpenChange={setIsDebugDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>User Debug Information</DialogTitle>
+            <DialogDescription>
+              Troubleshooting information for user visibility issues
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <h3 className="font-medium">Current User</h3>
+              <pre className="bg-slate-100 p-2 rounded text-sm overflow-auto">
+                {JSON.stringify(currentUser, null, 2)}
+              </pre>
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="font-medium">Current Tenant</h3>
+              <pre className="bg-slate-100 p-2 rounded text-sm overflow-auto">
+                {JSON.stringify(currentTenant, null, 2)}
+              </pre>
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="font-medium">Sync Debug Data</h3>
+              <pre className="bg-slate-100 p-2 rounded text-sm overflow-auto">
+                {debugInfo ? JSON.stringify(debugInfo, null, 2) : "No sync data available"}
+              </pre>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => syncUsersToTenant()}>
+              Run Sync Again
+            </Button>
+            <Button variant="outline" onClick={() => setIsDebugDialogOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
