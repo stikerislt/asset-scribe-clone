@@ -205,58 +205,58 @@ export const updateEmployee = async (employeeName: string, updates: Partial<NewE
   try {
     console.log("Updating employee:", employeeName, "with updates:", updates);
     
-    // First, check if there's an existing auth user with the given email
+    // First, check if there's an existing profile with the given email (if email is provided)
     if (updates.email) {
-      const { data: authUser, error: authError } = await supabase
-        .from('auth.users')
+      // Query the profiles table to find a user with this email
+      const { data: existingProfile, error: profileQueryError } = await supabase
+        .from('profiles')
         .select('id')
         .eq('email', updates.email)
         .limit(1)
         .maybeSingle();
-
-      if (authError) {
-        console.error("Error fetching auth user:", authError);
+      
+      if (profileQueryError) {
+        console.error("Error searching for existing profile:", profileQueryError);
         throw new Error("Could not verify user account status");
       }
 
-      if (!authUser) {
-        throw new Error("No user account exists with this email. The user must create an account before being added as an employee.");
+      // If a profile exists with this email
+      if (existingProfile) {
+        // Update the existing profile
+        const { error: profileUpdateError } = await supabase
+          .from('profiles')
+          .update({
+            full_name: employeeName,
+            role: updates.role || null
+          })
+          .eq('id', existingProfile.id);
+
+        if (profileUpdateError) {
+          console.error("Error updating profile:", profileUpdateError);
+          throw new Error("Failed to update employee profile");
+        }
+
+        // Update or create employee record
+        const { error: employeeError } = await supabase
+          .from('employees')
+          .upsert({
+            profile_id: existingProfile.id,
+            role: updates.role || null,
+            department: updates.department || null
+          }, {
+            onConflict: 'profile_id'
+          });
+
+        if (employeeError) {
+          console.error("Error updating employee record:", employeeError);
+          throw new Error("Failed to update employee record");
+        }
+
+        return { success: true };
+      } else {
+        // No profile with this email exists
+        throw new Error(`No user profile exists with email ${updates.email}. The user must create an account before being added as an employee.`);
       }
-
-      // Use the auth user's ID for the profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: authUser.id,
-          full_name: employeeName,
-          email: updates.email,
-          role: updates.role || null
-        }, {
-          onConflict: 'id'
-        });
-
-      if (profileError) {
-        console.error("Error creating/updating profile:", profileError);
-        throw new Error("Failed to update employee profile");
-      }
-
-      // Update or create employee record
-      const { error: employeeError } = await supabase
-        .from('employees')
-        .upsert({
-          profile_id: authUser.id,
-          role: updates.role || null,
-          department: updates.department || null
-        }, {
-          onConflict: 'profile_id'
-        });
-
-      if (employeeError) {
-        console.error("Error updating employee record:", employeeError);
-        throw new Error("Failed to update employee record");
-      }
-
-      return { success: true };
     } else {
       // If no email provided, just try to update existing profile by name
       const { data: existingProfile, error: profileError } = await supabase
