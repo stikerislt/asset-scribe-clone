@@ -89,9 +89,10 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
     setSavingEmployee(employee.id);
     try {
       // Log the data being sent to help debug
-      console.log("Updating employee:", employee.name, "with data:", updates);
+      console.log("Updating employee:", employee.id, "with data:", updates);
       
-      await updateEmployee(employee.name, {
+      // Fix: use employee.id (uuid) instead of employee.name
+      await updateEmployee(employee.id, {
         email: updates.email,
         role: updates.role,
         department: updates.department
@@ -104,7 +105,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
       
       // Refresh employee data
       queryClient.invalidateQueries({ queryKey: ['employees'] });
-      queryClient.invalidateQueries({ queryKey: ['employee', employee.name] });
+      queryClient.invalidateQueries({ queryKey: ['employee', employee.id] });
       
       setEditingEmployeeId(null);
     } catch (error) {
