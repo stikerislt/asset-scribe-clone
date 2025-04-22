@@ -73,7 +73,6 @@ const Categories = () => {
         const existingCategories: Category[] = await fetchCategories();
 
         // 2. Fetch all unique categories from assets table and their counts
-        // Fix: Use a different approach to get category counts that's compatible with TypeScript
         const { data: assetCategoriesData, error: catError } = await supabase
           .from('assets')
           .select('category')
@@ -104,7 +103,6 @@ const Categories = () => {
 
         // Find missing categories (in assets but not in categories table)
         const missingCategories: { name: string, count: number }[] = [];
-        
         categoryCounts.forEach((count, categoryName) => {
           if (!existingCategoriesMap.has(categoryName)) {
             missingCategories.push({
@@ -116,22 +114,20 @@ const Categories = () => {
 
         // Batch insert missing categories
         if (missingCategories.length > 0) {
-          // Insert with determined icon & type "asset"
           const toInsert = missingCategories.map(item => {
             // Determine icon using the same logic as CategoryIcon component
             const categoryName = item.name.toLowerCase();
             let icon = 'archive';
-            
             if (categoryName.includes("inventory")) icon = "menu";
             else if (categoryName.includes("license")) icon = "copyright";
             else if (categoryName.includes("monitor")) icon = "monitor";
             else if (categoryName.includes("printer")) icon = "printer";
             else if (categoryName.includes("accessories")) icon = "package";
             else if (categoryName.includes("computer") || categoryName.includes("pc") || categoryName.includes("laptop")) icon = "computer";
-            else if (categoryName.includes("phone") || categoryName.includes("mobile")) icon = "phone";
+            else if (categoryName.includes("phone") || categoryName.includes("mobile")) icon = "computer";
             else if (categoryName.includes("www") || categoryName.includes("web") || categoryName.includes("website")) icon = "globe";
             else if (categoryName.includes("tablet")) icon = "tablet";
-            
+
             return {
               id: crypto.randomUUID(),
               name: item.name,
@@ -158,19 +154,23 @@ const Categories = () => {
         // Now, refetch categories to ensure the latest are included
         const syncedCategories: Category[] = await fetchCategories();
 
-        // Update the counts in the local state using the correct counts from assets
-        const updatedCategories = syncedCategories.map(cat => {
-          const lowerCaseName = cat.name.trim().toLowerCase();
-          const assetCount = categoryCounts.get(lowerCaseName);
-          
-          return {
-            ...cat,
-            count: typeof assetCount === 'number' ? assetCount : (cat.count ?? 0),
-            icon: cat.icon || "archive",
-          } as Category; // Explicit cast to Category
+        // Deduplicate the categories array by lowercased name & tenant
+        const dedupedMap = new Map<string, Category>();
+        syncedCategories.forEach(cat => {
+          // Use tenant_id as part of the key if present
+          const tenantKey = (cat.tenant_id || "") + ":" + (cat.name.trim().toLowerCase());
+          if (!dedupedMap.has(tenantKey)) {
+            // Compose the category info with correct count from assets if available
+            const lowerCaseName = cat.name.trim().toLowerCase();
+            const assetCount = categoryCounts.get(lowerCaseName);
+            dedupedMap.set(tenantKey, {
+              ...cat,
+              count: typeof assetCount === 'number' ? assetCount : (cat.count ?? 0),
+              icon: cat.icon || "archive",
+            });
+          }
         });
-
-        setLocalCategories(updatedCategories);
+        setLocalCategories(Array.from(dedupedMap.values()));
       } catch (error) {
         console.error("Error in category/asset sync:", error);
         toast.error("An error occurred while loading categories");
