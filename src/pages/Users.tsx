@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,8 +15,10 @@ import { EnhancedUser } from "@/types/user";
 import { UserSearch } from "@/components/users/UserSearch";
 import { UsersTable } from "@/components/users/UsersTable";
 import { getRoleDisplayName } from "@/utils/roleUtils";
+import { useTenant } from "@/hooks/useTenant";
 
 const Users = () => {
+  const { currentTenant } = useTenant();
   const [searchTerm, setSearchTerm] = useState("");
   const [users, setUsers] = useState<EnhancedUser[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -70,9 +71,15 @@ const Users = () => {
     try {
       setIsLoading(true);
       
+      if (!currentTenant) {
+        setUsers([]);
+        return;
+      }
+      
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*');
+        .select('*')
+        .eq('tenant_id', currentTenant.id);
       
       if (profilesError) {
         throw profilesError;
@@ -105,7 +112,7 @@ const Users = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [currentUser]);
+  }, [currentUser, currentTenant]);
 
   const filteredUsers = users.filter(user => 
     user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
