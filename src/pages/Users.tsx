@@ -16,6 +16,9 @@ import { UserSearch } from "@/components/users/UserSearch";
 import { UsersTable } from "@/components/users/UsersTable";
 import { getRoleDisplayName } from "@/utils/roleUtils";
 import { useTenant } from "@/hooks/useTenant";
+import { UserActionButtons } from "@/components/users/UserActionButtons";
+import { UserList } from "@/components/users/UserList";
+import { UserDialogs } from "@/components/users/UserDialogs";
 
 const Users = () => {
   const { currentTenant } = useTenant();
@@ -479,187 +482,69 @@ const Users = () => {
           <h1 className="text-3xl font-bold">Users</h1>
           <p className="text-muted-foreground mt-1">Manage user accounts and permissions</p>
         </div>
-        <div className="mt-4 sm:mt-0 flex flex-wrap gap-2">
-          <Button 
-            variant="outline"
-            onClick={() => setIsDebugDialogOpen(true)}
-            className="bg-amber-50 text-amber-800"
-          >
-            <AlertCircle className="mr-2 h-4 w-4" />
-            Debug Users
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={forceAddCurrentUser}
-            className="bg-blue-50 text-blue-800"
-          >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add My User
-          </Button>
-          <Button 
-            className="bg-purple-600 hover:bg-purple-700"
-            onClick={() => setIsEmailRoleDialogOpen(true)}
-          >
-            <Shield className="mr-2 h-4 w-4" />
-            Update Role By Email
-          </Button>
-          <Button 
-            size="sm"
-            onClick={() => setIsAddDialogOpen(true)}
-          >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add User
-          </Button>
-        </div>
+        <UserActionButtons
+          onDebug={() => setIsDebugDialogOpen(true)}
+          onAddMyUser={forceAddCurrentUser}
+          onUpdateRoleByEmail={() => setIsEmailRoleDialogOpen(true)}
+          onAddUser={() => setIsAddDialogOpen(true)}
+        />
       </div>
       
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>User Accounts</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4">
-            <UserSearch value={searchTerm} onChange={setSearchTerm} />
-          </div>
-          
-          <div className="overflow-x-auto">
-            <UsersTable
-              users={filteredUsers}
-              isLoading={isLoading}
-              onEditUser={handleOpenEditDialog}
-              onChangeRole={handleOpenRoleDialog}
-              showAdminControls={isCurrentUserAdmin}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <UserList
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        users={filteredUsers}
+        isLoading={isLoading}
+        onEditUser={handleOpenEditDialog}
+        onChangeRole={handleOpenRoleDialog}
+        showAdminControls={isCurrentUserAdmin}
+      />
 
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New User</DialogTitle>
-          </DialogHeader>
-          <UserForm 
-            onSubmit={handleAddUser}
-            onCancel={() => setIsAddDialogOpen(false)}
-            isSubmitting={isCreatingUser}
-            error={createUserError}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>
-              {selectedUser && `Update information for ${selectedUser.name}`}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedUser && (
-            <UserForm 
-              onSubmit={handleEditUser}
-              onCancel={() => setIsEditDialogOpen(false)}
-              isSubmitting={isUpdatingUser}
-              error={updateUserError}
-              defaultValues={{
-                name: selectedUser.name,
-                email: selectedUser.email,
-                password: "",
-                role: getRoleDisplayName(selectedUser.dbRole),
-                active: selectedUser.active
-              }}
-              isEditMode={true}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Change User Role</DialogTitle>
-            <DialogDescription>
-              {selectedUser && `Update role for ${selectedUser.name}`}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label htmlFor="role" className="text-sm font-medium">Select Role</label>
-              <Select value={newRole} onValueChange={(value) => setNewRole(value as UserRole)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="user">User</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRoleDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleRoleUpdate} disabled={isRoleUpdating}>
-              {isRoleUpdating ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isEmailRoleDialogOpen} onOpenChange={setIsEmailRoleDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update User Role by Email</DialogTitle>
-            <DialogDescription>
-              Enter the user's email address and select the new role to assign
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label htmlFor="emailForRole" className="text-sm font-medium">Email Address</label>
-              <Input 
-                id="emailForRole"
-                placeholder="user@example.com"
-                value={emailForRoleUpdate}
-                onChange={(e) => setEmailForRoleUpdate(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="roleForEmail" className="text-sm font-medium">Select Role</label>
-              <Select value={roleForEmail} onValueChange={(value) => setRoleForEmail(value as UserRole)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="user">User</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEmailRoleDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateRoleByEmail} disabled={isRoleUpdating || !emailForRoleUpdate}>
-              {isRoleUpdating ? 'Updating...' : 'Update Role'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <UserDialogs
+        isAddDialogOpen={isAddDialogOpen}
+        setIsAddDialogOpen={setIsAddDialogOpen}
+        handleAddUser={handleAddUser}
+        isCreatingUser={isCreatingUser}
+        createUserError={createUserError}
+        
+        isEditDialogOpen={isEditDialogOpen}
+        setIsEditDialogOpen={setIsEditDialogOpen}
+        selectedUser={selectedUser}
+        handleEditUser={handleEditUser}
+        isUpdatingUser={isUpdatingUser}
+        updateUserError={updateUserError}
+        editDefaultValues={selectedUser && {
+          name: selectedUser.name,
+          email: selectedUser.email,
+          password: "",
+          role: getRoleDisplayName(selectedUser.dbRole),
+          active: selectedUser.active
+        }}
+        
+        isRoleDialogOpen={isRoleDialogOpen}
+        setIsRoleDialogOpen={setIsRoleDialogOpen}
+        selectedRoleUser={selectedUser}
+        newRole={newRole}
+        setNewRole={setNewRole}
+        handleRoleUpdate={handleRoleUpdate}
+        isRoleUpdating={isRoleUpdating}
+        
+        isEmailRoleDialogOpen={isEmailRoleDialogOpen}
+        setIsEmailRoleDialogOpen={setIsEmailRoleDialogOpen}
+        emailForRoleUpdate={emailForRoleUpdate}
+        setEmailForRoleUpdate={setEmailForRoleUpdate}
+        roleForEmail={roleForEmail}
+        setRoleForEmail={setRoleForEmail}
+        handleUpdateRoleByEmail={handleUpdateRoleByEmail}
+        
+        isDebugDialogOpen={isDebugDialogOpen}
+        setIsDebugDialogOpen={setIsDebugDialogOpen}
+        debugInfo={debugInfo}
+        currentUser={currentUser}
+        currentTenant={currentTenant}
+        syncUsersToTenant={syncUsersToTenant}
+        getRoleDisplayName={getRoleDisplayName}
+      />
 
       <Dialog open={isDebugDialogOpen} onOpenChange={setIsDebugDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
@@ -669,7 +554,6 @@ const Users = () => {
               Troubleshooting information for user visibility issues
             </DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <h3 className="font-medium">Current User</h3>
@@ -677,14 +561,12 @@ const Users = () => {
                 {JSON.stringify(currentUser, null, 2)}
               </pre>
             </div>
-            
             <div className="space-y-2">
               <h3 className="font-medium">Current Tenant</h3>
               <pre className="bg-slate-100 p-2 rounded text-sm overflow-auto">
                 {JSON.stringify(currentTenant, null, 2)}
               </pre>
             </div>
-            
             <div className="space-y-2">
               <h3 className="font-medium">Sync Debug Data</h3>
               <pre className="bg-slate-100 p-2 rounded text-sm overflow-auto">
@@ -692,7 +574,6 @@ const Users = () => {
               </pre>
             </div>
           </div>
-          
           <DialogFooter>
             <Button onClick={() => syncUsersToTenant()}>
               Run Sync Again
