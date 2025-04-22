@@ -404,15 +404,51 @@ const Users = () => {
     try {
       if (!currentUser || !currentTenant) {
         toast.error("No current user or tenant found");
+        console.error("forceAddCurrentUser: currentUser", currentUser, "currentTenant", currentTenant);
         return;
       }
       
-      await supabase.from('profiles').upsert({
+      const { data: tenantMemberships, error: membershipsError } = await supabase
+        .from("tenant_memberships")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .eq("tenant_id", currentTenant.id);
+
+      if (membershipsError) {
+        toast.error("Could not check memberships");
+        console.error("Membership check error", membershipsError);
+        return;
+      }
+
+      if (!tenantMemberships || tenantMemberships.length === 0) {
+        const { error: insertMembershipError } = await supabase
+          .from("tenant_memberships")
+          .insert({
+            user_id: currentUser.id,
+            tenant_id: currentTenant.id,
+            role: "member",
+            is_primary: false
+          });
+        if (insertMembershipError) {
+          toast.error("Failed to add your user to organization (tenant_memberships error)");
+          console.error("Insert tenant_membership error", insertMembershipError);
+          return;
+        }
+        toast.info("Added you as a member of this organization.");
+      }
+
+      const { error: profileError } = await supabase.from('profiles').upsert({
         id: currentUser.id,
         email: currentUser.email,
+        full_name: currentUser.user_metadata?.full_name,
         tenant_id: currentTenant.id
       }, { onConflict: 'id' });
-      
+      if (profileError) {
+        toast.error("Failed to upsert your user profile");
+        console.error("Upsert profile error", profileError);
+        return;
+      }
+
       toast.success("Successfully added your user to this organization");
       fetchUsers(); // Refresh the list
     } catch (error) {

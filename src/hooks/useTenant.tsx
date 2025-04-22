@@ -58,13 +58,25 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
       if (membershipError) throw membershipError;
 
+      // Debug output
+      console.log("[TenantProvider] memberships:", memberships);
+
       const tenants = memberships.map(m => m.tenants as Tenant);
+
       setUserTenants(tenants);
 
       // Set current tenant to the primary one
       const primaryMembership = memberships.find(m => m.is_primary);
       if (primaryMembership) {
         setCurrentTenant(primaryMembership.tenants as Tenant);
+        console.log("[TenantProvider] Using primary tenant:", primaryMembership.tenants);
+      } else if (memberships.length > 0) {
+        // Fallback: just pick the first tenant
+        setCurrentTenant(memberships[0].tenants as Tenant);
+        console.warn("[TenantProvider] No primary tenant, using first tenant as fallback");
+      } else {
+        setCurrentTenant(null);
+        console.warn("[TenantProvider] No tenant memberships found for user", user.id);
       }
     } catch (error) {
       console.error('Error fetching tenants:', error);
@@ -102,6 +114,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     refreshTenants();
   }, [user]);
+
+  useEffect(() => {
+    console.log("[TenantProvider] currentTenant:", currentTenant, "userTenants:", userTenants);
+  }, [currentTenant, userTenants]);
 
   return (
     <TenantContext.Provider value={{
