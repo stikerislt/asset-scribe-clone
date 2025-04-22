@@ -6,6 +6,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,13 +33,21 @@ export function TenantSelector() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[200px]">
+        <DropdownMenuLabel>Your Organizations</DropdownMenuLabel>
+        <DropdownMenuSeparator />
         {userTenants.map((tenant) => (
           <DropdownMenuItem
             key={tenant.id}
             onClick={() => switchTenant(tenant.id)}
-            className="cursor-pointer"
+            className={`cursor-pointer ${tenant.id === currentTenant.id ? 'bg-accent' : ''}`}
           >
-            {tenant.name}
+            <Building className="mr-2 h-4 w-4" />
+            <div className="flex flex-col">
+              <span>{tenant.name}</span>
+              {tenant.description && (
+                <span className="text-xs text-muted-foreground">{tenant.description}</span>
+              )}
+            </div>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
