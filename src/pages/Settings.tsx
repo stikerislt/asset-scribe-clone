@@ -28,7 +28,6 @@ import { toast } from "sonner";
 import { 
   User, 
   Bell, 
-  Database, 
   Lock,
   Loader2
 } from "lucide-react";
@@ -60,7 +59,7 @@ type NotificationSettingsValues = z.infer<typeof notificationSettingsSchema>;
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("account");
   const [isLoading, setIsLoading] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const { user } = useAuth();
   
   // Account settings form
@@ -86,16 +85,17 @@ const Settings = () => {
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!user) {
-        setIsAdmin(false);
+        setIsAdminUser(false);
         return;
       }
       
       try {
+        // Fix: Call the isAdmin function and await its result
         const adminStatus = await isAdmin(user.id);
-        setIsAdmin(adminStatus);
+        setIsAdminUser(adminStatus);
       } catch (error) {
         console.error("Error checking admin status:", error);
-        setIsAdmin(false);
+        setIsAdminUser(false);
       }
     };
     
@@ -158,7 +158,7 @@ const Settings = () => {
             <Bell className="mr-2 h-4 w-4" />
             Notifications
           </TabsTrigger>
-          {isAdmin && (
+          {isAdminUser && (
             <TabsTrigger value="security">
               <Lock className="mr-2 h-4 w-4" />
               Security
@@ -335,7 +335,7 @@ const Settings = () => {
         </TabsContent>
         
         {/* Security Settings - Only shown to admin users */}
-        {isAdmin && (
+        {isAdminUser && (
           <TabsContent value="security" className="space-y-4">
             <Card>
               <CardHeader>
