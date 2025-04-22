@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +58,6 @@ const Categories = () => {
   const { logActivity } = useActivity();
   const { user } = useAuth();
 
-  // ---- New logic for syncing asset categories into categories table ----
   useEffect(() => {
     const getCategoriesWithSync = async () => {
       if (!user) {
@@ -162,7 +160,6 @@ const Categories = () => {
 
     getCategoriesWithSync();
   }, [user]);
-  // ---- end new logic ----
 
   const filteredCategories = localCategories.filter(category => 
     category?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -386,4 +383,3 @@ const Categories = () => {
 };
 
 export default Categories;
-

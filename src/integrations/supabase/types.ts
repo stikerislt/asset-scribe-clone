@@ -138,6 +138,7 @@ export type Database = {
         Row: {
           count: number
           created_at: string
+          icon: string | null
           id: string
           name: string
           tenant_id: string | null
@@ -148,6 +149,7 @@ export type Database = {
         Insert: {
           count?: number
           created_at?: string
+          icon?: string | null
           id?: string
           name: string
           tenant_id?: string | null
@@ -158,6 +160,7 @@ export type Database = {
         Update: {
           count?: number
           created_at?: string
+          icon?: string | null
           id?: string
           name?: string
           tenant_id?: string | null
