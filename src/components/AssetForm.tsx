@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +17,7 @@ import { StatusColorIndicator } from "@/components/StatusColorIndicator";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { fetchCategories } from "@/lib/data";
 import { toast } from "sonner";
+import { useTenant } from "@/hooks/useTenant";
 
 interface AssetFormProps {
   initialData?: Partial<Asset>;
@@ -26,7 +26,6 @@ interface AssetFormProps {
   isSubmitting?: boolean;
 }
 
-// Create an extended category interface to support icons
 interface CategoryWithIcon {
   name: string;
   icon?: string;
@@ -48,6 +47,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
   const [wear, setWear] = useState(initialData?.wear || '');
   const [qty, setQty] = useState(initialData?.qty?.toString() || '1');
   const [categories, setCategories] = useState<CategoryWithIcon[]>([]);
+  const { currentTenant } = useTenant();
 
   const defaultCategories = [
     { name: "Computer", icon: "computer" },
@@ -66,10 +66,9 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
       try {
         const fetchedCategories = await fetchCategories();
         
-        // Transform the fetched categories to include an icon property
         const categoriesWithIcons = fetchedCategories.map(cat => ({
           name: cat.name,
-          icon: cat.icon || "archive" // Default icon if none provided
+          icon: cat.icon || "archive"
         }));
         
         setCategories(categoriesWithIcons);
@@ -84,7 +83,10 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (!currentTenant?.id) {
+      toast.error("No tenant context found. Please check your organization settings.");
+      return;
+    }
     onSubmit({
       name,
       tag,
@@ -100,6 +102,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
       purchase_cost: parseFloat(purchaseCost) || null,
       wear,
       qty: parseInt(qty) || 1,
+      tenant_id: currentTenant.id
     });
   };
 

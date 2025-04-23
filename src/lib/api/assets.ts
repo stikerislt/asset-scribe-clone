@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { StatusColor } from "@/lib/data";
+import { useTenant } from "@/hooks/useTenant";
 
 // Define valid asset statuses
 export type AssetStatus = 'ready' | 'deployed' | 'maintenance' | 'retired' | 'assigned' | 'pending' | 'archived' | 'broken';
@@ -126,7 +127,7 @@ export const getAssetHistory = async (assetId: string): Promise<AssetHistory[]> 
 };
 
 // Update an asset with proper error handling
-export const updateAsset = async (assetId: string, assetData: Partial<Asset>): Promise<Asset> => {
+export const updateAsset = async (assetId: string, assetData: Partial<Asset>, tenantId?: string): Promise<Asset> => {
   console.log("Updating asset with ID:", assetId, "Data:", assetData);
   
   // Get the current authenticated user's session
@@ -231,6 +232,24 @@ export const updateAsset = async (assetId: string, assetData: Partial<Asset>): P
     throw new Error("You don't have permission to update this asset");
   }
   
+  // Always ensure tenant_id is included
+  if (!tenantId) {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+    if (userId) {
+      // Try to discover one of their tenant_ids
+      const { data: memberships } = await supabase
+        .from('tenant_memberships')
+        .select('tenant_id')
+        .eq('user_id', userId);
+      if (memberships && memberships.length > 0) {
+        tenantId = memberships[0]?.tenant_id;
+      } else {
+        throw new Error("No tenant membership found.");
+      }
+    }
+  }
+  
   // Prepare update data, ensuring all required fields are included from existing asset
   const updateData = {
     // Include required fields from existing asset
@@ -255,6 +274,7 @@ export const updateAsset = async (assetId: string, assetData: Partial<Asset>): P
     // If admin is editing someone else's asset, keep the original user_id
     // Otherwise, set to current user
     user_id: isAdmin && existingAsset.user_id ? existingAsset.user_id : currentUserId,
+    tenant_id: tenantId,
     updated_at: new Date().toISOString()
   };
   

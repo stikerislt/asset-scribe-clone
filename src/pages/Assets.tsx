@@ -9,8 +9,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, checkAuth } from "@/integrations/supabase/client";
 import { Asset, AssetStatus } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
+import { useTenant } from "@/hooks/useTenant";
 
-// Import our new components
 import { AssetFilters, Filters } from "@/components/assets/AssetFilters";
 import { AssetTable } from "@/components/assets/AssetTable";
 import { AssetImportExport } from "@/components/assets/AssetImportExport";
@@ -66,7 +66,8 @@ const Assets = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { logActivity } = useActivity();
-  
+  const { currentTenant } = useTenant();
+
   useEffect(() => {
     const checkAuthStatus = async () => {
       const session = await checkAuth();
@@ -77,24 +78,20 @@ const Assets = () => {
   }, []);
   
   const { data: assets = [], isLoading, error } = useQuery({
-    queryKey: ['assets'],
+    queryKey: ['assets', currentTenant?.id],
     queryFn: async () => {
-      console.log("Fetching assets");
-      console.log("Current user:", user);
-      
+      if (!currentTenant?.id) return [];
       const { data, error } = await supabase
         .from('assets')
-        .select('*');
-      
-      console.log("Assets fetch result:", { data, error });
-      
+        .select('*')
+        .eq('tenant_id', currentTenant.id);
+
       if (error) {
         sonnerToast.error("Failed to load assets", {
           description: error.message
         });
         throw new Error(error.message);
       }
-      
       const assetsWithProps = data?.map(asset => ({
         ...asset,
         notes: asset.notes || null,
@@ -103,10 +100,9 @@ const Assets = () => {
         status_color: asset.status_color as StatusColor || null,
         status: asset.status as AssetStatus
       })) as Asset[];
-      
-      console.log("Processed assets:", assetsWithProps?.length);
       return assetsWithProps;
     },
+    enabled: !!currentTenant?.id,
     retry: 1,
     refetchOnWindowFocus: false
   });
@@ -125,25 +121,27 @@ const Assets = () => {
   
   const createAssetMutation = useMutation({
     mutationFn: async (newAsset: Omit<Asset, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!currentTenant?.id) throw new Error("No active tenant");
       const { data, error } = await supabase
         .from('assets')
         .insert([{
           ...newAsset,
+          tenant_id: currentTenant.id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           user_id: user?.id || null
         }])
         .select()
         .single();
-      
+
       if (error) {
         throw new Error(error.message);
       }
-      
+
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['assets', currentTenant?.id] });
     }
   });
   
@@ -161,18 +159,17 @@ const Assets = () => {
       return assetId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['assets', currentTenant?.id] });
     }
   });
   
   const deleteAllAssetsMutation = useMutation({
     mutationFn: async () => {
-      if (!user?.id) throw new Error("Not authenticated");
-      
+      if (!user?.id || !currentTenant?.id) throw new Error("Not authenticated or tenant missing");
       const { error } = await supabase
         .from('assets')
         .delete()
-        .eq('user_id', user.id);
+        .eq('tenant_id', currentTenant.id);
       
       if (error) {
         throw new Error(error.message);
@@ -181,7 +178,7 @@ const Assets = () => {
       return true;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['assets', currentTenant?.id] });
     }
   });
 
@@ -201,7 +198,7 @@ const Assets = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['assets', currentTenant?.id] });
     }
   });
 
@@ -365,7 +362,7 @@ const Assets = () => {
     return (
       <ErrorState 
         error={error as Error} 
-        onRetry={() => queryClient.invalidateQueries({ queryKey: ['assets'] })} 
+        onRetry={() => queryClient.invalidateQueries({ queryKey: ['assets', currentTenant?.id] })} 
         onDebug={handleDebug}
       />
     );

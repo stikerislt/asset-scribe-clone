@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,12 +9,14 @@ import { toast } from "sonner";
 import { Asset, AssetStatus, updateAsset } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 
 const EditAsset = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useAuth(); // Get the current authenticated user
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const queryClient = useQueryClient();
 
   const { data: asset, isLoading, error } = useQuery({
@@ -34,7 +35,6 @@ const EditAsset = () => {
         throw new Error(error.message);
       }
       
-      // Convert database object to Asset type, ensuring properties exist
       const assetData: Asset = {
         ...data,
         status: data.status as AssetStatus,
@@ -54,19 +54,19 @@ const EditAsset = () => {
       toast.error("Cannot update: Missing asset ID or user not authenticated");
       return;
     }
+    if (!currentTenant?.id) {
+      toast.error("No tenant found. Please select your organization.");
+      return;
+    }
     
     setIsSubmitting(true);
     console.log("Submitting form data:", formData);
     
     try {
-      // The updateAsset function now handles setting the user_id to the current user
-      // and also records asset history
-      const updatedAsset = await updateAsset(id, formData);
+      const updatedAsset = await updateAsset(id, { ...formData, tenant_id: currentTenant.id}, currentTenant.id);
       
       console.log("Asset updated successfully:", updatedAsset);
       
-      // Invalidate both the individual asset query and the assets list query
-      // Also invalidate asset history
       queryClient.invalidateQueries({ queryKey: ['asset', id] });
       queryClient.invalidateQueries({ queryKey: ['asset-history', id] });
       queryClient.invalidateQueries({ queryKey: ['assets'] });

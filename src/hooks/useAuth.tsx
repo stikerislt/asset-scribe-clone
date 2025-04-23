@@ -1,9 +1,9 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { toast } from "@/components/ui/use-toast";
+import { useTenant } from "@/hooks/useTenant";
 
 type AuthContextType = {
   session: Session | null;
@@ -22,18 +22,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const { refreshTenants } = useTenant();
 
-  // Detect password recovery session and redirect
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
-        // If the user has clicked a password reset link and has a session
         if (
-          event === "PASSWORD_RECOVERY" || // supabase@2 event for password reset
-          (newSession?.user && (newSession as any).type === 'PASSWORD_RECOVERY') // fallback, not always present
+          event === "PASSWORD_RECOVERY" ||
+          (newSession?.user && (newSession as any).type === 'PASSWORD_RECOVERY')
         ) {
           navigate("/auth/update-password", { replace: true });
         }
@@ -44,8 +43,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);
-      // Handle direct load on password reset page
-      // Sometimes, if this is a password recovery session, redirect
       const hash = window.location.hash;
       if (
         (hash.includes("type=recovery") || hash.includes("type=invite")) &&
@@ -88,29 +85,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
       if (authError) throw authError;
-
       if (!authData.user) throw new Error("Signup failed. Please try again.");
 
-      const tenantName = `${fullName}'s Organization`;
+      const tenantPayload = {
+        name: `${fullName}'s Organization`,
+        description: 'Default organization'
+      };
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
-        .insert({
-          name: tenantName,
-          description: 'Default organization'
-        })
+        .insert(tenantPayload)
         .select()
         .single();
       if (tenantError || !tenantData) throw tenantError || new Error("Tenant creation failed.");
 
-      const { error: membershipError } = await supabase
-        .from('tenant_memberships')
-        .insert({
-          user_id: authData.user.id,
-          tenant_id: tenantData.id,
-          role: 'admin',
-          is_primary: true
-        });
-      if (membershipError) throw membershipError;
+      let membershipInserted = false;
+      try {
+        const { error: membershipError } = await supabase
+          .from('tenant_memberships')
+          .insert([{
+            user_id: authData.user.id,
+            tenant_id: tenantData.id,
+            role: 'admin',
+            is_primary: true
+          }]);
+        if (membershipError) throw membershipError;
+        membershipInserted = true;
+      } catch (e) {
+        await new Promise((r) => setTimeout(r, 500));
+        const { error: membershipError2 } = await supabase
+          .from('tenant_memberships')
+          .insert([{
+            user_id: authData.user.id,
+            tenant_id: tenantData.id,
+            role: 'admin',
+            is_primary: true
+          }]);
+        if (membershipError2) throw membershipError2;
+        membershipInserted = true;
+      }
+
+      await refreshTenants?.();
 
       toast({
         title: "Signup successful",
@@ -159,4 +173,3 @@ export function useAuth() {
   }
   return context;
 }
-
