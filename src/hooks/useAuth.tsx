@@ -1,5 +1,6 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { toast } from "@/components/ui/use-toast";
@@ -20,13 +21,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
+  // Detect password recovery session and redirect
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
+        // If the user has clicked a password reset link and has a session
+        if (
+          event === "PASSWORD_RECOVERY" || // supabase@2 event for password reset
+          (newSession?.user && (newSession as any).type === 'PASSWORD_RECOVERY') // fallback, not always present
+        ) {
+          navigate("/auth/update-password", { replace: true });
+        }
       }
     );
 
@@ -34,10 +44,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);
+      // Handle direct load on password reset page
+      // Sometimes, if this is a password recovery session, redirect
+      const hash = window.location.hash;
+      if (
+        (hash.includes("type=recovery") || hash.includes("type=invite")) &&
+        currentSession?.user
+      ) {
+        navigate("/auth/update-password", { replace: true });
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -140,3 +159,4 @@ export function useAuth() {
   }
   return context;
 }
+
