@@ -268,6 +268,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_owner: boolean | null
           is_primary: boolean | null
           role: string
           tenant_id: string
@@ -277,6 +278,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_owner?: boolean | null
           is_primary?: boolean | null
           role?: string
           tenant_id: string
@@ -286,6 +288,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_owner?: boolean | null
           is_primary?: boolean | null
           role?: string
           tenant_id?: string
@@ -308,6 +311,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          owner_id: string | null
           subscription_status: string | null
           updated_at: string
         }
@@ -316,6 +320,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          owner_id?: string | null
           subscription_status?: string | null
           updated_at?: string
         }
@@ -324,6 +329,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          owner_id?: string | null
           subscription_status?: string | null
           updated_at?: string
         }
@@ -362,6 +368,10 @@ export type Database = {
         Args: { tenant_id: string }
         Returns: boolean
       }
+      can_delete_user: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
       get_active_tenant: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -383,6 +393,10 @@ export type Database = {
       }
       set_active_tenant: {
         Args: { tenant_id: string }
+        Returns: boolean
+      }
+      transfer_tenant_ownership: {
+        Args: { tenant_id: string; new_owner_id: string }
         Returns: boolean
       }
     }

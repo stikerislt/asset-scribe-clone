@@ -1,12 +1,13 @@
-
 import { Button } from "@/components/ui/button";
-import { UserPlus, Shield, AlertCircle } from "lucide-react";
+import { UserPlus, Shield, AlertCircle, Crown } from "lucide-react";
 
 interface UserActionButtonsProps {
   onDebug: () => void;
   onAddMyUser: () => void;
   onUpdateRoleByEmail: () => void;
   onAddUser: () => void;
+  onTransferOwnership?: () => void;
+  showOwnershipButton?: boolean;
 }
 
 export function UserActionButtons({
@@ -14,6 +15,8 @@ export function UserActionButtons({
   onAddMyUser,
   onUpdateRoleByEmail,
   onAddUser,
+  onTransferOwnership,
+  showOwnershipButton = false,
 }: UserActionButtonsProps) {
   return (
     <div className="mt-4 sm:mt-0 flex flex-wrap gap-2">
@@ -40,6 +43,16 @@ export function UserActionButtons({
         <Shield className="mr-2 h-4 w-4" />
         Update Role By Email
       </Button>
+      {showOwnershipButton && onTransferOwnership && (
+        <Button 
+          variant="outline"
+          onClick={onTransferOwnership}
+          className="bg-yellow-50 text-yellow-800"
+        >
+          <Crown className="mr-2 h-4 w-4" />
+          Transfer Ownership
+        </Button>
+      )}
       <Button 
         size="sm"
         onClick={onAddUser}

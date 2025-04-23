@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Define user role type
@@ -155,6 +154,37 @@ export const updateUserRoleByEmail = async (email: string, role: UserRole): Prom
     return true;
   } catch (error) {
     console.error("Error updating user role by email:", error);
+    return false;
+  }
+};
+
+// Add function to check if user can be deleted
+export const canDeleteUser = async (userId: string): Promise<boolean> => {
+  const { data, error } = await supabase.rpc('can_delete_user', {
+    user_id: userId
+  });
+  
+  if (error) {
+    console.error('Error checking if user can be deleted:', error);
+    return false;
+  }
+  
+  return data;
+};
+
+// Add function to transfer tenant ownership
+export const transferTenantOwnership = async (tenantId: string, newOwnerId: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('transfer_tenant_ownership', {
+      tenant_id: tenantId,
+      new_owner_id: newOwnerId
+    });
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error transferring tenant ownership:', error);
+    toast.error(error.message || 'Failed to transfer ownership');
     return false;
   }
 };
