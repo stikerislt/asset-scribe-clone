@@ -114,8 +114,7 @@ export const createUser = async (
       throw new Error('No active session. Please sign in.');
     }
 
-    // Get the Supabase URL from a config approach
-    // Instead of accessing protected property directly
+    // Use a hardcoded URL instead of accessing protected property
     const supabaseUrl = "https://tbefdkwtjpbonuunxytk.supabase.co";
     if (!supabaseUrl) {
       throw new Error('Could not determine Supabase URL');
@@ -160,9 +159,9 @@ export const createUser = async (
     }
 
     if (!response.ok) {
-      // Look for specific error messages we want to handle differently
+      // Handle the duplicate key constraint error differently
       if (result.error && result.error.includes("duplicate key value")) {
-        console.log("User already exists, treating as success");
+        console.log("User already exists in the system");
         toast.info("User already exists in the system. Their information has been updated.");
         return { success: true, data: { ...result, message: "User already exists and has been updated" } };
       }
@@ -172,6 +171,10 @@ export const createUser = async (
     }
 
     console.log("User creation successful:", result);
+    
+    if (result.verification_status === "invitation_sent") {
+      toast.success("Invitation email has been sent to the user");
+    }
     
     return { success: true, data: result };
   } catch (error) {

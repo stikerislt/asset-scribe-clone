@@ -1,18 +1,23 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserSearch } from "@/components/users/UserSearch";
-import { UsersTable } from "@/components/users/UsersTable";
+// Update the message about how users are added to the system
+// Add this file if it doesn't exist or update if it does
+
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { EnhancedUser } from "@/types/user";
+import { UsersTable } from "./UsersTable";
+import { Loader2, Search } from "lucide-react";
 
 interface UserListProps {
   searchTerm: string;
-  onSearchChange: (term: string) => void;
+  onSearchChange: (value: string) => void;
   users: EnhancedUser[];
   isLoading: boolean;
-  onEditUser: (user: EnhancedUser) => void;
   onChangeRole: (user: EnhancedUser) => void;
+  onEditUser: (user: EnhancedUser) => void;
   showAdminControls: boolean;
-  onTransferOwnership?: (user: EnhancedUser) => void;
+  onTransferOwnership: (user: EnhancedUser) => void;
 }
 
 export function UserList({
@@ -20,30 +25,49 @@ export function UserList({
   onSearchChange,
   users,
   isLoading,
-  onEditUser,
   onChangeRole,
+  onEditUser,
   showAdminControls,
   onTransferOwnership
 }: UserListProps) {
   return (
-    <Card className="mb-8">
+    <Card>
       <CardHeader>
-        <CardTitle>User Accounts</CardTitle>
+        <CardTitle>Organization Members</CardTitle>
+        <CardDescription>
+          Manage your organization's members and their access levels. New users will receive an invitation email.
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
-          <UserSearch value={searchTerm} onChange={onSearchChange} />
+        <div className="w-full mb-4">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <UsersTable
-            users={users}
-            isLoading={isLoading}
-            onEditUser={onEditUser}
-            onChangeRole={onChangeRole}
+
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : users.length > 0 ? (
+          <UsersTable 
+            users={users} 
+            onChangeRole={onChangeRole} 
+            onEditUser={onEditUser} 
             showAdminControls={showAdminControls}
             onTransferOwnership={onTransferOwnership}
           />
-        </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No users found. Try changing your search or invite some team members.
+          </div>
+        )}
       </CardContent>
     </Card>
   );

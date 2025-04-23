@@ -197,13 +197,13 @@ const Users = () => {
       }
       
       logActivity({
-        title: "User Created",
-        description: `Created user account for ${formValues.name}`,
+        title: "User Invited",
+        description: `Sent invitation to ${formValues.name} (${formValues.email}) with ${formValues.role} role`,
         category: 'user',
         icon: <UserPlus className="h-5 w-5 text-green-600" />
       });
       
-      toast.success(`User ${formValues.name} created successfully`);
+      toast.success(`User ${formValues.name} invited successfully`);
       
       setIsAddDialogOpen(false);
       fetchUsers();

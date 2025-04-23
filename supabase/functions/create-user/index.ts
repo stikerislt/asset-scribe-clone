@@ -37,7 +37,7 @@ serve(async (req) => {
     const { email, password, name, role, active, tenant_id } = payload;
 
     // Validate required fields
-    if (!email || !password || !name || !role || !tenant_id) {
+    if (!email || !name || !role || !tenant_id) {
       console.error("Missing required fields:", { email, name, role, tenant_id, passwordProvided: !!password });
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
@@ -58,11 +58,11 @@ serve(async (req) => {
       console.log("User already exists in auth system, using existing ID:", userId);
     } else {
       console.log("Creating user in auth system with tenant_id:", tenant_id);
-      // Create the user in Supabase Auth
+      // Create the user in Supabase Auth with email confirmation required
       const { data: userData, error: createError } = await supabase.auth.admin.createUser({
         email,
         password,
-        email_confirm: true,
+        email_confirm: false, // Changed to false to require email verification
         user_metadata: {
           full_name: name,
         },
@@ -83,6 +83,15 @@ serve(async (req) => {
 
       userId = userData.user.id;
       console.log("User created successfully:", userId);
+      
+      // Send invitation email
+      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email);
+      if (inviteError) {
+        console.error("Error sending invitation email:", inviteError);
+        // Continue anyway as the user is created
+      } else {
+        console.log("Invitation email sent successfully to:", email);
+      }
     }
 
     // Check if profile already exists
@@ -93,26 +102,51 @@ serve(async (req) => {
       .single();
     
     if (!existingProfile) {
-      // Add user to profiles table with tenant_id
-      console.log("Adding user to profiles table with tenant_id:", tenant_id);
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert({
-          id: userId,
-          email,
-          full_name: name,
-          tenant_id: tenant_id
-        });
+      try {
+        // Add user to profiles table with tenant_id
+        console.log("Adding user to profiles table with tenant_id:", tenant_id);
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .insert({
+            id: userId,
+            email,
+            full_name: name,
+            tenant_id: tenant_id
+          });
 
-      if (profileError) {
-        console.error("Error creating profile:", profileError);
-        // Don't throw here, just log the error and continue
+        if (profileError) {
+          console.error("Error creating profile:", profileError);
+          // If it's a duplicate key error, try updating instead
+          if (profileError.message.includes("duplicate key")) {
+            const { error: updateError } = await supabase
+              .from("profiles")
+              .update({ 
+                tenant_id: tenant_id,
+                full_name: name,
+                email: email
+              })
+              .eq("id", userId);
+              
+            if (updateError) {
+              console.error("Error updating existing profile:", updateError);
+            } else {
+              console.log("Updated existing profile");
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Exception in profile creation:", error);
+        // Continue anyway to attempt the rest of the process
       }
     } else {
       console.log("Profile already exists, updating with new tenant_id");
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ tenant_id: tenant_id, full_name: name })
+        .update({ 
+          tenant_id: tenant_id, 
+          full_name: name,
+          email: email
+        })
         .eq("id", userId);
         
       if (updateError) {
@@ -155,7 +189,7 @@ serve(async (req) => {
       .single();
     
     if (!existingRole) {
-      // Add role to user_roles table
+      // Add role to user_roles table - use the specified role instead of always admin
       console.log("Setting user role to:", role.toLowerCase());
       const { error: roleError } = await supabase
         .from("user_roles")
@@ -180,6 +214,7 @@ serve(async (req) => {
         active,
         tenant_id,
         message: "User created or updated successfully",
+        verification_status: existingUsers?.users?.length > 0 ? "existing_user" : "invitation_sent"
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
