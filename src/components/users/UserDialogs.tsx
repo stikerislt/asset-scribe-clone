@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { UserForm } from "@/components/UserForm";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Input } from "@/components/ui/input";
 import { Shield } from "lucide-react";
 import { UserRole } from "@/lib/api/userRoles";
+import { TransferOwnershipDialog } from "./TransferOwnershipDialog";
 
 interface UserDialogsProps {
   isAddDialogOpen: boolean;
@@ -45,22 +45,30 @@ interface UserDialogsProps {
   currentTenant: any;
   syncUsersToTenant: () => void;
   getRoleDisplayName: (role: UserRole | null) => string;
+  
+  isTransferOwnershipDialogOpen: boolean;
+  setIsTransferOwnershipDialogOpen: (open: boolean) => void;
+  selectedUserForOwnership: any;
+  isTransferringOwnership: boolean;
+  handleTransferOwnership: () => void;
 }
 
-export function UserDialogs(props: UserDialogsProps) {
-  const {
-    isAddDialogOpen, setIsAddDialogOpen, handleAddUser, isCreatingUser, createUserError,
-    isEditDialogOpen, setIsEditDialogOpen, selectedUser, handleEditUser,
-    isUpdatingUser, updateUserError, editDefaultValues,
-    isRoleDialogOpen, setIsRoleDialogOpen, selectedRoleUser, newRole, setNewRole, handleRoleUpdate, isRoleUpdating,
-    isEmailRoleDialogOpen, setIsEmailRoleDialogOpen, emailForRoleUpdate, setEmailForRoleUpdate, roleForEmail, setRoleForEmail, handleUpdateRoleByEmail,
-    isDebugDialogOpen, setIsDebugDialogOpen, debugInfo, currentUser, currentTenant,
-    syncUsersToTenant, getRoleDisplayName
-  } = props;
-
+export function UserDialogs({
+  isAddDialogOpen, setIsAddDialogOpen, handleAddUser, isCreatingUser, createUserError,
+  isEditDialogOpen, setIsEditDialogOpen, selectedUser, handleEditUser,
+  isUpdatingUser, updateUserError, editDefaultValues,
+  isRoleDialogOpen, setIsRoleDialogOpen, selectedRoleUser, newRole, setNewRole, handleRoleUpdate, isRoleUpdating,
+  isEmailRoleDialogOpen, setIsEmailRoleDialogOpen, emailForRoleUpdate, setEmailForRoleUpdate, roleForEmail, setRoleForEmail, handleUpdateRoleByEmail,
+  isDebugDialogOpen, setIsDebugDialogOpen, debugInfo, currentUser, currentTenant,
+  syncUsersToTenant, getRoleDisplayName,
+  isTransferOwnershipDialogOpen,
+  setIsTransferOwnershipDialogOpen,
+  selectedUserForOwnership,
+  isTransferringOwnership,
+  handleTransferOwnership
+}: UserDialogsProps) {
   return (
     <>
-      {/* Add User Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -75,7 +83,6 @@ export function UserDialogs(props: UserDialogsProps) {
         </DialogContent>
       </Dialog>
       
-      {/* Edit User Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -97,7 +104,6 @@ export function UserDialogs(props: UserDialogsProps) {
         </DialogContent>
       </Dialog>
       
-      {/* Role Dialog */}
       <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -134,7 +140,6 @@ export function UserDialogs(props: UserDialogsProps) {
         </DialogContent>
       </Dialog>
       
-      {/* Email Role Dialog */}
       <Dialog open={isEmailRoleDialogOpen} onOpenChange={setIsEmailRoleDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -181,6 +186,14 @@ export function UserDialogs(props: UserDialogsProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <TransferOwnershipDialog
+        isOpen={isTransferOwnershipDialogOpen}
+        onClose={() => setIsTransferOwnershipDialogOpen(false)}
+        onConfirm={handleTransferOwnership}
+        selectedUser={selectedUserForOwnership}
+        isTransferring={isTransferringOwnership}
+      />
     </>
   );
 }

@@ -1,6 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner"; // Import toast from sonner
+import { toast } from "sonner";
 
 // Define user role type
 export type UserRole = 'admin' | 'manager' | 'user';

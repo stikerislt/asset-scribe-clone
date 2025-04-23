@@ -19,6 +19,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { UserActionButtons } from "@/components/users/UserActionButtons";
 import { UserList } from "@/components/users/UserList";
 import { UserDialogs } from "@/components/users/UserDialogs";
+import { transferTenantOwnership, canDeleteUser } from "@/lib/api/userRoles";
 
 const Users = () => {
   const { currentTenant } = useTenant();
@@ -40,6 +41,9 @@ const Users = () => {
   const [updateUserError, setUpdateUserError] = useState<string | undefined>();
   const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [isTransferOwnershipDialogOpen, setIsTransferOwnershipDialogOpen] = useState(false);
+  const [selectedUserForOwnership, setSelectedUserForOwnership] = useState<EnhancedUser | null>(null);
+  const [isTransferringOwnership, setIsTransferringOwnership] = useState(false);
   const { logActivity } = useActivity();
   const { user: currentUser } = useAuth();
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
@@ -475,6 +479,26 @@ const Users = () => {
     }
   };
 
+  const handleTransferOwnership = async () => {
+    if (!selectedUserForOwnership || !currentTenant) return;
+    
+    setIsTransferringOwnership(true);
+    try {
+      const success = await transferTenantOwnership(currentTenant.id, selectedUserForOwnership.id);
+      
+      if (success) {
+        toast.success(`Successfully transferred ownership to ${selectedUserForOwnership.name}`);
+        setIsTransferOwnershipDialogOpen(false);
+        fetchUsers(); // Refresh the user list
+      }
+    } catch (error) {
+      console.error('Error transferring ownership:', error);
+      toast.error('Failed to transfer ownership');
+    } finally {
+      setIsTransferringOwnership(false);
+    }
+  };
+
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
@@ -544,6 +568,12 @@ const Users = () => {
         currentTenant={currentTenant}
         syncUsersToTenant={syncUsersToTenant}
         getRoleDisplayName={getRoleDisplayName}
+        
+        isTransferOwnershipDialogOpen={isTransferOwnershipDialogOpen}
+        setIsTransferOwnershipDialogOpen={setIsTransferOwnershipDialogOpen}
+        selectedUserForOwnership={selectedUserForOwnership}
+        isTransferringOwnership={isTransferringOwnership}
+        handleTransferOwnership={handleTransferOwnership}
       />
 
       <Dialog open={isDebugDialogOpen} onOpenChange={setIsDebugDialogOpen}>
