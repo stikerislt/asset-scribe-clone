@@ -10,6 +10,7 @@ import { supabase, checkAuth } from "@/integrations/supabase/client";
 import { Asset, AssetStatus } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
 import { useTenant } from "@/hooks/useTenant";
+import { fixMissingTenantIds } from "@/lib/migrations/fixMissingTenantIds";
 
 import { AssetFilters, Filters } from "@/components/assets/AssetFilters";
 import { AssetTable } from "@/components/assets/AssetTable";
@@ -76,6 +77,19 @@ const Assets = () => {
     
     checkAuthStatus();
   }, []);
+  
+  useEffect(() => {
+    if (currentTenant?.id) {
+      fixMissingTenantIds(currentTenant.id)
+        .then((updatedCount) => {
+          if (updatedCount > 0) {
+            console.log(`Migration complete: Updated ${updatedCount} assets`);
+            queryClient.invalidateQueries({ queryKey: ['assets'] });
+          }
+        })
+        .catch(console.error);
+    }
+  }, [currentTenant?.id]);
   
   const { data: assets = [], isLoading, error } = useQuery({
     queryKey: ['assets', currentTenant?.id],

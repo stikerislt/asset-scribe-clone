@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
 import { CSVPreview } from "@/components/CSVPreview";
@@ -9,6 +8,7 @@ import { Asset, AssetStatus, VALID_ASSET_STATUSES } from "@/lib/api/assets";
 import { Package } from "lucide-react";
 import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 
 interface ImportAssetsDialogProps {
   isOpen: boolean;
@@ -26,8 +26,8 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
   const queryClient = useQueryClient();
   const { logActivity } = useActivity();
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
 
-  // Helper function to normalize column names (preserve underscores, lowercase)
   const normalizeColumnName = (header: string): string => {
     return header.toLowerCase().trim();
   };
@@ -51,22 +51,29 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
       return;
     }
 
+    if (!currentTenant?.id) {
+      toast({
+        title: "No organization selected",
+        description: "Please select an organization before importing assets.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsImporting(true);
 
     try {
-      // Normalize headers (lowercase and preserve underscores)
       const headers = previewData.headers.map(h => normalizeColumnName(h));
       console.log("Normalized headers:", headers);
 
-      // Transform CSV data to assets
       const assets = previewData.data.map(row => {
-        // Create a properly typed asset object with required fields
         const asset: {
           name: string;
           tag: string;
           category: string;
           status: AssetStatus;
           user_id: string;
+          tenant_id: string;
           [key: string]: any;
         } = {
           name: '',
@@ -74,11 +81,11 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
           category: '',
           status: 'ready' as AssetStatus,
           user_id: user.id,
+          tenant_id: currentTenant.id,
         };
 
         headers.forEach((header, index) => {
           if (header && row[index] !== undefined) {
-            // Skip empty cells or headers
             if (header && row[index] !== '') {
               if (header === 'status') {
                 const statusValue = row[index].toLowerCase();
@@ -120,19 +127,15 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
         return asset;
       });
 
-      console.log("Importing assets:", assets);
+      console.log("Importing assets with tenant_id:", assets);
 
-      // Insert assets into the database
       const { data, error } = await supabase
         .from('assets')
         .insert(assets);
 
       if (error) {
-        // Log extra error info if present
-        console.error("Supabase insert error:", error);
         let backendErrorInfo = error.message;
         
-        // More detailed error message for column not found errors
         if (error.message.includes("column") && error.message.includes("schema cache")) {
           const match = error.message.match(/Could not find the '(.+?)' column/);
           if (match && match[1]) {
@@ -166,7 +169,6 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
     } catch (error: any) {
       console.error("Import error:", error);
       let errorMessage = "An unknown error occurred during import.";
-      // Attach more info if available
       if (error instanceof Error) {
         errorMessage = error.message;
       }
