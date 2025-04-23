@@ -90,28 +90,48 @@ export const createUser = async (
   active: boolean
 ): Promise<{success: boolean, data?: any, error?: string}> => {
   try {
+    const { data: tenantData } = await supabase.rpc('get_active_tenant');
+    if (!tenantData) {
+      throw new Error('No active tenant found');
+    }
+
+    console.log("Creating user with tenant:", tenantData);
+    
     // Use Supabase Edge Function to create user
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('No active session');
+    }
+
+    // Construct the full URL for the edge function
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`;
+    console.log("Calling edge function:", functionUrl);
+    
+    const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        'Authorization': `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
         email,
         password,
         name,
         role,
-        active
+        active,
+        tenant_id: tenantData
       })
     });
 
-    const result = await response.json();
-    
     if (!response.ok) {
-      throw new Error(result.error || 'Failed to create user');
+      const errorData = await response.json();
+      console.error("Error response from create-user function:", errorData);
+      throw new Error(errorData.error || 'Failed to create user');
     }
 
+    const result = await response.json();
+    console.log("User creation successful:", result);
+    
     return { success: true, data: result };
   } catch (error) {
     console.error("Error creating user:", error);
