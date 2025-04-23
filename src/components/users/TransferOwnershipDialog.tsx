@@ -1,8 +1,9 @@
 
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Crown } from "lucide-react";
-import { EnhancedUser } from "@/types/user";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { AlertTriangle } from 'lucide-react';
+import { EnhancedUser } from '@/types/user';
 
 interface TransferOwnershipDialogProps {
   isOpen: boolean;
@@ -12,13 +13,13 @@ interface TransferOwnershipDialogProps {
   isTransferring: boolean;
 }
 
-export function TransferOwnershipDialog({
+export const TransferOwnershipDialog = ({
   isOpen,
   onClose,
   onConfirm,
   selectedUser,
   isTransferring
-}: TransferOwnershipDialogProps) {
+}: TransferOwnershipDialogProps) => {
   if (!selectedUser) return null;
 
   return (
@@ -26,29 +27,33 @@ export function TransferOwnershipDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center">
-            <Crown className="h-5 w-5 mr-2 text-yellow-600" />
+            <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2" />
             Transfer Ownership
           </DialogTitle>
           <DialogDescription>
-            Are you sure you want to transfer ownership to {selectedUser.name}? This action cannot be undone.
+            Are you sure you want to transfer ownership of this organization to {selectedUser.name}?
+            This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
-        <div className="pt-4">
-          <div className="flex items-center space-x-2 text-yellow-600 bg-yellow-50 p-3 rounded-md">
-            <Crown className="h-5 w-5 flex-shrink-0" />
-            <span className="text-sm">
-              The new owner will have full control over this organization. You will still remain an admin but will no longer be the owner.
-            </span>
+        <div className="py-4">
+          <p className="font-medium">New owner details:</p>
+          <div className="mt-2 border rounded-md p-3 bg-slate-50">
+            <p><span className="text-sm text-slate-500">Name:</span> {selectedUser.name}</p>
+            <p><span className="text-sm text-slate-500">Email:</span> {selectedUser.email}</p>
+            <p><span className="text-sm text-slate-500">Role:</span> {selectedUser.dbRole}</p>
           </div>
+          <p className="mt-4 text-sm text-red-500">
+            Warning: You will no longer be the owner of this organization after this action.
+          </p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isTransferring}>
             Cancel
           </Button>
           <Button 
-            onClick={onConfirm}
+            variant="destructive" 
+            onClick={onConfirm} 
             disabled={isTransferring}
-            className="bg-yellow-600 hover:bg-yellow-700"
           >
             {isTransferring ? 'Transferring...' : 'Transfer Ownership'}
           </Button>
@@ -56,4 +61,4 @@ export function TransferOwnershipDialog({
       </DialogContent>
     </Dialog>
   );
-}
+};

@@ -173,6 +173,15 @@ const Users = () => {
     setCreateUserError(undefined);
     
     try {
+      if (!currentTenant) {
+        throw new Error("No active tenant selected. Please select a tenant before creating users.");
+      }
+      
+      console.log("Creating user with formValues:", { 
+        ...formValues, 
+        password: formValues.password ? "[REDACTED]" : undefined 
+      });
+      
       const dbRole = formValues.role.toLowerCase() as UserRole;
       
       const result = await createUser(

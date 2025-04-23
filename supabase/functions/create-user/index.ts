@@ -38,14 +38,14 @@ serve(async (req) => {
 
     // Validate required fields
     if (!email || !password || !name || !role || !tenant_id) {
-      console.error("Missing required fields:", { email, name, role, tenant_id });
+      console.error("Missing required fields:", { email, name, role, tenant_id, passwordProvided: !!password });
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Creating user in auth system");
+    console.log("Creating user in auth system with tenant_id:", tenant_id);
     // Create the user in Supabase Auth
     const { data: userData, error: createError } = await supabase.auth.admin.createUser({
       email,
@@ -73,7 +73,7 @@ serve(async (req) => {
     console.log("User created successfully:", userId);
 
     // Add user to profiles table with tenant_id
-    console.log("Adding user to profiles table");
+    console.log("Adding user to profiles table with tenant_id:", tenant_id);
     const { error: profileError } = await supabase
       .from("profiles")
       .insert({
@@ -89,7 +89,7 @@ serve(async (req) => {
     }
 
     // Add tenant membership
-    console.log("Creating tenant membership");
+    console.log("Creating tenant membership with tenant_id:", tenant_id);
     const { error: membershipError } = await supabase
       .from("tenant_memberships")
       .insert({
@@ -105,7 +105,7 @@ serve(async (req) => {
     }
 
     // Add role to user_roles table
-    console.log("Setting user role");
+    console.log("Setting user role to:", role.toLowerCase());
     const { error: roleError } = await supabase
       .from("user_roles")
       .upsert({
