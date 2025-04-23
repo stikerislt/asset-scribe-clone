@@ -25,16 +25,19 @@ export function TransferOwnershipDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Transfer Ownership</DialogTitle>
+          <DialogTitle className="flex items-center">
+            <Crown className="h-5 w-5 mr-2 text-yellow-600" />
+            Transfer Ownership
+          </DialogTitle>
           <DialogDescription>
             Are you sure you want to transfer ownership to {selectedUser.name}? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <div className="pt-4">
-          <div className="flex items-center space-x-2 text-yellow-600">
-            <Crown className="h-5 w-5" />
+          <div className="flex items-center space-x-2 text-yellow-600 bg-yellow-50 p-3 rounded-md">
+            <Crown className="h-5 w-5 flex-shrink-0" />
             <span className="text-sm">
-              The new owner will have full control over this organization.
+              The new owner will have full control over this organization. You will still remain an admin but will no longer be the owner.
             </span>
           </div>
         </div>

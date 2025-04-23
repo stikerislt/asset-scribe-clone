@@ -4,4 +4,5 @@ import { User } from "@/components/UserForm";
 
 export interface EnhancedUser extends User {
   dbRole: UserRole | null;
+  isOwner?: boolean;
 }

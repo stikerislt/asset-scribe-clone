@@ -12,6 +12,7 @@ interface UserListProps {
   onEditUser: (user: EnhancedUser) => void;
   onChangeRole: (user: EnhancedUser) => void;
   showAdminControls: boolean;
+  onTransferOwnership?: (user: EnhancedUser) => void;
 }
 
 export function UserList({
@@ -21,7 +22,8 @@ export function UserList({
   isLoading,
   onEditUser,
   onChangeRole,
-  showAdminControls
+  showAdminControls,
+  onTransferOwnership
 }: UserListProps) {
   return (
     <Card className="mb-8">
@@ -39,6 +41,7 @@ export function UserList({
             onEditUser={onEditUser}
             onChangeRole={onChangeRole}
             showAdminControls={showAdminControls}
+            onTransferOwnership={onTransferOwnership}
           />
         </div>
       </CardContent>

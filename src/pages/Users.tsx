@@ -44,6 +44,7 @@ const Users = () => {
   const [isTransferOwnershipDialogOpen, setIsTransferOwnershipDialogOpen] = useState(false);
   const [selectedUserForOwnership, setSelectedUserForOwnership] = useState<EnhancedUser | null>(null);
   const [isTransferringOwnership, setIsTransferringOwnership] = useState(false);
+  const [ownerUser, setOwnerUser] = useState<EnhancedUser | null>(null);
   const { logActivity } = useActivity();
   const { user: currentUser } = useAuth();
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
@@ -85,6 +86,34 @@ const Users = () => {
         return;
       }
       
+      const { data: tenantData, error: tenantError } = await supabase
+        .from('tenants')
+        .select('owner_id')
+        .eq('id', currentTenant.id)
+        .single();
+      
+      if (tenantError) {
+        console.error('Error fetching tenant:', tenantError);
+      }
+      
+      const ownerId = tenantData?.owner_id;
+      
+      const { data: memberships, error: membershipError } = await supabase
+        .from('tenant_memberships')
+        .select('user_id, is_owner')
+        .eq('tenant_id', currentTenant.id);
+        
+      if (membershipError) {
+        console.error('Error fetching memberships:', membershipError);
+      }
+      
+      const ownershipMap = new Map();
+      memberships?.forEach((membership) => {
+        if (membership.is_owner) {
+          ownershipMap.set(membership.user_id, true);
+        }
+      });
+      
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -101,14 +130,24 @@ const Users = () => {
         roleMap.set(userRole.user_id, userRole.role);
       });
       
-      const formattedUsers: EnhancedUser[] = profiles.map(profile => ({
-        id: profile.id,
-        name: profile.full_name || 'Unnamed User',
-        email: profile.email || 'No email provided',
-        role: profile.id === currentUser?.id ? 'Admin' : 'User',
-        dbRole: roleMap.get(profile.id) as UserRole || null,
-        active: true
-      }));
+      const formattedUsers: EnhancedUser[] = profiles.map(profile => {
+        const isOwner = ownershipMap.get(profile.id) || profile.id === ownerId;
+        const user = {
+          id: profile.id,
+          name: profile.full_name || 'Unnamed User',
+          email: profile.email || 'No email provided',
+          role: profile.id === currentUser?.id ? 'Admin' : 'User',
+          dbRole: roleMap.get(profile.id) as UserRole || null,
+          active: true,
+          isOwner: isOwner
+        };
+        
+        if (isOwner) {
+          setOwnerUser(user);
+        }
+        
+        return user;
+      });
       
       setUsers(formattedUsers);
     } catch (error: any) {
@@ -499,6 +538,11 @@ const Users = () => {
     }
   };
 
+  const handleOpenTransferOwnershipDialog = (user: EnhancedUser) => {
+    setSelectedUserForOwnership(user);
+    setIsTransferOwnershipDialogOpen(true);
+  };
+
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
@@ -511,6 +555,8 @@ const Users = () => {
           onAddMyUser={forceAddCurrentUser}
           onUpdateRoleByEmail={() => setIsEmailRoleDialogOpen(true)}
           onAddUser={() => setIsAddDialogOpen(true)}
+          onTransferOwnership={() => setIsTransferOwnershipDialogOpen(true)}
+          showOwnershipButton={isCurrentUserAdmin && !!ownerUser && ownerUser.id === currentUser?.id}
         />
       </div>
       
@@ -522,6 +568,7 @@ const Users = () => {
         onEditUser={handleOpenEditDialog}
         onChangeRole={handleOpenRoleDialog}
         showAdminControls={isCurrentUserAdmin}
+        onTransferOwnership={handleOpenTransferOwnershipDialog}
       />
 
       <UserDialogs

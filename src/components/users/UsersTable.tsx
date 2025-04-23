@@ -1,7 +1,7 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Users, ShieldCheck, ShieldX } from "lucide-react";
+import { Mail, Users, ShieldCheck, ShieldX, Crown } from "lucide-react";
 import { EnhancedUser } from "@/types/user";
 import { UserRoleBadge } from "./UserRoleBadge";
 import { UserActionsDropdown } from "./UserActionsDropdown";
@@ -12,6 +12,7 @@ interface UsersTableProps {
   onEditUser: (user: EnhancedUser) => void;
   onChangeRole: (user: EnhancedUser) => void;
   showAdminControls: boolean;
+  onTransferOwnership?: (user: EnhancedUser) => void;
 }
 
 export const UsersTable = ({ 
@@ -19,7 +20,8 @@ export const UsersTable = ({
   isLoading, 
   onEditUser, 
   onChangeRole, 
-  showAdminControls 
+  showAdminControls,
+  onTransferOwnership 
 }: UsersTableProps) => {
   if (isLoading) {
     return (
@@ -61,7 +63,14 @@ export const UsersTable = ({
       <TableBody>
         {users.map((user) => (
           <TableRow key={user.id}>
-            <TableCell className="font-medium">{user.name}</TableCell>
+            <TableCell className="font-medium">
+              <div className="flex items-center space-x-1">
+                {user.name}
+                {user.isOwner && (
+                  <Crown className="h-4 w-4 text-yellow-600 ml-1" title="Organization Owner" />
+                )}
+              </div>
+            </TableCell>
             <TableCell>
               <div className="flex items-center">
                 <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -69,7 +78,7 @@ export const UsersTable = ({
               </div>
             </TableCell>
             <TableCell>
-              <UserRoleBadge role={user.dbRole} />
+              <UserRoleBadge role={user.dbRole} isOwner={user.isOwner} />
             </TableCell>
             <TableCell>
               {user.active ? (
@@ -90,6 +99,8 @@ export const UsersTable = ({
                 onEditClick={onEditUser}
                 onRoleClick={onChangeRole}
                 showAdminControls={showAdminControls}
+                isOwner={user.isOwner}
+                onTransferOwnership={onTransferOwnership}
               />
             </TableCell>
           </TableRow>

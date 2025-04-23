@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Shield, Trash } from "lucide-react";
+import { MoreHorizontal, Edit, Shield, Trash, Crown } from "lucide-react";
 import { EnhancedUser } from "@/types/user";
 
 interface UserActionsDropdownProps {
@@ -17,6 +17,7 @@ interface UserActionsDropdownProps {
   showAdminControls: boolean;
   isOwner?: boolean;
   disabled?: boolean;
+  onTransferOwnership?: (user: EnhancedUser) => void;
 }
 
 export const UserActionsDropdown = ({ 
@@ -25,7 +26,8 @@ export const UserActionsDropdown = ({
   onRoleClick, 
   showAdminControls,
   isOwner = false,
-  disabled = false
+  disabled = false,
+  onTransferOwnership
 }: UserActionsDropdownProps) => {
   return (
     <DropdownMenu>
@@ -47,10 +49,17 @@ export const UserActionsDropdown = ({
           <Edit className="mr-2 h-4 w-4" />
           Edit
         </DropdownMenuItem>
-        {showAdminControls && (
+        {showAdminControls && !isOwner && (
           <DropdownMenuItem onClick={() => onRoleClick(user)}>
             <Shield className="mr-2 h-4 w-4" />
             Change Role
+          </DropdownMenuItem>
+        )}
+        
+        {showAdminControls && !isOwner && onTransferOwnership && (
+          <DropdownMenuItem onClick={() => onTransferOwnership(user)}>
+            <Crown className="mr-2 h-4 w-4 text-yellow-600" />
+            Transfer Ownership
           </DropdownMenuItem>
         )}
         
