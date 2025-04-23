@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -50,7 +49,7 @@ const EditAsset = () => {
     enabled: !!id,
   });
 
-  const handleSubmit = async (formData: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
+  const handleSubmit = async (formData: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'tenant_id'>) => {
     if (!id || !user) {
       toast.error("Cannot update: Missing asset ID or user not authenticated");
       return;
@@ -64,7 +63,6 @@ const EditAsset = () => {
     console.log("Submitting form data:", formData);
     
     try {
-      // updateAsset handles adding the tenant_id from the currentTenant.id
       const updatedAsset = await updateAsset(id, formData, currentTenant.id);
       
       console.log("Asset updated successfully:", updatedAsset);

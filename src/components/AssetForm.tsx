@@ -22,7 +22,8 @@ import { useTenant } from "@/hooks/useTenant";
 
 interface AssetFormProps {
   initialData?: Partial<Asset>;
-  onSubmit: (data: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => void;
+  // Update type definition: tenant_id is handled by the parent component
+  onSubmit: (data: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'tenant_id'>) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
 }
