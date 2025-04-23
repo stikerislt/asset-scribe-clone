@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,6 +88,9 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
       toast.error("No tenant context found. Please check your organization settings.");
       return;
     }
+    
+    // Pass the form data to onSubmit callback without tenant_id
+    // The parent component will handle tenant_id
     onSubmit({
       name,
       tag,
@@ -102,7 +106,6 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
       purchase_cost: parseFloat(purchaseCost) || null,
       wear,
       qty: parseInt(qty) || 1,
-      tenant_id: currentTenant.id
     });
   };
 

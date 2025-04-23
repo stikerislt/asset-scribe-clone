@@ -10,7 +10,7 @@ export interface Asset {
   name: string;
   tag: string;
   category: string;
-  categoryIcon?: string;  // Added this property
+  categoryIcon?: string;
   status: AssetStatus;
   status_color: StatusColor | null;
   assigned_to: string | null;
@@ -25,6 +25,7 @@ export interface Asset {
   created_at: string;
   updated_at: string;
   user_id: string | null;
+  tenant_id: string | null;
 }
 
 // Define history entry interface

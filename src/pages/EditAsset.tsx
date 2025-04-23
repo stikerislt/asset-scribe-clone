@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -63,7 +64,8 @@ const EditAsset = () => {
     console.log("Submitting form data:", formData);
     
     try {
-      const updatedAsset = await updateAsset(id, { ...formData, tenant_id: currentTenant.id}, currentTenant.id);
+      // updateAsset handles adding the tenant_id from the currentTenant.id
+      const updatedAsset = await updateAsset(id, formData, currentTenant.id);
       
       console.log("Asset updated successfully:", updatedAsset);
       
