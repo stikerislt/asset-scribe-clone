@@ -11,6 +11,7 @@ interface UsersTableProps {
   isLoading: boolean;
   onEditUser: (user: EnhancedUser) => void;
   onChangeRole: (user: EnhancedUser) => void;
+  onDeleteUser: (user: EnhancedUser) => void;
   showAdminControls: boolean;
   onTransferOwnership?: (user: EnhancedUser) => void;
 }
@@ -19,7 +20,8 @@ export const UsersTable = ({
   users, 
   isLoading, 
   onEditUser, 
-  onChangeRole, 
+  onChangeRole,
+  onDeleteUser,
   showAdminControls,
   onTransferOwnership 
 }: UsersTableProps) => {
@@ -103,6 +105,7 @@ export const UsersTable = ({
                 user={user}
                 onEditClick={onEditUser}
                 onRoleClick={onChangeRole}
+                onDeleteClick={onDeleteUser}
                 showAdminControls={showAdminControls}
                 isOwner={user.isOwner}
                 onTransferOwnership={onTransferOwnership}

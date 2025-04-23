@@ -3,3 +3,6 @@ project_id = "tbefdkwtjpbonuunxytk"
 
 [functions.update-user-role]
 verify_jwt = true
+
+[functions.delete-user]
+verify_jwt = true

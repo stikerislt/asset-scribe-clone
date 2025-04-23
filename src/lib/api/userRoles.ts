@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -261,6 +260,85 @@ export const transferTenantOwnership = async (tenantId: string, newOwnerId: stri
   } catch (error) {
     console.error('Error transferring tenant ownership:', error);
     toast.error(error.message || 'Failed to transfer ownership');
+    return false;
+  }
+};
+
+// Add function to delete user
+export const deleteUser = async (userId: string): Promise<boolean> => {
+  try {
+    console.log("Attempting to delete user with ID:", userId);
+    
+    // First, check if user can be deleted (not an owner)
+    const canDelete = await canDeleteUser(userId);
+    if (!canDelete) {
+      console.error("User cannot be deleted because they are an organization owner");
+      toast.error("Cannot delete an organization owner. Transfer ownership first.");
+      return false;
+    }
+    
+    // Step 1: Remove tenant memberships
+    const { error: membershipError } = await supabase
+      .from('tenant_memberships')
+      .delete()
+      .eq('user_id', userId);
+    
+    if (membershipError) {
+      console.error("Error deleting tenant memberships:", membershipError);
+      throw new Error(`Failed to delete tenant memberships: ${membershipError.message}`);
+    }
+    
+    // Step 2: Remove user roles
+    const { error: rolesError } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId);
+    
+    if (rolesError) {
+      console.error("Error deleting user roles:", rolesError);
+      throw new Error(`Failed to delete user roles: ${rolesError.message}`);
+    }
+    
+    // Step 3: Delete profile
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+    
+    if (profileError) {
+      console.error("Error deleting profile:", profileError);
+      throw new Error(`Failed to delete profile: ${profileError.message}`);
+    }
+
+    // Using the admin API functions to delete the user from auth
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('No active session. Please sign in to perform this action.');
+    }
+    
+    const supabaseUrl = "https://tbefdkwtjpbonuunxytk.supabase.co";
+    const deleteUserEndpoint = `${supabaseUrl}/functions/v1/delete-user`;
+    
+    const response = await fetch(deleteUserEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ userId })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Error response from delete-user function:", response.status, errorText);
+      throw new Error(`Failed to delete auth user: ${errorText || `HTTP ${response.status}`}`);
+    }
+    
+    console.log("User deleted successfully");
+    return true;
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    toast.error(error.message || "Failed to delete user");
     return false;
   }
 };

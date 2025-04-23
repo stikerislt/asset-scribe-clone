@@ -13,6 +13,7 @@ interface UserListProps {
   isLoading: boolean;
   onChangeRole: (user: EnhancedUser) => void;
   onEditUser: (user: EnhancedUser) => void;
+  onDeleteUser: (user: EnhancedUser) => void;
   showAdminControls: boolean;
   onTransferOwnership: (user: EnhancedUser) => void;
 }
@@ -24,6 +25,7 @@ export function UserList({
   isLoading,
   onChangeRole,
   onEditUser,
+  onDeleteUser,
   showAdminControls,
   onTransferOwnership
 }: UserListProps) {
@@ -55,9 +57,10 @@ export function UserList({
         ) : users.length > 0 ? (
           <UsersTable 
             users={users} 
-            isLoading={isLoading}  // Add this line to pass isLoading prop
+            isLoading={isLoading}
             onChangeRole={onChangeRole} 
-            onEditUser={onEditUser} 
+            onEditUser={onEditUser}
+            onDeleteUser={onDeleteUser}
             showAdminControls={showAdminControls}
             onTransferOwnership={onTransferOwnership}
           />

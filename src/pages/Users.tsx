@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { UserPlus, Shield, Edit, AlertCircle } from "lucide-react";
+import { UserPlus, Shield, Edit, AlertCircle, Trash } from "lucide-react";
 import { UserForm } from "@/components/UserForm";
 import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +20,8 @@ import { UserActionButtons } from "@/components/users/UserActionButtons";
 import { UserList } from "@/components/users/UserList";
 import { UserDialogs } from "@/components/users/UserDialogs";
 import { transferTenantOwnership, canDeleteUser } from "@/lib/api/userRoles";
+import { UserDeleteDialog } from "@/components/users/UserDeleteDialog";
+import { deleteUser } from "@/lib/api/userRoles";
 
 const Users = () => {
   const { currentTenant } = useTenant();
@@ -45,6 +47,9 @@ const Users = () => {
   const [selectedUserForOwnership, setSelectedUserForOwnership] = useState<EnhancedUser | null>(null);
   const [isTransferringOwnership, setIsTransferringOwnership] = useState(false);
   const [ownerUser, setOwnerUser] = useState<EnhancedUser | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<EnhancedUser | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
   const { logActivity } = useActivity();
   const { user: currentUser } = useAuth();
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
@@ -552,6 +557,40 @@ const Users = () => {
     setIsTransferOwnershipDialogOpen(true);
   };
 
+  const handleOpenDeleteDialog = (user: EnhancedUser) => {
+    setUserToDelete(user);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    setIsDeletingUser(true);
+    
+    try {
+      const success = await deleteUser(userToDelete.id);
+      
+      if (success) {
+        setUsers(users.filter(u => u.id !== userToDelete.id));
+        
+        logActivity({
+          title: "User Deleted",
+          description: `Removed user ${userToDelete.name} from the organization`,
+          category: 'user',
+          icon: <Trash className="h-5 w-5 text-red-600" />
+        });
+        
+        toast.success(`User ${userToDelete.name} deleted successfully`);
+        setIsDeleteDialogOpen(false);
+      }
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast.error(`Failed to delete user: ${error.message}`);
+    } finally {
+      setIsDeletingUser(false);
+    }
+  };
+
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
@@ -576,6 +615,7 @@ const Users = () => {
         isLoading={isLoading}
         onEditUser={handleOpenEditDialog}
         onChangeRole={handleOpenRoleDialog}
+        onDeleteUser={handleOpenDeleteDialog}
         showAdminControls={isCurrentUserAdmin}
         onTransferOwnership={handleOpenTransferOwnershipDialog}
       />
@@ -630,6 +670,14 @@ const Users = () => {
         selectedUserForOwnership={selectedUserForOwnership}
         isTransferringOwnership={isTransferringOwnership}
         handleTransferOwnership={handleTransferOwnership}
+      />
+
+      <UserDeleteDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteUser}
+        user={userToDelete}
+        isDeleting={isDeletingUser}
       />
 
       <Dialog open={isDebugDialogOpen} onOpenChange={setIsDebugDialogOpen}>

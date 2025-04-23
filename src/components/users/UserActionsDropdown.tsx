@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { 
   DropdownMenu, 
@@ -14,6 +15,7 @@ interface UserActionsDropdownProps {
   user: EnhancedUser;
   onEditClick: (user: EnhancedUser) => void;
   onRoleClick: (user: EnhancedUser) => void;
+  onDeleteClick: (user: EnhancedUser) => void;
   showAdminControls: boolean;
   isOwner?: boolean;
   disabled?: boolean;
@@ -24,6 +26,7 @@ export const UserActionsDropdown = ({
   user, 
   onEditClick, 
   onRoleClick, 
+  onDeleteClick,
   showAdminControls,
   isOwner = false,
   disabled = false,
@@ -66,12 +69,8 @@ export const UserActionsDropdown = ({
         <DropdownMenuSeparator />
         <DropdownMenuItem 
           className="text-red-600" 
+          onClick={() => onDeleteClick(user)}
           disabled={isOwner}
-          onClick={() => {
-            if (!isOwner) {
-              // Keep existing delete logic
-            }
-          }}
         >
           <Trash className="mr-2 h-4 w-4" />
           {isOwner ? "Cannot delete owner" : "Delete"}
