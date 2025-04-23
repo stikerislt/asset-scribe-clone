@@ -114,10 +114,11 @@ export const createUser = async (
       throw new Error('No active session. Please sign in.');
     }
 
-    // Construct the full URL for the edge function
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    // Extract the Supabase URL from the client directly
+    // This avoids using environment variables that might not be defined
+    const supabaseUrl = supabase.supabaseUrl;
     if (!supabaseUrl) {
-      throw new Error('VITE_SUPABASE_URL is not defined');
+      throw new Error('Could not determine Supabase URL');
     }
     
     const functionUrl = `${supabaseUrl}/functions/v1/create-user`;
@@ -177,8 +178,13 @@ export const updateUserRoleByEmail = async (email: string, role: UserRole): Prom
   try {
     console.log(`Calling edge function to update role for ${email} to ${role}`);
     
-    // Fix: Explicitly construct the full URL with /functions/v1/ path
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    // Extract the Supabase URL from the client directly
+    const supabaseUrl = supabase.supabaseUrl;
+    if (!supabaseUrl) {
+      console.error("Could not determine Supabase URL");
+      return false;
+    }
+    
     const edgeFunctionUrl = `${supabaseUrl}/functions/v1/update-user-role`;
     
     console.log("Edge function URL:", edgeFunctionUrl);
@@ -188,7 +194,7 @@ export const updateUserRoleByEmail = async (email: string, role: UserRole): Prom
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`
       },
       body: JSON.stringify({
         email,
