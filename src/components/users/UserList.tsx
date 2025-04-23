@@ -1,7 +1,4 @@
 
-// Update the message about how users are added to the system
-// Add this file if it doesn't exist or update if it does
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -58,6 +55,7 @@ export function UserList({
         ) : users.length > 0 ? (
           <UsersTable 
             users={users} 
+            isLoading={isLoading}  // Add this line to pass isLoading prop
             onChangeRole={onChangeRole} 
             onEditUser={onEditUser} 
             showAdminControls={showAdminControls}
