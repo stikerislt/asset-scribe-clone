@@ -57,12 +57,12 @@ serve(async (req) => {
       userId = existingUsers.users[0].id;
       console.log("User already exists in auth system, using existing ID:", userId);
     } else {
-      console.log("Creating user in auth system with tenant_id:", tenant_id);
+      console.log("Creating new user in auth system");
       // Create the user in Supabase Auth with email confirmation required
       const { data: userData, error: createError } = await supabase.auth.admin.createUser({
         email,
         password,
-        email_confirm: false, // Changed to false to require email verification
+        email_confirm: false,
         user_metadata: {
           full_name: name,
         },
@@ -88,7 +88,6 @@ serve(async (req) => {
       const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email);
       if (inviteError) {
         console.error("Error sending invitation email:", inviteError);
-        // Continue anyway as the user is created
       } else {
         console.log("Invitation email sent successfully to:", email);
       }
@@ -129,28 +128,11 @@ serve(async (req) => {
               
             if (updateError) {
               console.error("Error updating existing profile:", updateError);
-            } else {
-              console.log("Updated existing profile");
             }
           }
         }
       } catch (error) {
         console.error("Exception in profile creation:", error);
-        // Continue anyway to attempt the rest of the process
-      }
-    } else {
-      console.log("Profile already exists, updating with new tenant_id");
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ 
-          tenant_id: tenant_id, 
-          full_name: name,
-          email: email
-        })
-        .eq("id", userId);
-        
-      if (updateError) {
-        console.error("Error updating existing profile:", updateError);
       }
     }
 
@@ -163,7 +145,7 @@ serve(async (req) => {
       .single();
     
     if (!existingMembership) {
-      // Add tenant membership
+      // Add tenant membership - Important: set is_primary and is_owner to false for new users
       console.log("Creating tenant membership with tenant_id:", tenant_id);
       const { error: membershipError } = await supabase
         .from("tenant_memberships")
@@ -171,38 +153,26 @@ serve(async (req) => {
           user_id: userId,
           tenant_id: tenant_id,
           role: role.toLowerCase(),
-          is_primary: true
+          is_primary: false,  // Never make new users primary by default
+          is_owner: false    // Never make new users owners by default
         });
 
       if (membershipError) {
         console.error("Error creating tenant membership:", membershipError);
-        // Don't throw here, just log the error and continue
       }
     }
 
-    // Check if role already exists
-    const { data: existingRole } = await supabase
+    // Add role to user_roles table
+    const { error: roleError } = await supabase
       .from("user_roles")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("role", role.toLowerCase())
-      .single();
-    
-    if (!existingRole) {
-      // Add role to user_roles table - use the specified role instead of always admin
-      console.log("Setting user role to:", role.toLowerCase());
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .upsert({
-          user_id: userId,
-          role: role.toLowerCase(),
-          updated_at: new Date().toISOString(),
-        });
+      .upsert({
+        user_id: userId,
+        role: role.toLowerCase(),
+        updated_at: new Date().toISOString(),
+      });
 
-      if (roleError) {
-        console.error("Error setting user role:", roleError);
-        // Don't throw here, just log the error and continue
-      }
+    if (roleError) {
+      console.error("Error setting user role:", roleError);
     }
 
     return new Response(
