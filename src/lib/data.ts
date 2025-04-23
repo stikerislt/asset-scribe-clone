@@ -35,10 +35,14 @@ export const logActivity = async (
 ): Promise<Activity | null> => {
   try {
     // Using asset_history table which exists in the database
+    // Generate a placeholder asset_id since it's required
+    const placeholderAssetId = crypto.randomUUID();
+    
     const { data, error } = await supabase
       .from("asset_history")
       .insert([
         {
+          asset_id: placeholderAssetId, // Required field for asset_history
           user_id: userId,
           tenant_id: tenantId,
           field_name: activityType,  // Mapping activity_type to field_name
