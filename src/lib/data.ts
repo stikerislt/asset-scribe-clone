@@ -1,6 +1,9 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTenant } from "@/hooks/useTenant";
+
+export type StatusColor = "green" | "yellow" | "red" | null;
 
 export interface Activity {
   id: string;
@@ -22,6 +25,7 @@ export interface Category {
   tenant_id: string;
 }
 
+// Modified to use asset_history table instead of activity_log
 export const logActivity = async (
   userId: string,
   tenantId: string,
@@ -30,16 +34,17 @@ export const logActivity = async (
   metadata: any
 ): Promise<Activity | null> => {
   try {
+    // Using asset_history table which exists in the database
     const { data, error } = await supabase
-      .from("activity_log")
+      .from("asset_history")
       .insert([
         {
           user_id: userId,
           tenant_id: tenantId,
-          activity_type: activityType,
-          description: description,
-          metadata: metadata,
-        },
+          field_name: activityType,  // Mapping activity_type to field_name
+          new_value: description,    // Mapping description to new_value
+          old_value: JSON.stringify(metadata)  // Storing metadata as a string in old_value
+        }
       ])
       .select()
       .single();
@@ -50,7 +55,18 @@ export const logActivity = async (
       return null;
     }
 
-    return data as Activity;
+    // Convert asset_history data structure to Activity interface
+    const activity: Activity = {
+      id: data.id,
+      timestamp: data.created_at,
+      user_id: data.user_id,
+      tenant_id: data.tenant_id,
+      activity_type: data.field_name,
+      description: data.new_value,
+      metadata: data.old_value ? JSON.parse(data.old_value) : null
+    };
+
+    return activity;
   } catch (error) {
     console.error("Error logging activity:", error);
     toast.error("Failed to log activity");
