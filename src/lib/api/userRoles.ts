@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -114,9 +113,9 @@ export const createUser = async (
       throw new Error('No active session. Please sign in.');
     }
 
-    // Extract the Supabase URL from the client directly
-    // This avoids using environment variables that might not be defined
-    const supabaseUrl = supabase.supabaseUrl;
+    // Get the Supabase URL from a config approach
+    // Instead of accessing protected property directly
+    const supabaseUrl = "https://tbefdkwtjpbonuunxytk.supabase.co";
     if (!supabaseUrl) {
       throw new Error('Could not determine Supabase URL');
     }
@@ -178,8 +177,8 @@ export const updateUserRoleByEmail = async (email: string, role: UserRole): Prom
   try {
     console.log(`Calling edge function to update role for ${email} to ${role}`);
     
-    // Extract the Supabase URL from the client directly
-    const supabaseUrl = supabase.supabaseUrl;
+    // Use a direct URL instead of accessing protected property
+    const supabaseUrl = "https://tbefdkwtjpbonuunxytk.supabase.co";
     if (!supabaseUrl) {
       console.error("Could not determine Supabase URL");
       return false;
@@ -190,11 +189,17 @@ export const updateUserRoleByEmail = async (email: string, role: UserRole): Prom
     console.log("Edge function URL:", edgeFunctionUrl);
     
     // Use the edge function to update the role with admin privileges
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error("No active session found");
+      return false;
+    }
+    
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`
+        'Authorization': `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
         email,
