@@ -67,7 +67,12 @@ export const UsersTable = ({
               <div className="flex items-center space-x-1">
                 {user.name}
                 {user.isOwner && (
-                  <Crown className="h-4 w-4 text-yellow-600 ml-1" title="Organization Owner" />
+                  <span className="inline-flex items-center">
+                    <Crown 
+                      className="h-4 w-4 text-yellow-600 ml-1" 
+                      aria-label="Organization Owner"
+                    />
+                  </span>
                 )}
               </div>
             </TableCell>
