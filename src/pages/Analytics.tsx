@@ -21,6 +21,7 @@ import { StatusColor } from "@/lib/data";
 import { StatusColorIndicator } from "@/components/StatusColorIndicator";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { Loader } from "lucide-react";
+import { useTenant } from "@/hooks/useTenant";
 
 interface AssetStatusCount {
   status_color: StatusColor | null;
@@ -28,13 +29,20 @@ interface AssetStatusCount {
 }
 
 const Analytics = () => {
+  const { currentTenant } = useTenant();
+  
   const { data: statusCounts = [], isLoading } = useQuery({
-    queryKey: ['asset-status-colors'],
+    queryKey: ['asset-status-colors', currentTenant?.id],
     queryFn: async () => {
-      // Query to count assets by status_color using a more compatible approach
+      if (!currentTenant?.id) {
+        return [] as AssetStatusCount[];
+      }
+      
+      // Query to count assets by status_color with tenant filter
       const { data: assets, error } = await supabase
         .from('assets')
-        .select('status_color');
+        .select('status_color')
+        .eq('tenant_id', currentTenant.id);
       
       if (error) throw error;
       
@@ -61,7 +69,8 @@ const Analytics = () => {
       });
       
       return result;
-    }
+    },
+    enabled: !!currentTenant?.id
   });
   
   // Format data for chart
@@ -108,6 +117,11 @@ const Analytics = () => {
               <div className="flex flex-col items-center">
                 <Loader className="h-8 w-8 animate-spin mb-2 text-muted-foreground/50" />
                 <p className="text-muted-foreground">Loading data...</p>
+              </div>
+            ) : !currentTenant ? (
+              <div className="text-center text-muted-foreground">
+                <p>No organization selected</p>
+                <p className="text-sm mt-1">Select an organization to view analytics</p>
               </div>
             ) : totalAssets === 0 ? (
               <div className="text-center text-muted-foreground">
@@ -167,6 +181,11 @@ const Analytics = () => {
                 <div className="flex flex-col items-center py-8">
                   <Loader className="h-8 w-8 animate-spin mb-2 text-muted-foreground/50" />
                   <p className="text-muted-foreground">Loading data...</p>
+                </div>
+              ) : !currentTenant ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <p>No organization selected</p>
+                  <p className="text-sm mt-1">Select an organization to view analytics</p>
                 </div>
               ) : totalAssets === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
