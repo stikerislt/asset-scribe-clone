@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { UserForm } from "@/components/UserForm";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Shield } from "lucide-react";
 import { UserRole } from "@/lib/api/userRoles";
 import { TransferOwnershipDialog } from "./TransferOwnershipDialog";
-import { UserDeleteDialog } from "./UserDeleteDialog";
 
 interface UserDialogsProps {
   isAddDialogOpen: boolean;
@@ -52,12 +52,6 @@ interface UserDialogsProps {
   selectedUserForOwnership: any;
   isTransferringOwnership: boolean;
   handleTransferOwnership: () => void;
-  
-  isDeleteDialogOpen: boolean;
-  setIsDeleteDialogOpen: (open: boolean) => void;
-  userToDelete: any;
-  isDeletingUser: boolean;
-  handleDeleteUser: () => void;
 }
 
 export function UserDialogs({
@@ -72,12 +66,7 @@ export function UserDialogs({
   setIsTransferOwnershipDialogOpen,
   selectedUserForOwnership,
   isTransferringOwnership,
-  handleTransferOwnership,
-  isDeleteDialogOpen,
-  setIsDeleteDialogOpen,
-  userToDelete,
-  isDeletingUser,
-  handleDeleteUser
+  handleTransferOwnership
 }: UserDialogsProps) {
   return (
     <>
@@ -205,14 +194,6 @@ export function UserDialogs({
         onConfirm={handleTransferOwnership}
         selectedUser={selectedUserForOwnership}
         isTransferring={isTransferringOwnership}
-      />
-      
-      <UserDeleteDialog
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={handleDeleteUser}
-        user={userToDelete}
-        isDeleting={isDeletingUser}
       />
     </>
   );
