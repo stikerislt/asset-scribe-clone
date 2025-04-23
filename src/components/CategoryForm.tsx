@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -29,7 +28,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Archive, Smartphone, Globe, Tablet, Package, Computer, Monitor, Printer, Copyright, Menu } from "lucide-react";
 
-// Define the schema for form validation
 const categoryFormSchema = z.object({
   name: z.string().min(2, { message: "Category name must be at least 2 characters." }),
   type: z.enum(["asset", "accessory", "component", "consumable", "license"], {
@@ -38,10 +36,8 @@ const categoryFormSchema = z.object({
   icon: z.string().default("archive"),
 });
 
-// Define the form values type
 type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
-// Props for the CategoryForm component
 interface CategoryFormProps {
   onSubmit: (values: Category) => void;
   onCancel: () => void;
@@ -49,7 +45,6 @@ interface CategoryFormProps {
   isEditing?: boolean;
 }
 
-// Icon options for the form - expanded to match CategoryIcon component
 const iconOptions = [
   { value: "archive", label: "Archive/Default", icon: Archive },
   { value: "smartphone", label: "Phone/Mobile", icon: Smartphone },
@@ -68,7 +63,6 @@ export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = fa
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
-  // Initialize the form
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
     defaultValues: {
@@ -84,13 +78,16 @@ export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = fa
       return;
     }
 
+    if (!currentTenant?.id) {
+      toast.error("You must select an organization to create categories");
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      // Create a new category with a unique ID
       const categoryId = initialValues?.id || crypto.randomUUID();
       
-      // Prepare data for Supabase - include the icon field
       const supabaseData = {
         id: categoryId,
         name: values.name,
@@ -101,7 +98,6 @@ export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = fa
         tenant_id: currentTenant?.id
       };
 
-      // Save to Supabase
       const { error } = await supabase
         .from('categories')
         .upsert(supabaseData);
@@ -113,7 +109,6 @@ export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = fa
         return;
       }
 
-      // Submit the form and reset
       onSubmit(supabaseData as Category);
       form.reset();
       toast.success(`Category ${isEditing ? 'updated' : 'created'} successfully`);
@@ -125,7 +120,6 @@ export function CategoryForm({ onSubmit, onCancel, initialValues, isEditing = fa
     }
   };
 
-  // Function to get the icon component for a specific value
   const getIconForValue = (value: string) => {
     const option = iconOptions.find(opt => opt.value === value);
     if (!option) return null;

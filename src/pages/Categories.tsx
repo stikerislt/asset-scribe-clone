@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CategoryForm } from "@/components/CategoryForm";
-import { Category, logCategoryActivity, fetchCategories } from "@/lib/data";
+import { Category, logCategoryActivity } from "@/lib/data";
 import { useActivity } from "@/hooks/useActivity";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,25 +63,38 @@ const Categories = () => {
 
   useEffect(() => {
     const getCategoriesWithSync = async () => {
-      if (!user) {
+      if (!user || !currentTenant?.id) {
         setIsLoading(false);
+        setLocalCategories([]);
         return;
       }
 
       try {
-        // 1. Fetch all categories in the categories table (for this user/tenant)
-        const existingCategories: Category[] = await fetchCategories();
+        // 1. Fetch all categories in the categories table (for this tenant)
+        const { data: existingCategories = [], error: catError } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('tenant_id', currentTenant.id)
+          .order('name');
+
+        if (catError) {
+          console.error("Error fetching categories:", catError);
+          toast.error("Failed to load categories");
+          setIsLoading(false);
+          return;
+        }
 
         // 2. Fetch all unique categories from assets table and their counts
-        const { data: assetCategoriesData, error: catError } = await supabase
+        const { data: assetCategoriesData, error: assetError } = await supabase
           .from('assets')
           .select('category')
+          .eq('tenant_id', currentTenant.id)
           .neq('category', null)
           .order('category')
           .throwOnError();
 
-        if (catError) {
-          console.error("Error fetching asset categories:", catError);
+        if (assetError) {
+          console.error("Error fetching asset categories:", assetError);
           toast.error("Failed to load category data");
           setIsLoading(false);
           return;
@@ -135,7 +148,7 @@ const Categories = () => {
               icon: icon,
               count: item.count,
               user_id: user.id,
-              tenant_id: currentTenant?.id,
+              tenant_id: currentTenant.id,
             };
           });
 
@@ -152,25 +165,31 @@ const Categories = () => {
         }
 
         // Now, refetch categories to ensure the latest are included
-        const syncedCategories: Category[] = await fetchCategories();
+        const { data: syncedCategories = [], error: syncError } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('tenant_id', currentTenant.id)
+          .order('name');
 
-        // Deduplicate the categories array by lowercased name & tenant
-        const dedupedMap = new Map<string, Category>();
-        syncedCategories.forEach(cat => {
-          // Use tenant_id as part of the key if present
-          const tenantKey = (cat.tenant_id || "") + ":" + (cat.name.trim().toLowerCase());
-          if (!dedupedMap.has(tenantKey)) {
-            // Compose the category info with correct count from assets if available
-            const lowerCaseName = cat.name.trim().toLowerCase();
-            const assetCount = categoryCounts.get(lowerCaseName);
-            dedupedMap.set(tenantKey, {
-              ...cat,
-              count: typeof assetCount === 'number' ? assetCount : (cat.count ?? 0),
-              icon: cat.icon || "archive",
-            });
-          }
+        if (syncError) {
+          console.error("Error fetching updated categories:", syncError);
+          toast.error("Failed to refresh categories");
+          setIsLoading(false);
+          return;
+        }
+
+        // Update categories with asset counts
+        const finalCategories = syncedCategories.map(cat => {
+          const lowerCaseName = cat.name?.trim().toLowerCase();
+          const assetCount = categoryCounts.get(lowerCaseName);
+          return {
+            ...cat,
+            count: typeof assetCount === 'number' ? assetCount : (cat.count ?? 0),
+            icon: cat.icon || "archive",
+          };
         });
-        setLocalCategories(Array.from(dedupedMap.values()));
+
+        setLocalCategories(finalCategories);
       } catch (error) {
         console.error("Error in category/asset sync:", error);
         toast.error("An error occurred while loading categories");
@@ -295,6 +314,12 @@ const Categories = () => {
               <div className="flex justify-center items-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <span className="ml-2 text-muted-foreground">Loading categories...</span>
+              </div>
+            ) : !currentTenant ? (
+              <div className="flex flex-col items-center justify-center text-center py-8 text-muted-foreground">
+                <Tag className="h-12 w-12 mb-2 text-muted-foreground/50" />
+                <p>No organization selected</p>
+                <p className="text-sm mt-1">Select an organization to view categories</p>
               </div>
             ) : (
               <Table>

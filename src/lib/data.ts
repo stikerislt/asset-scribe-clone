@@ -1,126 +1,96 @@
-
-import { useActivity, getActivityIcon } from "@/hooks/useActivity";
-import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
-import { Asset as ApiAsset } from "@/lib/api/assets";
+import { toast } from "sonner";
+import { useTenant } from "@/hooks/useTenant";
 
-// Export AssetStatus from api/assets
-export type { AssetStatus } from "@/lib/api/assets";
+export interface Activity {
+  id: string;
+  timestamp: string;
+  user_id: string;
+  tenant_id: string;
+  activity_type: string;
+  description: string;
+  metadata: any;
+}
 
-// Define Asset type based on Supabase schema
-export type Asset = ApiAsset;
-
-// Define status color type
-export type StatusColor = "green" | "yellow" | "red";
-
-// Define Category type based on what we expect from Supabase
-// Ensure count is explicitly a number to avoid type issues
 export interface Category {
   id: string;
   name: string;
   type: string;
+  icon: string;
   count: number;
-  user_id?: string;
-  icon?: string;
-  tenant_id?: string;
+  user_id: string;
+  tenant_id: string;
 }
 
-// Empty arrays instead of sample data
-export const assets: Asset[] = [];
-
-// Helper to log asset activities
-export const logAssetActivity = (
-  action: string, 
-  asset: Partial<Asset>, 
-  useActivityHook = useActivity
-) => {
-  const { logActivity } = useActivityHook();
-  
-  logActivity({
-    title: action,
-    description: `${asset.name || 'Asset'} ${action.toLowerCase()}`,
-    category: 'asset',
-    icon: getActivityIcon('asset')
-  });
-};
-
-// Helper to log category activities
-export const logCategoryActivity = (
-  action: string, 
-  category: Partial<Category>,
-  useActivityHook = useActivity
-) => {
-  const { logActivity } = useActivityHook();
-  
-  logActivity({
-    title: `Category ${action}`,
-    description: `${category.name || 'Category'} ${action.toLowerCase()}`,
-    category: 'category',
-    icon: getActivityIcon('category')
-  });
-};
-
-// Helper to log user activities
-export const logUserActivity = (
-  action: string,
-  user: { name: string },
-  useActivityHook = useActivity
-) => {
-  const { logActivity } = useActivityHook();
-  
-  logActivity({
-    title: `User ${action}`,
-    description: `${user.name} ${action.toLowerCase()}`,
-    category: 'user',
-    icon: getActivityIcon('user')
-  });
-};
-
-// Helper to check and debug asset access
-export const debugAssetAccess = async () => {
-  console.log("Debugging asset access...");
+export const logActivity = async (
+  userId: string,
+  tenantId: string,
+  activityType: string,
+  description: string,
+  metadata: any
+): Promise<Activity | null> => {
   try {
-    const { data: session } = await supabase.auth.getSession();
-    console.log("Current session:", session);
-    
     const { data, error } = await supabase
-      .from('assets')
-      .select('*')
-      .limit(5);
-    
-    console.log("Debug asset query result:", { data, error });
-    return { data, error, isAuthenticated: !!session?.session };
-  } catch (e) {
-    console.error("Debug asset access error:", e);
-    return { data: null, error: e, isAuthenticated: false };
+      .from("activity_log")
+      .insert([
+        {
+          user_id: userId,
+          tenant_id: tenantId,
+          activity_type: activityType,
+          description: description,
+          metadata: metadata,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error logging activity:", error);
+      toast.error("Failed to log activity");
+      return null;
+    }
+
+    return data as Activity;
+  } catch (error) {
+    console.error("Error logging activity:", error);
+    toast.error("Failed to log activity");
+    return null;
   }
 };
 
-// Helper for working with category data from Supabase
-export const fetchCategories = async () => {
-  try {
-    // Get the current tenant ID from the session
-    const { data: sessionData } = await supabase.auth.getSession();
-    
-    let query = supabase
-      .from('categories')
-      .select('*')
-      .order('name', { ascending: true });
-    
-    const { data, error } = await query;
-      
-    if (error) {
-      console.error("Error fetching categories:", error);
-      throw error;
-    }
-    
-    // Ensure proper type casting for count
-    return (data || []).map(cat => ({
-      ...cat,
-      count: typeof cat.count === 'number' ? cat.count : 0
-    })) as Category[];
-  } catch (error) {
-    console.error("Error in fetchCategories:", error);
+export const logCategoryActivity = async (
+  activityType: string,
+  category: Category
+): Promise<void> => {
+  const description = `Category ${activityType.toLowerCase()} "${category.name}"`;
+  await logActivity(
+    category.user_id,
+    category.tenant_id,
+    `Category ${activityType}`,
+    description,
+    category
+  );
+};
+
+// Fetch categories with tenant_id filter
+export const fetchCategories = async (): Promise<Category[]> => {
+  const { currentTenant } = useTenant();
+  
+  if (!currentTenant?.id) {
+    return [];
+  }
+  
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('tenant_id', currentTenant.id)
+    .order('name');
+  
+  if (error) {
+    console.error("Error fetching categories:", error);
+    toast.error("Failed to load categories");
     throw error;
   }
+  
+  return data || [];
 };
