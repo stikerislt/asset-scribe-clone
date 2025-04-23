@@ -1,7 +1,6 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface Tenant {
@@ -32,12 +31,35 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const [userTenants, setUserTenants] = useState<Tenant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  // Remove the useAuth dependency to avoid circular dependency
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check if user is authenticated without using useAuth
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getSession();
+      setUserId(data.session?.user.id || null);
+    };
+    
+    checkUser();
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUserId(session?.user?.id || null);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const fetchUserTenants = async () => {
-    if (!user) {
+    if (!userId) {
       setUserTenants([]);
       setCurrentTenant(null);
+      setIsLoading(false);
       return;
     }
 
@@ -54,7 +76,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
             subscription_status
           )
         `)
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
 
       if (membershipError) throw membershipError;
 
@@ -76,11 +98,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         console.warn("[TenantProvider] No primary tenant, using first tenant as fallback");
       } else {
         setCurrentTenant(null);
-        console.warn("[TenantProvider] No tenant memberships found for user", user.id);
+        console.warn("[TenantProvider] No tenant memberships found for user", userId);
       }
     } catch (error) {
       console.error('Error fetching tenants:', error);
       toast.error('Failed to load organization data');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -111,9 +135,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   };
 
+  // Effect to fetch tenants when userId changes
   useEffect(() => {
     refreshTenants();
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     console.log("[TenantProvider] currentTenant:", currentTenant, "userTenants:", userTenants);

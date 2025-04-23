@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -124,7 +125,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         membershipInserted = true;
       }
 
-      await refreshTenants?.();
+      // Call refreshTenants after a successful signup
+      setTimeout(() => {
+        refreshTenants();
+      }, 0);
 
       toast({
         title: "Signup successful",
