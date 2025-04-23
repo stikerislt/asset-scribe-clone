@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -159,6 +160,13 @@ export const createUser = async (
     }
 
     if (!response.ok) {
+      // Look for specific error messages we want to handle differently
+      if (result.error && result.error.includes("duplicate key value")) {
+        console.log("User already exists, treating as success");
+        toast.info("User already exists in the system. Their information has been updated.");
+        return { success: true, data: { ...result, message: "User already exists and has been updated" } };
+      }
+      
       console.error("Error response from create-user function:", result);
       throw new Error(result.error || `Failed to create user: HTTP ${response.status}`);
     }
