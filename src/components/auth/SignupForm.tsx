@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
 
 const signupSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -25,7 +24,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 const SignupForm = () => {
   const { toast } = useToast();
   const { signup } = useAuth();
-  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -38,6 +37,7 @@ const SignupForm = () => {
   });
 
   const handleSubmit = async (data: SignupFormValues) => {
+    setIsSubmitting(true);
     try {
       await signup(data.email, data.password, data.fullName);
     } catch (error) {
@@ -46,6 +46,8 @@ const SignupForm = () => {
         description: error instanceof Error ? error.message : "Failed to create account. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -104,8 +106,8 @@ const SignupForm = () => {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "Creating Account..." : "Create Account"}
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? "Creating Account..." : "Create Account"}
         </Button>
       </form>
     </Form>

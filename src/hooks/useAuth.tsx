@@ -76,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = async (email: string, password: string, fullName: string) => {
     try {
+      // Step 1: Create the user account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -88,47 +89,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (authError) throw authError;
       if (!authData.user) throw new Error("Signup failed. Please try again.");
 
-      const tenantPayload = {
-        name: `${fullName}'s Organization`,
-        description: 'Default organization'
-      };
-      const { data: tenantData, error: tenantError } = await supabase
-        .from('tenants')
-        .insert(tenantPayload)
-        .select()
-        .single();
-      if (tenantError || !tenantData) throw tenantError || new Error("Tenant creation failed.");
-
-      let membershipInserted = false;
-      try {
-        const { error: membershipError } = await supabase
-          .from('tenant_memberships')
-          .insert([{
-            user_id: authData.user.id,
-            tenant_id: tenantData.id,
-            role: 'admin',
-            is_primary: true
-          }]);
-        if (membershipError) throw membershipError;
-        membershipInserted = true;
-      } catch (e) {
-        await new Promise((r) => setTimeout(r, 500));
-        const { error: membershipError2 } = await supabase
-          .from('tenant_memberships')
-          .insert([{
-            user_id: authData.user.id,
-            tenant_id: tenantData.id,
-            role: 'admin',
-            is_primary: true
-          }]);
-        if (membershipError2) throw membershipError2;
-        membershipInserted = true;
+      // Use database function to create tenant - bypassing RLS
+      const { data: functionData, error: functionError } = await supabase.rpc(
+        'handle_new_tenant_signup', 
+        { 
+          user_id: authData.user.id,
+          user_name: fullName,
+          user_email: email
+        }
+      );
+      
+      if (functionError) {
+        console.error("Error creating tenant via function:", functionError);
+        throw new Error(`Failed to create organization: ${functionError.message}`);
       }
-
-      // Call refreshTenants after a successful signup
-      setTimeout(() => {
-        refreshTenants();
-      }, 0);
 
       toast({
         title: "Signup successful",
