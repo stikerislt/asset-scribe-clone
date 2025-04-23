@@ -56,10 +56,28 @@ export const VALID_ASSET_STATUSES: AssetStatus[] = [
 export const getAssetsByEmployeeName = async (employeeName: string): Promise<Asset[]> => {
   if (!employeeName) return [];
   
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData?.session?.user?.id;
+  
+  if (!userId) return [];
+  
+  // Try to discover their tenant_id
+  const { data: memberships } = await supabase
+    .from('tenant_memberships')
+    .select('tenant_id')
+    .eq('user_id', userId)
+    .eq('is_primary', true)
+    .single();
+  
+  const tenantId = memberships?.tenant_id;
+  
+  if (!tenantId) return [];
+  
   const { data, error } = await supabase
     .from('assets')
     .select('*')
-    .eq('assigned_to', employeeName);
+    .eq('assigned_to', employeeName)
+    .eq('tenant_id', tenantId);
     
   if (error) throw error;
   
