@@ -95,6 +95,11 @@ const Dashboard = () => {
     enabled: !!user && !!currentTenant?.id
   });
 
+  // Filter activities to only show ones that match the current tenant
+  const tenantActivities = currentTenant?.id
+    ? activities.filter(activity => !activity.tenant_id || activity.tenant_id === currentTenant.id)
+    : activities;
+
   return (
     <div className="animate-fade-in">
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
@@ -136,10 +141,10 @@ const Dashboard = () => {
 
       <div className="mt-8">
         <h2 className="text-2xl font-bold mb-4">Recent Activity</h2>
-        {activities.length > 0 ? (
+        {tenantActivities.length > 0 ? (
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="space-y-4">
-              {activities.map((activity) => (
+              {tenantActivities.map((activity) => (
                 <ActivityItem
                   key={activity.id}
                   title={activity.title}
