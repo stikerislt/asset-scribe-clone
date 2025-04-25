@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { TenantSetupValues } from "../types/tenant-setup";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,19 +53,22 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     setCreationTimeout(timeout);
 
     try {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        console.error("[useTenantSetup] Session retrieval error:", sessionError);
-        throw new Error(`Session error: ${sessionError.message}`);
+      // Force refresh the session to ensure we have the latest auth state
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError) {
+        console.error("[useTenantSetup] Session refresh error:", refreshError);
+        throw new Error(`Auth refresh error: ${refreshError.message}`);
       }
 
-      if (!sessionData.session) {
-        console.error("[useTenantSetup] No active session found");
-        throw new Error("No active session. Please log in again.");
+      if (!refreshData.session) {
+        console.error("[useTenantSetup] No session after refresh");
+        throw new Error("Authentication session lost. Please log in again.");
       }
       
-      console.log("[useTenantSetup] Session confirmed:", sessionData.session.user.id);
+      console.log("[useTenantSetup] Session refreshed:", refreshData.session.user.id);
 
+      // Verify that the user exists in profiles
       const { data: profileData, error: profileCheckError } = await supabase
         .from('profiles')
         .select('id, onboarding_completed, email')
@@ -78,11 +82,44 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
       if (!profileData) {
         console.error("[useTenantSetup] Profile not found for user:", user.id);
-        throw new Error("User profile not found. Please contact support.");
+        
+        // Try to create the profile if missing
+        const { data: newProfile, error: profileInsertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || '',
+            onboarding_completed: false
+          })
+          .select()
+          .single();
+          
+        if (profileInsertError) {
+          console.error("[useTenantSetup] Failed to create missing profile:", profileInsertError);
+          throw new Error(`User profile creation failed: ${profileInsertError.message}`);
+        }
+        
+        console.log("[useTenantSetup] Created missing user profile:", newProfile);
+      } else {
+        console.log("[useTenantSetup] User profile verified:", profileData);
       }
 
-      console.log("[useTenantSetup] User profile verified:", profileData);
+      // Check if the user already has tenant memberships
+      const { data: existingMemberships, error: membershipCheckError } = await supabase
+        .from('tenant_memberships')
+        .select('tenant_id')
+        .eq('user_id', user.id);
+        
+      if (membershipCheckError) {
+        console.warn("[useTenantSetup] Error checking existing memberships:", membershipCheckError);
+      } else if (existingMemberships && existingMemberships.length > 0) {
+        console.warn("[useTenantSetup] User already has existing memberships:", existingMemberships);
+      }
 
+      // Create the tenant with explicit auth context
+      console.log("[useTenantSetup] Creating tenant with owner_id:", user.id);
+      
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
         .insert({
@@ -98,6 +135,14 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       
       if (tenantError) {
         console.error("[useTenantSetup] Tenant creation error:", tenantError);
+        
+        // Check for RLS issues by logging additional information
+        console.log("[useTenantSetup] Debugging auth state:", { 
+          uid: supabase.auth.getSession().then(s => console.log("Current session:", s)),
+          hasValidSession: !!refreshData.session,
+          sessionUserMatches: refreshData.session?.user.id === user.id
+        });
+        
         throw new Error(`Failed to create organization: ${tenantError.message}`);
       }
 
@@ -107,6 +152,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       
       console.log("[useTenantSetup] Tenant created successfully:", tenantData.id);
 
+      // Create membership with explicit auth context
       const { error: membershipError } = await supabase
         .from('tenant_memberships')
         .insert({
@@ -124,6 +170,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       
       console.log("[useTenantSetup] Membership created successfully");
 
+      // Mark onboarding as completed
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ onboarding_completed: true })
