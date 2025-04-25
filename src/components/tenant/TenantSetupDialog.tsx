@@ -3,9 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { TenantSetupForm } from "./TenantSetupForm";
 import { useTenantSetup } from "./hooks/useTenantSetup";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Info } from "lucide-react";
+import { AlertCircle, Info, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 interface TenantSetupDialogProps {
   isOpen: boolean;
@@ -15,6 +17,7 @@ interface TenantSetupDialogProps {
 export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps) {
   const { handleSubmit, isSubmitting, hasError, errorMessage } = useTenantSetup({ onComplete });
   const [showHelpInfo, setShowHelpInfo] = useState(false);
+  const { logout } = useAuth();
 
   const handleOpenChange = (open: boolean) => {
     // Prevent dialog from closing if we're submitting or there's an error
@@ -33,6 +36,15 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
 
   const toggleHelpInfo = () => {
     setShowHelpInfo(!showHelpInfo);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("Logged out successfully. Please log in again to continue setup.");
+    } catch (error) {
+      toast.error("Failed to log out. Please try refreshing the page.");
+    }
   };
 
   return (
@@ -67,12 +79,21 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
             <Info className="h-4 w-4 mr-2" />
             <AlertDescription className="text-sm">
               <p className="mb-2">This error typically occurs when there are permission issues with your account. Try the following:</p>
-              <ol className="list-decimal ml-5">
+              <ol className="list-decimal ml-5 mb-4">
                 <li>Log out and log back in to reset your session</li>
                 <li>Clear your browser cache and cookies</li>
                 <li>Try using a different browser</li>
                 <li>If the issue persists, contact support for assistance</li>
               </ol>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full flex items-center justify-center" 
+                onClick={handleLogout}
+              >
+                <RefreshCcw className="mr-2 h-4 w-4" /> 
+                Log out now
+              </Button>
             </AlertDescription>
           </Alert>
         )}

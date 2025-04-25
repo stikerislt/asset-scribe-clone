@@ -26,8 +26,20 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     try {
       console.log("[useTenantSetup] Starting tenant creation with data:", data);
       
-      // Use the service role client for the tenant creation
-      // This is necessary because RLS policies may be preventing direct inserts
+      // First, check if the user account has the proper permissions
+      const { data: authState, error: authError } = await supabase.auth.getSession();
+      
+      if (authError) {
+        console.error("[useTenantSetup] Authentication check error:", authError);
+        throw new Error(`Authentication error: ${authError.message}. Please try logging out and back in.`);
+      }
+      
+      if (!authState.session) {
+        console.error("[useTenantSetup] No active session found");
+        throw new Error("Your session has expired. Please log out and log back in to continue.");
+      }
+
+      // Attempt to create the tenant
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
         .insert({
@@ -46,7 +58,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         
         if (tenantError.code === '42501') {
           // This is a Row Level Security policy violation
-          throw new Error(`Failed to create organization due to insufficient permissions. Please contact your administrator or try logging out and back in.`);
+          throw new Error(`Failed to create organization due to insufficient permissions. Please try logging out and back in to refresh your session.`);
         } else {
           throw new Error(`Failed to create organization: ${tenantError.message}`);
         }
