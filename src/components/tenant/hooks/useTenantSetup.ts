@@ -24,19 +24,29 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
   }, [creationTimeout]);
 
   const handleSubmit = async (data: TenantSetupValues): Promise<void> => {
+    // Comprehensive logging of input data
+    console.log("[useTenantSetup] Starting tenant creation with data:", {
+      ...data,
+      userId: user?.id,
+      userEmail: user?.email
+    });
+    
     if (!user) {
-      toast.error("You must be logged in to create an organization");
+      const errorMsg = "No authenticated user found";
+      console.error(`[useTenantSetup] ${errorMsg}`);
+      toast.error(errorMsg);
+      setHasError(true);
+      setErrorMessage(errorMsg);
       return;
     }
     
-    console.log("[useTenantSetup] Starting tenant creation with user:", user.id);
     setIsSubmitting(true);
     setHasError(false);
     setErrorMessage(null);
 
     // Set a timeout to prevent hanging indefinitely
     const timeout = setTimeout(() => {
-      console.log("[useTenantSetup] Operation timed out after 20 seconds");
+      console.error("[useTenantSetup] Operation timed out after 20 seconds");
       setIsSubmitting(false);
       setHasError(true);
       setErrorMessage("Operation timed out. Please try again.");
@@ -46,32 +56,30 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     setCreationTimeout(timeout);
 
     try {
-      console.log("[useTenantSetup] Submitting tenant data:", data);
-
-      // First, ensure we have a valid session
+      // Detailed session verification
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
-        console.error("[useTenantSetup] Session error:", sessionError);
-        throw new Error("Your session has expired. Please log in again.");
+        console.error("[useTenantSetup] Session retrieval error:", sessionError);
+        throw new Error(`Session error: ${sessionError.message}`);
       }
 
       if (!sessionData.session) {
         console.error("[useTenantSetup] No active session found");
-        throw new Error("No active session found. Please log in again.");
+        throw new Error("No active session. Please log in again.");
       }
       
       console.log("[useTenantSetup] Session confirmed:", sessionData.session.user.id);
 
-      // Check if user profile exists
+      // Comprehensive profile check
       const { data: profileData, error: profileCheckError } = await supabase
         .from('profiles')
-        .select('id, onboarding_completed')
+        .select('id, onboarding_completed, email')
         .eq('id', user.id)
         .single();
         
       if (profileCheckError) {
         console.error("[useTenantSetup] Profile check error:", profileCheckError);
-        throw new Error("Failed to verify user profile: " + profileCheckError.message);
+        throw new Error(`Profile verification failed: ${profileCheckError.message}`);
       }
 
       if (!profileData) {
@@ -81,7 +89,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
       console.log("[useTenantSetup] User profile verified:", profileData);
 
-      // Create the tenant
+      // Tenant creation with comprehensive error handling
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
         .insert({
@@ -97,7 +105,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       
       if (tenantError) {
         console.error("[useTenantSetup] Tenant creation error:", tenantError);
-        throw new Error("Failed to create organization: " + tenantError.message);
+        throw new Error(`Failed to create organization: ${tenantError.message}`);
       }
 
       if (!tenantData) {
@@ -106,7 +114,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       
       console.log("[useTenantSetup] Tenant created successfully:", tenantData.id);
 
-      // Create tenant membership
+      // Create tenant membership with error handling
       const { error: membershipError } = await supabase
         .from('tenant_memberships')
         .insert({
@@ -119,7 +127,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
       if (membershipError) {
         console.error("[useTenantSetup] Membership creation error:", membershipError);
-        throw new Error("Failed to set up organization membership: " + membershipError.message);
+        throw new Error(`Failed to set up organization membership: ${membershipError.message}`);
       }
       
       console.log("[useTenantSetup] Membership created successfully");
@@ -143,7 +151,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         setCreationTimeout(null);
       }
 
-      // Log activity
+      // Log activity with comprehensive error handling
       try {
         await logActivity({
           title: "Organization Created",
@@ -152,7 +160,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
           tenant_id: tenantData.id
         });
       } catch (activityError) {
-        console.error("[useTenantSetup] Failed to log activity, but continuing:", activityError);
+        console.error("[useTenantSetup] Failed to log activity:", activityError);
       }
 
       toast.success("Organization created successfully!");
