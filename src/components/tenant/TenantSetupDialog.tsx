@@ -75,7 +75,13 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
     console.log("[TenantSetupDialog] Submitting form with data:", { ...data, owner_id: user.id });
     
     try {
-      // Create the tenant
+      // Get the current auth user
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error("No authenticated user found");
+      }
+      
+      // Create the tenant with explicit owner_id
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
         .insert({
@@ -84,29 +90,33 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
           website: data.website || null,
           industry: data.industry,
           organization_size: data.organizationSize,
-          owner_id: user.id // Explicitly set the owner_id to the current user
+          owner_id: currentUser.id // Explicitly use current user ID from auth
         })
-        .select()
-        .single();
+        .select();
 
       if (tenantError) {
         console.error("[TenantSetupDialog] Error creating tenant:", tenantError);
         if (tenantError.code === '42501') {
-          toast.error("Permission denied. Please make sure you're logged in and try again.");
+          toast.error("Permission denied. Please make sure you're logged in with the correct permissions.");
         } else {
           toast.error("Failed to create organization: " + tenantError.message);
         }
         return;
       }
 
-      console.log("[TenantSetupDialog] Tenant created:", tenantData);
+      if (!tenantData || tenantData.length === 0) {
+        throw new Error("No data returned after tenant creation");
+      }
+
+      const newTenantId = tenantData[0].id;
+      console.log("[TenantSetupDialog] Tenant created:", tenantData[0]);
 
       // Create tenant membership
       const { error: membershipError } = await supabase
         .from('tenant_memberships')
         .insert({
-          tenant_id: tenantData.id,
-          user_id: user.id,
+          tenant_id: newTenantId,
+          user_id: currentUser.id,
           role: 'admin',
           is_primary: true,
           is_owner: true
@@ -122,7 +132,7 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
-          user_id: user.id,
+          user_id: currentUser.id,
           role: 'admin'
         });
         
@@ -136,7 +146,7 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ onboarding_completed: true })
-        .eq('id', user.id);
+        .eq('id', currentUser.id);
         
       if (profileError) {
         console.error("[TenantSetupDialog] Error updating profile:", profileError);
