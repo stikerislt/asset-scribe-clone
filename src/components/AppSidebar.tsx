@@ -24,50 +24,88 @@ import {
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
-const mainMenuItems = [
-  {
-    title: "Dashboard",
-    path: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Assets",
-    path: "/assets",
-    icon: Package,
-  },
-  {
-    title: "Employees",
-    path: "/employees",
-    icon: Users,
-  },
-  {
-    title: "Analytics",
-    path: "/analytics",
-    icon: BarChart3,
-  },
-];
+const getMenuItemsByRole = (role: string) => {
+  // Base menu items available to all roles
+  const baseMenu = [
+    {
+      title: "Dashboard",
+      path: "/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      title: "Assets",
+      path: "/assets",
+      icon: Package,
+    },
+  ];
 
-const settingsMenuItems = [
-  {
-    title: "Categories",
-    path: "/categories",
-    icon: Tag,
-  },
-  {
-    title: "Users",
-    path: "/users",
-    icon: Shield,
-  },
-  {
-    title: "Settings",
-    path: "/settings",
-    icon: Settings,
-  },
-];
+  // Additional items for managers and admins
+  const managerMenu = [
+    {
+      title: "Employees",
+      path: "/employees",
+      icon: Users,
+    },
+    {
+      title: "Categories",
+      path: "/categories",
+      icon: Tag,
+    },
+    {
+      title: "Analytics",
+      path: "/analytics",
+      icon: BarChart3,
+    },
+    {
+      title: "Users",
+      path: "/users",
+      icon: Shield,
+    },
+  ];
+
+  // Settings only for admins
+  const adminMenu = [
+    {
+      title: "Settings",
+      path: "/settings",
+      icon: Settings,
+    },
+  ];
+
+  switch (role) {
+    case 'admin':
+      return [...baseMenu, ...managerMenu, ...adminMenu];
+    case 'manager':
+      return [...baseMenu, ...managerMenu];
+    default: // user role
+      return baseMenu;
+  }
+};
 
 export function AppSidebar() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+
+  // Fetch user role
+  const { data: userRole = 'user' } = useQuery({
+    queryKey: ['user-role', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 'user';
+      
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (error || !data) return 'user';
+      return data.role;
+    },
+  });
+
+  const menuItems = getMenuItemsByRole(userRole);
 
   const handleLogout = async () => {
     try {
@@ -88,24 +126,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link to={item.path}>
-                      <item.icon className="w-5 h-5" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {settingsMenuItems.map((item) => (
+              {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <Link to={item.path}>

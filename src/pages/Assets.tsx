@@ -66,6 +66,24 @@ const Assets = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  
+  // Fetch user role
+  const { data: userRole = 'user' } = useQuery({
+    queryKey: ['user-role', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 'user';
+      
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (error || !data) return 'user';
+      return data.role;
+    },
+  });
+
   const { logActivity } = useActivity();
   const { currentTenant } = useTenant();
 
@@ -92,13 +110,21 @@ const Assets = () => {
   }, [currentTenant?.id]);
   
   const { data: assets = [], isLoading, error } = useQuery({
-    queryKey: ['assets', currentTenant?.id],
+    queryKey: ['assets', currentTenant?.id, user?.id, userRole],
     queryFn: async () => {
       if (!currentTenant?.id) return [];
-      const { data, error } = await supabase
+      
+      let query = supabase
         .from('assets')
         .select('*')
         .eq('tenant_id', currentTenant.id);
+
+      // If user role is 'user', only show assets assigned to them
+      if (userRole === 'user' && user?.email) {
+        query = query.eq('assigned_to', user.email);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         sonnerToast.error("Failed to load assets", {
@@ -106,7 +132,8 @@ const Assets = () => {
         });
         throw new Error(error.message);
       }
-      const assetsWithProps = data?.map(asset => ({
+      
+      return data.map(asset => ({
         ...asset,
         notes: asset.notes || null,
         wear: asset.wear || null,
@@ -114,7 +141,6 @@ const Assets = () => {
         status_color: asset.status_color as StatusColor || null,
         status: asset.status as AssetStatus
       })) as Asset[];
-      return assetsWithProps;
     },
     enabled: !!currentTenant?.id,
     retry: 1,

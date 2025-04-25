@@ -72,31 +72,31 @@ export const protectedRoutes: RouteObject[] = [
       },
       {
         path: "assets/edit/:id",
-        element: <EditAsset />
+        element: <ProtectedRoute requiredRole="manager"><EditAsset /></ProtectedRoute>
       },
       {
         path: "employees",
-        element: <Employees />
+        element: <ProtectedRoute requiredRole="manager"><Employees /></ProtectedRoute>
       },
       {
         path: "employees/:id",
-        element: <EmployeeDetails />
+        element: <ProtectedRoute requiredRole="manager"><EmployeeDetails /></ProtectedRoute>
       },
       {
         path: "categories",
-        element: <Categories />
+        element: <ProtectedRoute requiredRole="manager"><Categories /></ProtectedRoute>
       },
       {
         path: "analytics",
-        element: <Analytics />
+        element: <ProtectedRoute requiredRole="manager"><Analytics /></ProtectedRoute>
       },
       {
         path: "users",
-        element: <Users />
+        element: <ProtectedRoute requiredRole="manager"><Users /></ProtectedRoute>
       },
       {
         path: "settings",
-        element: <Settings />
+        element: <ProtectedRoute requiredRole="admin"><Settings /></ProtectedRoute>
       }
     ]
   }
