@@ -24,13 +24,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, newSession) => {
+      (event: keyof typeof AuthChangeEvent, newSession) => {
         console.log("Auth state change:", event);
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
 
-        if (event === AuthChangeEvent.SIGNED_IN || event === AuthChangeEvent.SIGNED_UP) {
+        if (event === 'SIGNED_IN' || event === 'SIGNED_UP') {
           localStorage.removeItem('pendingVerificationEmail');
           localStorage.removeItem('activities');
           
@@ -62,13 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        if (event === AuthChangeEvent.PASSWORD_RECOVERY) {
+        if (event === 'PASSWORD_RECOVERY') {
           navigate("/auth/update-password", { replace: true });
         }
       }
     );
 
-    // Initial session check
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
