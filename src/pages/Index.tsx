@@ -1,10 +1,9 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { GradientText } from "@/components/landing/GradientText";
 import { Features } from "@/components/landing/Features";
 import { WorkflowSteps } from "@/components/landing/WorkflowSteps";
-import { Testimonials } from "@/components/landing/Testimonials";
+import { PricingSection } from "@/components/landing/PricingSection";
 import { CtaSection } from "@/components/landing/CtaSection";
 import { motion } from "framer-motion";
 
@@ -45,8 +44,8 @@ const Index = () => {
       {/* How it Works Section */}
       <WorkflowSteps />
       
-      {/* Testimonials Section */}
-      <Testimonials />
+      {/* Pricing Section */}
+      <PricingSection />
       
       {/* Final CTA Section */}
       <CtaSection />
