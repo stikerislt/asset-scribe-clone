@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "@/hooks/use-sonner-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivity } from "@/hooks/useActivity";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, checkAuth } from "@/integrations/supabase/client";
 import { Asset, AssetStatus } from "@/lib/api/assets";
@@ -66,25 +67,8 @@ const Assets = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { hasAdminAccess } = useAdminAccess();
   
-  const { data: userRole = 'user' } = useQuery({
-    queryKey: ['user-role', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return 'user';
-      
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (error || !data) return 'user';
-      return data.role;
-    },
-  });
-
-  const hasAdminPrivileges = userRole === 'admin' || userRole === 'manager';
-
   const { logActivity } = useActivity();
   const { currentTenant } = useTenant();
 
@@ -111,7 +95,7 @@ const Assets = () => {
   }, [currentTenant?.id]);
   
   const { data: assets = [], isLoading, error } = useQuery({
-    queryKey: ['assets', currentTenant?.id, user?.id, userRole],
+    queryKey: ['assets', currentTenant?.id, user?.id, hasAdminAccess],
     queryFn: async () => {
       if (!currentTenant?.id) return [];
       
@@ -120,7 +104,7 @@ const Assets = () => {
         .select('*')
         .eq('tenant_id', currentTenant.id);
 
-      if (userRole === 'user' && user?.email) {
+      if (!hasAdminAccess && user?.email) {
         query = query.eq('assigned_to', user.email);
       }
 
@@ -414,14 +398,17 @@ const Assets = () => {
         <div>
           <h1 className="text-3xl font-bold">Assets</h1>
           <p className="text-muted-foreground mt-1">
-            {hasAdminPrivileges 
+            {hasAdminAccess 
               ? "Manage your hardware and device inventory"
               : "View your assigned assets"}
           </p>
         </div>
-        {hasAdminPrivileges && (
+        {hasAdminAccess && (
           <div className="flex gap-2 mt-4 sm:mt-0 flex-wrap">
-            <AssetImportExport assets={assets} />
+            <AssetImportExport 
+              assets={assets} 
+              onImportComplete={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}
+            />
             <AssetActionButtons 
               onDebug={handleDebug}
               isDebugging={isDebugging}

@@ -12,6 +12,35 @@ export interface UserRoleData {
   updated_at: string;
 }
 
+// Check if a user has admin access (admin role or is a tenant owner)
+export const checkAdminAccess = async (userId: string): Promise<boolean> => {
+  if (!userId) return false;
+  
+  try {
+    // Check if user is owner of any tenant
+    const { data: ownerData, error: ownerError } = await supabase
+      .from('tenant_memberships')
+      .select('is_owner')
+      .eq('user_id', userId)
+      .eq('is_owner', true)
+      .single();
+    
+    if (!ownerError && ownerData?.is_owner) return true;
+    
+    // Check if user has admin role
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .single();
+    
+    return roleData?.role === 'admin' || roleData?.role === 'manager';
+  } catch (error) {
+    console.error("Error checking admin access:", error);
+    return false;
+  }
+};
+
 // Check if a user has a specific role
 export const hasRole = async (userId: string, role: UserRole): Promise<boolean> => {
   if (!userId) return false;
