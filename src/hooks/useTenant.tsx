@@ -83,22 +83,32 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       // Debug output
       console.log("[TenantProvider] memberships:", memberships);
 
-      const tenants = memberships.map(m => m.tenants as Tenant);
+      if (!memberships || memberships.length === 0) {
+        console.warn("[TenantProvider] No tenant memberships found for user", userId);
+        setUserTenants([]);
+        setCurrentTenant(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const tenants = memberships
+        .filter(m => m.tenants) // Filter out any null tenants
+        .map(m => m.tenants as Tenant);
 
       setUserTenants(tenants);
 
       // Set current tenant to the primary one
-      const primaryMembership = memberships.find(m => m.is_primary);
+      const primaryMembership = memberships.find(m => m.is_primary && m.tenants);
       if (primaryMembership) {
         setCurrentTenant(primaryMembership.tenants as Tenant);
         console.log("[TenantProvider] Using primary tenant:", primaryMembership.tenants);
-      } else if (memberships.length > 0) {
+      } else if (memberships.length > 0 && memberships[0].tenants) {
         // Fallback: just pick the first tenant
         setCurrentTenant(memberships[0].tenants as Tenant);
         console.warn("[TenantProvider] No primary tenant, using first tenant as fallback");
       } else {
         setCurrentTenant(null);
-        console.warn("[TenantProvider] No tenant memberships found for user", userId);
+        console.warn("[TenantProvider] No valid tenant found for user", userId);
       }
     } catch (error) {
       console.error('Error fetching tenants:', error);
@@ -137,7 +147,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
   // Effect to fetch tenants when userId changes
   useEffect(() => {
-    refreshTenants();
+    if (userId) {
+      refreshTenants();
+    }
   }, [userId]);
 
   useEffect(() => {
