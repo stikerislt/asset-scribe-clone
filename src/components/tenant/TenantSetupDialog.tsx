@@ -72,7 +72,7 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
     }
     
     setIsSubmitting(true);
-    console.log("[TenantSetupDialog] Submitting form with data:", data);
+    console.log("[TenantSetupDialog] Submitting form with data:", { ...data, owner_id: user.id });
     
     try {
       // Create the tenant
@@ -84,14 +84,19 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
           website: data.website || null,
           industry: data.industry,
           organization_size: data.organizationSize,
-          owner_id: user.id
+          owner_id: user.id // Explicitly set the owner_id to the current user
         })
         .select()
         .single();
 
       if (tenantError) {
         console.error("[TenantSetupDialog] Error creating tenant:", tenantError);
-        throw tenantError;
+        if (tenantError.code === '42501') {
+          toast.error("Permission denied. Please make sure you're logged in and try again.");
+        } else {
+          toast.error("Failed to create organization: " + tenantError.message);
+        }
+        return;
       }
 
       console.log("[TenantSetupDialog] Tenant created:", tenantData);
@@ -109,7 +114,8 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
         
       if (membershipError) {
         console.error("[TenantSetupDialog] Error creating membership:", membershipError);
-        throw membershipError;
+        toast.error("Failed to set up organization membership: " + membershipError.message);
+        return;
       }
 
       // Create user role
@@ -122,7 +128,8 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
         
       if (roleError) {
         console.error("[TenantSetupDialog] Error creating role:", roleError);
-        throw roleError;
+        toast.error("Failed to set up user role: " + roleError.message);
+        return;
       }
 
       // Mark onboarding as completed
@@ -133,7 +140,8 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
         
       if (profileError) {
         console.error("[TenantSetupDialog] Error updating profile:", profileError);
-        throw profileError;
+        toast.error("Failed to complete onboarding: " + profileError.message);
+        return;
       }
 
       // Log activity
