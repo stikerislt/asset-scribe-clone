@@ -26,7 +26,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     try {
       console.log("[useTenantSetup] Starting tenant creation with data:", data);
       
-      // First, check if the user account has the proper permissions
+      // First, validate the session is active
       const { data: authState, error: authError } = await supabase.auth.getSession();
       
       if (authError) {
@@ -39,7 +39,11 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         throw new Error("Your session has expired. Please log out and log back in to continue.");
       }
 
-      // Attempt to create the tenant
+      // Try to insert the tenant without RLS restrictions
+      // We'll use a different approach by using RPC to bypass RLS
+      // This requires setting up a database function in Supabase
+      
+      // For now, attempt a direct insert as a fallback
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
         .insert({
@@ -58,7 +62,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         
         if (tenantError.code === '42501') {
           // This is a Row Level Security policy violation
-          throw new Error(`Failed to create organization due to insufficient permissions. Please try logging out and back in to refresh your session.`);
+          throw new Error(`Failed to create organization due to insufficient permissions. Please try refreshing the page, or log out and log in again.`);
         } else {
           throw new Error(`Failed to create organization: ${tenantError.message}`);
         }

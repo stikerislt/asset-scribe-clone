@@ -47,6 +47,10 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
     }
   };
 
+  const handleRefreshPage = () => {
+    window.location.reload();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -80,20 +84,32 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
             <AlertDescription className="text-sm">
               <p className="mb-2">This error typically occurs when there are permission issues with your account. Try the following:</p>
               <ol className="list-decimal ml-5 mb-4">
-                <li>Log out and log back in to reset your session</li>
+                <li>Refresh this page to reset your session</li>
+                <li>Log out and log back in to reset your authentication</li>
                 <li>Clear your browser cache and cookies</li>
                 <li>Try using a different browser</li>
                 <li>If the issue persists, contact support for assistance</li>
               </ol>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full flex items-center justify-center" 
-                onClick={handleLogout}
-              >
-                <RefreshCcw className="mr-2 h-4 w-4" /> 
-                Log out now
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-1/2 flex items-center justify-center" 
+                  onClick={handleRefreshPage}
+                >
+                  <RefreshCcw className="mr-2 h-4 w-4" /> 
+                  Refresh page
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-1/2 flex items-center justify-center" 
+                  onClick={handleLogout}
+                >
+                  <RefreshCcw className="mr-2 h-4 w-4" /> 
+                  Log out now
+                </Button>
+              </div>
             </AlertDescription>
           </Alert>
         )}
