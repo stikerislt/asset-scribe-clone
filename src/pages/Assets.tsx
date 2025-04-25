@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import { Package, AlertTriangle } from "lucide-react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -67,7 +67,6 @@ const Assets = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   
-  // Fetch user role
   const { data: userRole = 'user' } = useQuery({
     queryKey: ['user-role', user?.id],
     queryFn: async () => {
@@ -83,6 +82,8 @@ const Assets = () => {
       return data.role;
     },
   });
+
+  const hasAdminPrivileges = userRole === 'admin' || userRole === 'manager';
 
   const { logActivity } = useActivity();
   const { currentTenant } = useTenant();
@@ -119,7 +120,6 @@ const Assets = () => {
         .select('*')
         .eq('tenant_id', currentTenant.id);
 
-      // If user role is 'user', only show assets assigned to them
       if (userRole === 'user' && user?.email) {
         query = query.eq('assigned_to', user.email);
       }
@@ -413,17 +413,23 @@ const Assets = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Assets</h1>
-          <p className="text-muted-foreground mt-1">Manage your hardware and device inventory</p>
+          <p className="text-muted-foreground mt-1">
+            {hasAdminPrivileges 
+              ? "Manage your hardware and device inventory"
+              : "View your assigned assets"}
+          </p>
         </div>
-        <div className="flex gap-2 mt-4 sm:mt-0 flex-wrap">
-          <AssetImportExport assets={assets} />
-          <AssetActionButtons 
-            onDebug={handleDebug}
-            isDebugging={isDebugging}
-            onAddAsset={handleAddAsset}
-            onDeleteAllAssets={handleDeleteAllAssets}
-          />
-        </div>
+        {hasAdminPrivileges && (
+          <div className="flex gap-2 mt-4 sm:mt-0 flex-wrap">
+            <AssetImportExport assets={assets} />
+            <AssetActionButtons 
+              onDebug={handleDebug}
+              isDebugging={isDebugging}
+              onAddAsset={handleAddAsset}
+              onDeleteAllAssets={handleDeleteAllAssets}
+            />
+          </div>
+        )}
       </div>
       
       <DebugInfo debugInfo={debugInfo} />
