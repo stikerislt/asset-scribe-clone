@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,26 +40,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             toast.success("Email verified successfully!");
             navigate("/onboarding");
           } else {
-            try {
-              const { data, error } = await supabase.rpc('has_completed_onboarding', {
+            // Use a separate function to handle the async operations
+            const checkOnboardingStatus = () => {
+              supabase.rpc('has_completed_onboarding', {
                 user_id: newSession?.user?.id
-              });
+              })
+              .then(({ data, error }) => {
+                if (error) {
+                  console.error("Error checking onboarding status:", error);
+                  toast.error("Failed to check onboarding status");
+                  return;
+                }
 
-              if (error) {
+                if (!data && newSession?.user) {
+                  console.log("User has not completed onboarding, redirecting...");
+                  navigate("/onboarding");
+                } else {
+                  navigate("/dashboard");
+                }
+              })
+              .catch(error => {
                 console.error("Error checking onboarding status:", error);
                 toast.error("Failed to check onboarding status");
-              }
-
-              if (!data && newSession?.user) {
-                console.log("User has not completed onboarding, redirecting...");
-                navigate("/onboarding");
-              } else {
-                navigate("/dashboard");
-              }
-            } catch (error) {
-              console.error("Error checking onboarding status:", error);
-              toast.error("Failed to check onboarding status");
-            }
+              });
+            };
+            
+            // Call the function to handle async operations
+            checkOnboardingStatus();
           }
         }
 
