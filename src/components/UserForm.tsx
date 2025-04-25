@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -27,7 +26,6 @@ import { toast } from "sonner";
 import { AlertCircle, Crown } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-// Define the schema for form validation
 const userFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -38,10 +36,8 @@ const userFormSchema = z.object({
   active: z.boolean().default(true),
 });
 
-// Define the form values type
 type UserFormValues = z.infer<typeof userFormSchema>;
 
-// Define the user type
 export interface User {
   id: string;
   name: string;
@@ -50,7 +46,6 @@ export interface User {
   active: boolean;
 }
 
-// Props for the UserForm component
 interface UserFormProps {
   onSubmit: (values: UserFormValues) => void;
   onCancel: () => void;
@@ -62,7 +57,6 @@ interface UserFormProps {
 }
 
 export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValues, isEditMode = false, isOwner = false }: UserFormProps) {
-  // Define validation schema based on mode
   const schema = isEditMode 
     ? userFormSchema.omit({ password: true }).merge(
         z.object({
@@ -71,11 +65,10 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValue
       )
     : userFormSchema;
 
-  // Initialize the form
   const form = useForm<UserFormValues>({
     resolver: zodResolver(schema),
     defaultValues: isOwner && defaultValues 
-      ? { ...defaultValues, role: "Admin" } // Force Admin role for owners
+      ? { ...defaultValues, role: "Admin" }
       : defaultValues || {
           name: "",
           email: "",
@@ -85,12 +78,16 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValue
         },
   });
 
-  const handleSubmit = (values: UserFormValues) => {
-    // If the user is an owner, always submit with Admin role regardless of selection
-    if (isOwner) {
-      values.role = "Admin";
+  const handleSubmit = async (values: UserFormValues) => {
+    try {
+      if (isOwner) {
+        values.role = "Admin";
+      }
+      await onSubmit(values);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      toast.error('Failed to submit form');
     }
-    onSubmit(values);
   };
 
   return (
@@ -181,7 +178,7 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValue
                 onValueChange={field.onChange} 
                 defaultValue={field.value}
                 value={field.value}
-                disabled={isOwner} // Disable role selection for owners
+                disabled={isOwner}
               >
                 <FormControl>
                   <SelectTrigger className={isOwner ? "bg-amber-50" : ""}>

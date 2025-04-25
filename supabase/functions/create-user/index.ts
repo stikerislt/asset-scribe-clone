@@ -45,21 +45,25 @@ serve(async (req) => {
       );
     }
 
-    // First, check if the user already exists in auth system
-    const { data: existingUsers } = await supabase.auth.admin.listUsers({
-      filter: `email.eq.${email}`
-    });
+    // First, check if the user exists in auth system
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
     
     let userId;
     let isNewUser = false;
     
-    if (existingUsers?.users && existingUsers.users.length > 0) {
-      // User already exists, use the existing ID
-      userId = existingUsers.users[0].id;
-      console.log("User already exists in auth system, using existing ID:", userId);
-    } else {
+    if (existingUsers?.users?.length > 0) {
+      const existingUser = existingUsers.users.find(u => u.email === email);
+      if (existingUser) {
+        // User already exists, use the existing ID
+        userId = existingUser.id;
+        console.log("User already exists in auth system, using existing ID:", userId);
+      } else {
+        isNewUser = true;
+      }
+    }
+
+    if (isNewUser || !userId) {
       console.log("Creating new user in auth system");
-      isNewUser = true;
       // Create the user in Supabase Auth with email confirmation required
       const { data: userData, error: createError } = await supabase.auth.admin.createUser({
         email,

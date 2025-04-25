@@ -113,7 +113,6 @@ export const createUser = async (
       throw new Error('No active session. Please sign in.');
     }
 
-    // Use a hardcoded URL instead of accessing protected property
     const supabaseUrl = "https://tbefdkwtjpbonuunxytk.supabase.co";
     if (!supabaseUrl) {
       throw new Error('Could not determine Supabase URL');
@@ -146,29 +145,13 @@ export const createUser = async (
       body: JSON.stringify(payload)
     });
 
-    const responseText = await response.text();
-    console.log("Raw response from edge function:", responseText);
-    
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch (e) {
-      console.error("Error parsing JSON response:", e);
-      throw new Error(`Invalid response from server: ${responseText}`);
-    }
-
     if (!response.ok) {
-      // Handle the duplicate key constraint error differently
-      if (result.error && result.error.includes("duplicate key value")) {
-        console.log("User already exists in the system");
-        toast.info("User already exists in the system. Their information has been updated.");
-        return { success: true, data: { ...result, message: "User already exists and has been updated" } };
-      }
-      
-      console.error("Error response from create-user function:", result);
-      throw new Error(result.error || `Failed to create user: HTTP ${response.status}`);
+      const errorText = await response.text();
+      console.error("Error response from create-user function:", response.status, errorText);
+      throw new Error(`Failed to create user: ${errorText || `HTTP ${response.status}`}`);
     }
 
+    const result = await response.json();
     console.log("User creation successful:", result);
     
     if (result.verification_status === "invitation_sent") {
