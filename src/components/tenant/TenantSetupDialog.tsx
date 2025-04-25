@@ -8,10 +8,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building } from "lucide-react";
+import { Building, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useActivity } from "@/hooks/useActivity";
 
 const organizationSizes = [
   "1-10 employees",
@@ -49,6 +50,9 @@ interface TenantSetupDialogProps {
 export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
+  const { logActivity } = useActivity();
+
+  console.log("[TenantSetupDialog] Rendering with isOpen:", isOpen, "user:", user?.id);
 
   const form = useForm<TenantSetupValues>({
     resolver: zodResolver(tenantSetupSchema),
@@ -62,9 +66,14 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
   });
 
   const onSubmit = async (data: TenantSetupValues) => {
-    if (!user) return;
+    if (!user) {
+      toast.error("You must be logged in to create an organization");
+      return;
+    }
     
     setIsSubmitting(true);
+    console.log("[TenantSetupDialog] Submitting form with data:", data);
+    
     try {
       // Create the tenant
       const { data: tenantData, error: tenantError } = await supabase
@@ -80,10 +89,15 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
         .select()
         .single();
 
-      if (tenantError) throw tenantError;
+      if (tenantError) {
+        console.error("[TenantSetupDialog] Error creating tenant:", tenantError);
+        throw tenantError;
+      }
+
+      console.log("[TenantSetupDialog] Tenant created:", tenantData);
 
       // Create tenant membership
-      await supabase
+      const { error: membershipError } = await supabase
         .from('tenant_memberships')
         .insert({
           tenant_id: tenantData.id,
@@ -92,32 +106,65 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
           is_primary: true,
           is_owner: true
         });
+        
+      if (membershipError) {
+        console.error("[TenantSetupDialog] Error creating membership:", membershipError);
+        throw membershipError;
+      }
 
       // Create user role
-      await supabase
+      const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
           user_id: user.id,
           role: 'admin'
         });
+        
+      if (roleError) {
+        console.error("[TenantSetupDialog] Error creating role:", roleError);
+        throw roleError;
+      }
 
       // Mark onboarding as completed
-      await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({ onboarding_completed: true })
         .eq('id', user.id);
+        
+      if (profileError) {
+        console.error("[TenantSetupDialog] Error updating profile:", profileError);
+        throw profileError;
+      }
+
+      // Log activity
+      logActivity({
+        title: "Organization Created",
+        description: `Created organization ${data.name}`,
+        category: 'system'
+      });
 
       toast.success("Organization created successfully!");
       onComplete();
     } catch (error: any) {
+      console.error("[TenantSetupDialog] Error during organization setup:", error);
       toast.error("Failed to create organization: " + error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Force dialog to be open regardless of isOpen prop if user hasn't completed onboarding
+  const forceOpen = user && isOpen;
+  
+  console.log("[TenantSetupDialog] Dialog open state:", forceOpen);
+
   return (
-    <Dialog open={isOpen}>
+    <Dialog open={forceOpen} onOpenChange={(open) => {
+      if (!open) {
+        // Prevent closing the dialog if user hasn't completed onboarding
+        console.log("[TenantSetupDialog] Attempted to close dialog");
+      }
+    }}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Create your organization</DialogTitle>
@@ -222,7 +269,10 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? (
-                "Creating Organization..."
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Organization...
+                </>
               ) : (
                 <>
                   <Building className="mr-2 h-4 w-4" />

@@ -29,7 +29,7 @@ export default function Onboarding() {
         
         if (error) {
           console.error("[Onboarding] Error checking onboarding status:", error);
-          toast.error("Failed to check onboarding status");
+          toast.error("Failed to check onboarding status: " + error.message);
           setIsChecking(false);
           return;
         }
@@ -43,9 +43,9 @@ export default function Onboarding() {
           console.log("[Onboarding] User needs to complete onboarding");
           setShowDialog(true);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("[Onboarding] Error:", error);
-        toast.error("An error occurred. Please try again.");
+        toast.error("An error occurred checking onboarding status. Please try again.");
       } finally {
         setIsChecking(false);
       }
@@ -76,6 +76,9 @@ export default function Onboarding() {
     setShowDialog(false);
     navigate("/dashboard");
   };
+
+  // More visible debugging to check why the dialog isn't showing
+  console.log("[Onboarding] Render state:", { showDialog, user });
 
   return (
     <div className="min-h-screen bg-background">
