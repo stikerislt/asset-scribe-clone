@@ -51,6 +51,7 @@ serve(async (req) => {
     });
     
     let userId;
+    let isNewUser = false;
     
     if (existingUsers?.users && existingUsers.users.length > 0) {
       // User already exists, use the existing ID
@@ -58,6 +59,7 @@ serve(async (req) => {
       console.log("User already exists in auth system, using existing ID:", userId);
     } else {
       console.log("Creating new user in auth system");
+      isNewUser = true;
       // Create the user in Supabase Auth with email confirmation required
       const { data: userData, error: createError } = await supabase.auth.admin.createUser({
         email,
@@ -183,8 +185,8 @@ serve(async (req) => {
         role,
         active,
         tenant_id,
-        message: "User created or updated successfully",
-        verification_status: existingUsers?.users?.length > 0 ? "existing_user" : "invitation_sent"
+        message: isNewUser ? "User invited successfully" : "User added to organization successfully",
+        verification_status: isNewUser ? "invitation_sent" : "existing_user"
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

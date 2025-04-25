@@ -128,6 +128,23 @@ const Users = () => {
         throw profilesError;
       }
       
+      const userIds = profiles.map(profile => profile.id);
+      
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      
+      if (authError) {
+        console.error('Error fetching auth users:', authError);
+      }
+      
+      const authUsersMap = new Map();
+      authUsers?.users?.forEach(authUser => {
+        authUsersMap.set(authUser.id, {
+          confirmed_at: authUser.confirmed_at,
+          email_confirmed_at: authUser.email_confirmed_at,
+          last_sign_in_at: authUser.last_sign_in_at,
+        });
+      });
+      
       const userRolesData = await getAllUserRoles();
       
       const roleMap = new Map();
@@ -137,6 +154,11 @@ const Users = () => {
       
       const formattedUsers: EnhancedUser[] = profiles.map(profile => {
         const isOwner = ownershipMap.get(profile.id) || profile.id === ownerId;
+        const authUserData = authUsersMap.get(profile.id);
+        const invitationStatus = authUserData && 
+          (authUserData.confirmed_at || authUserData.email_confirmed_at || authUserData.last_sign_in_at) 
+            ? 'active' : 'pending';
+            
         const user = {
           id: profile.id,
           name: profile.full_name || 'Unnamed User',
@@ -144,7 +166,8 @@ const Users = () => {
           role: profile.id === currentUser?.id ? 'Admin' : 'User',
           dbRole: roleMap.get(profile.id) as UserRole || null,
           active: true,
-          isOwner: isOwner
+          isOwner: isOwner,
+          invitationStatus: invitationStatus
         };
         
         if (isOwner) {
