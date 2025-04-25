@@ -28,9 +28,31 @@ export default function Onboarding() {
     try {
       console.log("[Onboarding] Checking onboarding status for user:", user.id);
       
+      // First try to check if user has any primary tenant memberships
+      // This is a faster and more reliable way to determine if onboarding is complete
+      const { data: memberships, error: membershipError } = await supabase
+        .from('tenant_memberships')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_primary', true)
+        .limit(1)
+        .maybeSingle();
+      
+      if (membershipError) {
+        console.warn("[Onboarding] Error checking tenant memberships:", membershipError);
+        // Continue to fallback method
+      } else if (memberships) {
+        console.log("[Onboarding] User has a primary tenant membership, redirecting to dashboard");
+        navigate("/dashboard");
+        return;
+      }
+      
+      // Fallback: Try RPC method with 5 second timeout
+      console.log("[Onboarding] No primary tenant found, trying RPC method");
+      
       // Add explicit timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Request timed out")), 10000)
+        setTimeout(() => reject(new Error("Request timed out")), 5000)
       );
       
       const fetchPromise = supabase.rpc('has_completed_onboarding', {
@@ -41,28 +63,58 @@ export default function Onboarding() {
       const { data, error } = await Promise.race([
         fetchPromise,
         timeoutPromise.then(() => { 
-          throw new Error("Request timed out after 10 seconds");
+          throw new Error("Request timed out after 5 seconds");
         })
       ]) as any;
       
       if (error) {
-        console.error("[Onboarding] Error checking onboarding status:", error);
-        throw error;
-      }
-      
-      console.log("[Onboarding] Onboarding status response:", data);
-      
-      if (data === true) {
-        console.log("[Onboarding] User has completed onboarding, redirecting to dashboard");
-        navigate("/dashboard");
-      } else {
-        console.log("[Onboarding] User needs to complete onboarding, showing dialog");
+        console.error("[Onboarding] Error checking onboarding status with RPC:", error);
+        
+        // If RPC fails, fall back to checking profiles table directly
+        console.log("[Onboarding] Falling back to direct profile check");
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('onboarding_completed')
+          .eq('id', user.id)
+          .maybeSingle();
+          
+        if (profileError) {
+          console.error("[Onboarding] Error checking profile:", profileError);
+          throw profileError;
+        }
+        
+        if (profileData?.onboarding_completed) {
+          console.log("[Onboarding] Profile shows onboarding completed, redirecting to dashboard");
+          navigate("/dashboard");
+          return;
+        }
+        
+        // If we get here, the user needs to complete onboarding
+        console.log("[Onboarding] User needs to complete onboarding (via profile check)");
         setShowDialog(true);
+      } else {
+        console.log("[Onboarding] Onboarding status response from RPC:", data);
+        
+        if (data === true) {
+          console.log("[Onboarding] User has completed onboarding via RPC, redirecting to dashboard");
+          navigate("/dashboard");
+        } else {
+          console.log("[Onboarding] User needs to complete onboarding (via RPC)");
+          setShowDialog(true);
+        }
       }
     } catch (error: any) {
       console.error("[Onboarding] Error checking onboarding status:", error);
-      setCheckError(error.message || "An unknown error occurred");
-      toast.error("An error occurred checking onboarding status. Please try again.");
+      
+      // Last resort: Just show the dialog if we can't determine status
+      if (error.message && error.message.includes("timed out")) {
+        console.log("[Onboarding] Timeout occurred, showing dialog as fallback");
+        setShowDialog(true);
+        setCheckError("Could not verify your onboarding status. Please complete the organization setup.");
+      } else {
+        setCheckError(error.message || "An unknown error occurred");
+        toast.error("An error occurred checking onboarding status. Please try again.");
+      }
     } finally {
       setIsChecking(false);
     }
@@ -111,16 +163,26 @@ export default function Onboarding() {
           </div>
           <h2 className="text-xl font-semibold">Error Checking Onboarding Status</h2>
           <p className="text-center text-muted-foreground mb-4">{checkError}</p>
-          <Button 
-            onClick={() => {
-              setIsChecking(true);
-              setCheckError(null);
-              checkOnboardingStatus();
-            }}
-          >
-            <RefreshCcw className="mr-2 h-4 w-4" />
-            Try Again
-          </Button>
+          <div className="flex gap-3 w-full">
+            <Button 
+              onClick={() => {
+                setIsChecking(true);
+                setCheckError(null);
+                checkOnboardingStatus();
+              }}
+              className="flex-1"
+            >
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+            <Button 
+              onClick={() => setShowDialog(true)} 
+              variant="outline"
+              className="flex-1"
+            >
+              Continue to Setup
+            </Button>
+          </div>
         </div>
       </div>
     );

@@ -27,21 +27,16 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     try {
       console.log("[useTenantSetup] Submitting tenant data:", data);
 
-      // Check if user session is still valid
+      // First, ensure we have a valid session
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
+      if (sessionError || !sessionData.session) {
         console.error("[useTenantSetup] Session error:", sessionError);
-        throw new Error("Session error: " + sessionError.message);
-      }
-      
-      if (!sessionData.session) {
-        console.error("[useTenantSetup] No active session found");
-        throw new Error("No active session found. Please log in again.");
+        throw new Error("Your session has expired. Please log in again.");
       }
       
       console.log("[useTenantSetup] Session confirmed:", sessionData.session.user.id);
 
-      // Insert the tenant
+      // Insert the tenant in a simpler way (the auth system will handle permission checks via RLS)
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
         .insert({
@@ -52,12 +47,16 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
           organization_size: data.organizationSize,
           owner_id: user.id
         })
-        .select('*')
+        .select()
         .single();
 
       if (tenantError) {
         console.error("[useTenantSetup] Tenant creation error:", tenantError);
-        throw new Error("Failed to create organization. Please try again.");
+        if (tenantError.code === '42501') { // Permission denied
+          throw new Error("You don't have permission to create an organization. Please check your account settings.");
+        } else {
+          throw new Error("Failed to create organization: " + tenantError.message);
+        }
       }
 
       if (!tenantData) {
@@ -79,7 +78,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
       if (membershipError) {
         console.error("[useTenantSetup] Membership creation error:", membershipError);
-        throw new Error("Failed to set up organization membership");
+        throw new Error("Failed to set up organization membership: " + membershipError.message);
       }
       
       console.log("[useTenantSetup] Membership created successfully");
@@ -92,15 +91,17 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
       if (profileError) {
         console.error("[useTenantSetup] Profile update error:", profileError);
+        // Don't throw here, as the essential parts of setup are complete
+      } else {
+        console.log("[useTenantSetup] Profile updated successfully");
       }
-
-      console.log("[useTenantSetup] Profile updated successfully");
 
       // Log activity
       await logActivity({
         title: "Organization Created",
         description: `Created organization ${data.name}`,
-        category: 'system'
+        category: 'system',
+        tenant_id: tenantData.id
       });
 
       toast.success("Organization created successfully!");
@@ -108,7 +109,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     } catch (error: any) {
       console.error("[useTenantSetup] Error during organization setup:", error);
       setHasError(true);
-      setErrorMessage(error.message);
+      setErrorMessage(error.message || "Failed to create organization");
       toast.error(error.message || "Failed to create organization");
     } finally {
       setIsSubmitting(false);

@@ -17,18 +17,18 @@ interface TenantSetupDialogProps {
 export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps) {
   const { handleSubmit, isSubmitting, hasError, errorMessage } = useTenantSetup({ onComplete });
   const [showHelpInfo, setShowHelpInfo] = useState(false);
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   
   // Log when the dialog state changes
   useEffect(() => {
-    console.log("[TenantSetupDialog] Dialog isOpen:", isOpen);
+    console.log("[TenantSetupDialog] Dialog isOpen:", isOpen, "User:", user?.id);
     
     // Force dialog to open if it's closed but should be open
     // This helps prevent any bugs where the dialog might not show
     if (!isOpen) {
       console.log("[TenantSetupDialog] Dialog should be open, forcing open state");
     }
-  }, [isOpen]);
+  }, [isOpen, user]);
 
   const handleOpenChange = (open: boolean) => {
     // Prevent dialog from closing if we're submitting or there's an error
@@ -64,7 +64,7 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
 
   // Debug render
   console.log("[TenantSetupDialog] Rendering with state:", { 
-    isOpen, isSubmitting, hasError, errorMessage 
+    isOpen, isSubmitting, hasError, errorMessage, userId: user?.id 
   });
 
   return (
