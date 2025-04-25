@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -104,17 +105,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      toast({
-        title: "Logout failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Logout failed: " + error.message);
       return;
     }
-    toast({
-      title: "Logged out",
-      description: "You have been logged out successfully",
-    });
+    toast.success("Logged out successfully");
     navigate("/auth/login");
   };
 
