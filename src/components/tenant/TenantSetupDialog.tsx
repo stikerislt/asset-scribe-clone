@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -8,7 +7,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building, Loader2 } from "lucide-react";
+import { Building, Loader2, RefreshCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -49,10 +48,9 @@ interface TenantSetupDialogProps {
 
 export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const { user } = useAuth();
   const { logActivity } = useActivity();
-
-  console.log("[TenantSetupDialog] Rendering with isOpen:", isOpen, "user:", user?.id);
 
   const form = useForm<TenantSetupValues>({
     resolver: zodResolver(tenantSetupSchema),
@@ -72,16 +70,16 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
     }
     
     setIsSubmitting(true);
-    console.log("[TenantSetupDialog] Submitting form with data:", { ...data, owner_id: user.id });
+    setHasError(false);
     
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) {
+      setIsSubmitting(false);
+      toast.error("Authentication error. Please try logging in again.");
+      return;
+    }
+
     try {
-      // Get the current auth user
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) {
-        throw new Error("No authenticated user found");
-      }
-      
-      // Create the tenant with explicit owner_id
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
         .insert({
@@ -90,18 +88,12 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
           website: data.website || null,
           industry: data.industry,
           organization_size: data.organizationSize,
-          owner_id: currentUser.id // Explicitly use current user ID from auth
+          owner_id: currentUser.id
         })
         .select();
 
       if (tenantError) {
-        console.error("[TenantSetupDialog] Error creating tenant:", tenantError);
-        if (tenantError.code === '42501') {
-          toast.error("Permission denied. Please make sure you're logged in with the correct permissions.");
-        } else {
-          toast.error("Failed to create organization: " + tenantError.message);
-        }
-        return;
+        throw new Error(`Failed to create tenant: ${tenantError.message}`);
       }
 
       if (!tenantData || tenantData.length === 0) {
@@ -109,9 +101,7 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
       }
 
       const newTenantId = tenantData[0].id;
-      console.log("[TenantSetupDialog] Tenant created:", tenantData[0]);
 
-      // Create tenant membership
       const { error: membershipError } = await supabase
         .from('tenant_memberships')
         .insert({
@@ -121,41 +111,32 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
           is_primary: true,
           is_owner: true
         });
-        
+
       if (membershipError) {
-        console.error("[TenantSetupDialog] Error creating membership:", membershipError);
-        toast.error("Failed to set up organization membership: " + membershipError.message);
-        return;
+        throw new Error(`Failed to create membership: ${membershipError.message}`);
       }
 
-      // Create user role
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
           user_id: currentUser.id,
           role: 'admin'
         });
-        
+
       if (roleError) {
-        console.error("[TenantSetupDialog] Error creating role:", roleError);
-        toast.error("Failed to set up user role: " + roleError.message);
-        return;
+        throw new Error(`Failed to create user role: ${roleError.message}`);
       }
 
-      // Mark onboarding as completed
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ onboarding_completed: true })
         .eq('id', currentUser.id);
-        
+
       if (profileError) {
-        console.error("[TenantSetupDialog] Error updating profile:", profileError);
-        toast.error("Failed to complete onboarding: " + profileError.message);
-        return;
+        throw new Error(`Failed to update profile: ${profileError.message}`);
       }
 
-      // Log activity
-      logActivity({
+      await logActivity({
         title: "Organization Created",
         description: `Created organization ${data.name}`,
         category: 'system'
@@ -165,21 +146,16 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
       onComplete();
     } catch (error: any) {
       console.error("[TenantSetupDialog] Error during organization setup:", error);
-      toast.error("Failed to create organization: " + error.message);
+      setHasError(true);
+      toast.error(error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Force dialog to be open regardless of isOpen prop if user hasn't completed onboarding
-  const forceOpen = user && isOpen;
-  
-  console.log("[TenantSetupDialog] Dialog open state:", forceOpen);
-
   return (
-    <Dialog open={forceOpen} onOpenChange={(open) => {
-      if (!open) {
-        // Prevent closing the dialog if user hasn't completed onboarding
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open && !hasError) {
         console.log("[TenantSetupDialog] Attempted to close dialog");
       }
     }}>
@@ -290,6 +266,11 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating Organization...
+                </>
+              ) : hasError ? (
+                <>
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Retry
                 </>
               ) : (
                 <>

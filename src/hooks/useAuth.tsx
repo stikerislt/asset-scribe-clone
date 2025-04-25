@@ -24,20 +24,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, newSession) => {
+      async (event, newSession) => {
         console.log("Auth state change:", event);
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
 
-        if (event === "SIGNED_UP") {
-          const email = newSession?.user?.email;
-          if (email) {
-            localStorage.setItem('pendingVerificationEmail', email);
-          }
-        }
-
-        if (event === "SIGNED_IN") {
+        if (event === 'SIGNED_UP' || event === 'SIGNED_IN') {
           localStorage.removeItem('pendingVerificationEmail');
           
           // Clear any activity data on sign in to prevent seeing other users' activities
@@ -52,18 +45,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             navigate("/onboarding");
           } else {
             // Check if user has completed onboarding
-            const { data, error } = await supabase.rpc('has_completed_onboarding', {
-              user_id: newSession?.user?.id
-            });
+            try {
+              const { data, error } = await supabase.rpc('has_completed_onboarding', {
+                user_id: newSession?.user?.id
+              });
 
-            if (error) {
+              if (error) {
+                console.error("Error checking onboarding status:", error);
+              }
+
+              // Always navigate to onboarding if not completed yet
+              if (!data && newSession?.user) {
+                console.log("User has not completed onboarding, redirecting...");
+                navigate("/onboarding");
+              }
+            } catch (error) {
               console.error("Error checking onboarding status:", error);
-            }
-
-            // Always navigate to onboarding if not completed yet
-            if (!data && newSession?.user) {
-              console.log("User has not completed onboarding, redirecting...");
-              navigate("/onboarding");
             }
           }
         }
