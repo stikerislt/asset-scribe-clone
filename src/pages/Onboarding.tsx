@@ -9,6 +9,7 @@ import { toast } from "sonner";
 export default function Onboarding() {
   const [showDialog, setShowDialog] = useState(true);
   const [isChecking, setIsChecking] = useState(true);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -38,6 +39,7 @@ export default function Onboarding() {
         
         if (data) {
           console.log("[Onboarding] User has completed onboarding, redirecting to dashboard");
+          setOnboardingComplete(true);
           navigate("/dashboard");
         } else {
           console.log("[Onboarding] User needs to complete onboarding");
@@ -51,7 +53,12 @@ export default function Onboarding() {
       }
     };
 
-    checkOnboarding();
+    // Add a small delay to ensure auth state is properly initialized
+    const timer = setTimeout(() => {
+      checkOnboarding();
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [user, navigate]);
 
   // If still checking or no user, show loading
@@ -69,6 +76,10 @@ export default function Onboarding() {
   if (!user) {
     console.log("[Onboarding] No user session, redirecting to login");
     return <Navigate to="/auth/login" replace />;
+  }
+
+  if (onboardingComplete) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   const handleComplete = () => {
