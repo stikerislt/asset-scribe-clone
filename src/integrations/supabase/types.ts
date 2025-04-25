@@ -233,6 +233,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          onboarding_completed: boolean | null
           role: string | null
           tenant_id: string | null
         }
@@ -242,6 +243,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          onboarding_completed?: boolean | null
           role?: string | null
           tenant_id?: string | null
         }
@@ -251,6 +253,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          onboarding_completed?: boolean | null
           role?: string | null
           tenant_id?: string | null
         }
@@ -310,28 +313,37 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          industry: string | null
           name: string
+          organization_size: string | null
           owner_id: string | null
           subscription_status: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
+          industry?: string | null
           name: string
+          organization_size?: string | null
           owner_id?: string | null
           subscription_status?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
+          industry?: string | null
           name?: string
+          organization_size?: string | null
           owner_id?: string | null
           subscription_status?: string | null
           updated_at?: string
+          website?: string | null
         }
         Relationships: []
       }
@@ -375,6 +387,10 @@ export type Database = {
       get_active_tenant: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      has_completed_onboarding: {
+        Args: { user_id: string }
+        Returns: boolean
       }
       has_role: {
         Args: {

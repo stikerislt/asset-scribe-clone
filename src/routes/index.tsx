@@ -14,6 +14,7 @@ import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 import { AppLayout } from "@/components/AppLayout";
 import UpdatePassword from "@/pages/UpdatePassword";
+import Onboarding from "@/pages/Onboarding";
 
 /**
  * Public routes accessible to all users
@@ -42,6 +43,10 @@ export const publicRoutes = [
   {
     path: "/auth/update-password",
     element: <UpdatePassword />
+  },
+  {
+    path: "/onboarding",
+    element: <Onboarding />
   }
 ];
 
