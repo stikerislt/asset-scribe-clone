@@ -93,8 +93,11 @@ export const logCategoryActivity = async (
 };
 
 // Modified function to fetch categories from the database
-export const fetchCategories = async (tenantId: string): Promise<Category[]> => {
+// Make tenantId parameter optional with current tenant as default
+export const fetchCategories = async (tenantId?: string): Promise<Category[]> => {
+  // If no tenantId provided, exit early with empty array
   if (!tenantId) {
+    console.log("No tenant ID provided to fetchCategories");
     return [];
   }
   

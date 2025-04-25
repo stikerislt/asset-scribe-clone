@@ -89,8 +89,7 @@ const Categories = () => {
           .select('category')
           .eq('tenant_id', currentTenant.id)
           .neq('category', null)
-          .order('category')
-          .throwOnError();
+          .order('category');
 
         if (assetError) {
           console.error("Error fetching asset categories:", assetError);
@@ -157,81 +156,91 @@ const Categories = () => {
             };
           });
 
-          const { error: insertError } = await supabase
-            .from('categories')
-            .insert(toInsert);
+          try {
+            const { error: insertError } = await supabase
+              .from('categories')
+              .insert(toInsert);
 
-          if (insertError) {
-            console.error("Failed to insert missing categories:", insertError);
-            toast.error("Failed to sync categories with assets.");
-          } else {
-            toast.success(`${missingCategories.length} categories auto-added from assets.`);
+            if (insertError) {
+              console.error("Failed to insert missing categories:", insertError);
+              toast.error("Failed to sync categories with assets.");
+            } else {
+              toast.success(`${missingCategories.length} categories auto-added from assets.`);
+            }
+          } catch (error) {
+            console.error("Error inserting categories:", error);
+            toast.error("Failed to sync categories with assets");
           }
         }
 
         // Now, refetch categories to ensure the latest are included
-        const { data: syncedCategories = [], error: syncError } = await supabase
-          .from('categories')
-          .select('*')
-          .eq('tenant_id', currentTenant.id)
-          .order('name');
+        try {
+          const { data: syncedCategories = [], error: syncError } = await supabase
+            .from('categories')
+            .select('*')
+            .eq('tenant_id', currentTenant.id)
+            .order('name');
 
-        if (syncError) {
-          console.error("Error fetching updated categories:", syncError);
-          toast.error("Failed to refresh categories");
-          setIsLoading(false);
-          return;
-        }
+          if (syncError) {
+            console.error("Error fetching updated categories:", syncError);
+            toast.error("Failed to refresh categories");
+            setIsLoading(false);
+            return;
+          }
 
-        // Update categories with asset counts and handle duplicates
-        // We'll merge counts for categories with the same normalized name
-        const mergedCategories = new Map<string, Category>();
-        
-        syncedCategories.forEach(cat => {
-          const normalizedName = normalizeCategoryName(cat.name);
-          const assetCount = categoryCounts.get(normalizedName) || 0;
+          // Update categories with asset counts and handle duplicates
+          // We'll merge counts for categories with the same normalized name
+          const mergedCategories = new Map<string, Category>();
           
-          // If this normalized name already exists in our map, merge the counts
-          if (mergedCategories.has(normalizedName)) {
-            const existing = mergedCategories.get(normalizedName)!;
+          syncedCategories.forEach(cat => {
+            const normalizedName = normalizeCategoryName(cat.name);
+            const assetCount = categoryCounts.get(normalizedName) || 0;
             
-            // If the existing entry is older than this one, replace it
-            if (existing.id > cat.id) {
+            // If this normalized name already exists in our map, merge the counts
+            if (mergedCategories.has(normalizedName)) {
+              const existing = mergedCategories.get(normalizedName)!;
+              
+              // If the existing entry is older than this one, replace it
+              if (existing.id > cat.id) {
+                mergedCategories.set(normalizedName, {
+                  ...cat,
+                  count: assetCount,
+                  icon: cat.icon || "archive",
+                });
+                
+                // Delete the duplicate from the database (async)
+                supabase
+                  .from('categories')
+                  .delete()
+                  .eq('id', existing.id)
+                  .then(() => console.log(`Deleted duplicate category: ${existing.name}`))
+                  .catch(err => console.error("Error deleting duplicate category:", err));
+              } else {
+                // Delete this duplicate from the database (async)
+                supabase
+                  .from('categories')
+                  .delete()
+                  .eq('id', cat.id)
+                  .then(() => console.log(`Deleted duplicate category: ${cat.name}`))
+                  .catch(err => console.error("Error deleting duplicate category:", err));
+              }
+            } else {
+              // First time seeing this normalized name
               mergedCategories.set(normalizedName, {
                 ...cat,
                 count: assetCount,
                 icon: cat.icon || "archive",
               });
-              
-              // Delete the duplicate from the database (async)
-              supabase
-                .from('categories')
-                .delete()
-                .eq('id', existing.id)
-                .then(() => console.log(`Deleted duplicate category: ${existing.name}`))
-                .catch(err => console.error("Error deleting duplicate category:", err));
-            } else {
-              // Delete this duplicate from the database (async)
-              supabase
-                .from('categories')
-                .delete()
-                .eq('id', cat.id)
-                .then(() => console.log(`Deleted duplicate category: ${cat.name}`))
-                .catch(err => console.error("Error deleting duplicate category:", err));
             }
-          } else {
-            // First time seeing this normalized name
-            mergedCategories.set(normalizedName, {
-              ...cat,
-              count: assetCount,
-              icon: cat.icon || "archive",
-            });
-          }
-        });
+          });
 
-        // Convert the map back to an array
-        const finalCategories = Array.from(mergedCategories.values());
-        setLocalCategories(finalCategories);
+          // Convert the map back to an array
+          const finalCategories = Array.from(mergedCategories.values());
+          setLocalCategories(finalCategories);
+        } catch (error) {
+          console.error("Error fetching updated categories:", error);
+          toast.error("Failed to refresh categories");
+        }
       } catch (error) {
         console.error("Error in category/asset sync:", error);
         toast.error("An error occurred while loading categories");
