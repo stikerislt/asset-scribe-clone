@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Asset, AssetStatus } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
@@ -27,8 +28,9 @@ import { MoreHorizontal, Edit, Trash, UserPlus } from "lucide-react";
 import { useActivity } from "@/hooks/useActivity";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AssetTableProps {
   assets: Asset[];
@@ -45,6 +47,7 @@ export const AssetTable = ({
 }: AssetTableProps) => {
   const { toast } = useToast();
   const { logActivity } = useActivity();
+  const { user } = useAuth();
   const [localAssets, setLocalAssets] = useState<Asset[]>(assets);
   
   const { data: userRole = 'user' } = useQuery({
