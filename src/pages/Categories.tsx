@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +41,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CategoryForm } from "@/components/CategoryForm";
-import { Category, logCategoryActivity } from "@/lib/data";
+import { Category, logCategoryActivity, normalizeCategoryName } from "@/lib/data";
 import { useActivity } from "@/hooks/useActivity";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -100,26 +99,32 @@ const Categories = () => {
           return;
         }
 
-        // Count occurrences of each category manually
+        // Count occurrences of each category after normalizing name
         const categoryCounts = new Map<string, number>();
         assetCategoriesData?.forEach(item => {
           if (item && item.category) {
-            const category = item.category.trim().toLowerCase();
-            categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+            const normalizedCategory = normalizeCategoryName(item.category);
+            categoryCounts.set(normalizedCategory, (categoryCounts.get(normalizedCategory) || 0) + 1);
           }
         });
 
-        // Form a Map of existing lowercased category names to their full objects
+        // Create a map of existing normalized category names to their full objects
         const existingCategoriesMap = new Map(
-          existingCategories.map((cat) => [cat.name.trim().toLowerCase(), cat])
+          existingCategories.map((cat) => [normalizeCategoryName(cat.name), cat])
         );
 
         // Find missing categories (in assets but not in categories table)
-        const missingCategories: { name: string, count: number }[] = [];
-        categoryCounts.forEach((count, categoryName) => {
-          if (!existingCategoriesMap.has(categoryName)) {
+        const missingCategories: { name: string, normalizedName: string, count: number }[] = [];
+        categoryCounts.forEach((count, normalizedCategoryName) => {
+          if (!existingCategoriesMap.has(normalizedCategoryName)) {
+            // Original case from the first occurrence in assets
+            const originalCase = assetCategoriesData.find(a => 
+              normalizeCategoryName(a.category) === normalizedCategoryName
+            )?.category || normalizedCategoryName;
+            
             missingCategories.push({
-              name: categoryName,
+              name: originalCase,
+              normalizedName: normalizedCategoryName,
               count: count
             });
           }
@@ -129,7 +134,7 @@ const Categories = () => {
         if (missingCategories.length > 0) {
           const toInsert = missingCategories.map(item => {
             // Determine icon using the same logic as CategoryIcon component
-            const categoryName = item.name.toLowerCase();
+            const categoryName = item.normalizedName;
             let icon = 'archive';
             if (categoryName.includes("inventory")) icon = "menu";
             else if (categoryName.includes("license")) icon = "copyright";
@@ -137,7 +142,7 @@ const Categories = () => {
             else if (categoryName.includes("printer")) icon = "printer";
             else if (categoryName.includes("accessories")) icon = "package";
             else if (categoryName.includes("computer") || categoryName.includes("pc") || categoryName.includes("laptop")) icon = "computer";
-            else if (categoryName.includes("phone") || categoryName.includes("mobile")) icon = "computer";
+            else if (categoryName.includes("phone") || categoryName.includes("mobile")) icon = "smartphone";
             else if (categoryName.includes("www") || categoryName.includes("web") || categoryName.includes("website")) icon = "globe";
             else if (categoryName.includes("tablet")) icon = "tablet";
 
@@ -178,17 +183,54 @@ const Categories = () => {
           return;
         }
 
-        // Update categories with asset counts
-        const finalCategories = syncedCategories.map(cat => {
-          const lowerCaseName = cat.name?.trim().toLowerCase();
-          const assetCount = categoryCounts.get(lowerCaseName);
-          return {
-            ...cat,
-            count: typeof assetCount === 'number' ? assetCount : (cat.count ?? 0),
-            icon: cat.icon || "archive",
-          };
+        // Update categories with asset counts and handle duplicates
+        // We'll merge counts for categories with the same normalized name
+        const mergedCategories = new Map<string, Category>();
+        
+        syncedCategories.forEach(cat => {
+          const normalizedName = normalizeCategoryName(cat.name);
+          const assetCount = categoryCounts.get(normalizedName) || 0;
+          
+          // If this normalized name already exists in our map, merge the counts
+          if (mergedCategories.has(normalizedName)) {
+            const existing = mergedCategories.get(normalizedName)!;
+            
+            // If the existing entry is older than this one, replace it
+            if (existing.id > cat.id) {
+              mergedCategories.set(normalizedName, {
+                ...cat,
+                count: assetCount,
+                icon: cat.icon || "archive",
+              });
+              
+              // Delete the duplicate from the database (async)
+              supabase
+                .from('categories')
+                .delete()
+                .eq('id', existing.id)
+                .then(() => console.log(`Deleted duplicate category: ${existing.name}`))
+                .catch(err => console.error("Error deleting duplicate category:", err));
+            } else {
+              // Delete this duplicate from the database (async)
+              supabase
+                .from('categories')
+                .delete()
+                .eq('id', cat.id)
+                .then(() => console.log(`Deleted duplicate category: ${cat.name}`))
+                .catch(err => console.error("Error deleting duplicate category:", err));
+            }
+          } else {
+            // First time seeing this normalized name
+            mergedCategories.set(normalizedName, {
+              ...cat,
+              count: assetCount,
+              icon: cat.icon || "archive",
+            });
+          }
         });
 
+        // Convert the map back to an array
+        const finalCategories = Array.from(mergedCategories.values());
         setLocalCategories(finalCategories);
       } catch (error) {
         console.error("Error in category/asset sync:", error);
@@ -224,12 +266,33 @@ const Categories = () => {
   };
 
   const handleAddCategory = async (newCategory: Category) => {
+    const normalizedName = normalizeCategoryName(newCategory.name);
+    const existing = localCategories.find(cat => 
+      normalizeCategoryName(cat.name) === normalizedName
+    );
+
+    if (existing) {
+      toast.error(`A category with the name "${existing.name}" already exists`);
+      return;
+    }
+
     setLocalCategories(prev => [newCategory, ...prev]);
     logCategoryActivity("Created", newCategory);
     setIsAddDialogOpen(false);
   };
 
   const handleEditCategory = async (updatedCategory: Category) => {
+    const normalizedName = normalizeCategoryName(updatedCategory.name);
+    const existing = localCategories.find(cat => 
+      cat.id !== updatedCategory.id && 
+      normalizeCategoryName(cat.name) === normalizedName
+    );
+
+    if (existing) {
+      toast.error(`A category with the name "${existing.name}" already exists`);
+      return;
+    }
+
     setLocalCategories(prev => 
       prev.map(cat => cat.id === updatedCategory.id ? updatedCategory : cat)
     );

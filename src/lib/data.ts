@@ -92,18 +92,16 @@ export const logCategoryActivity = async (
   );
 };
 
-// Fetch categories with tenant_id filter
-export const fetchCategories = async (): Promise<Category[]> => {
-  const { currentTenant } = useTenant();
-  
-  if (!currentTenant?.id) {
+// Modified function to fetch categories from the database
+export const fetchCategories = async (tenantId: string): Promise<Category[]> => {
+  if (!tenantId) {
     return [];
   }
   
   const { data, error } = await supabase
     .from('categories')
     .select('*')
-    .eq('tenant_id', currentTenant.id)
+    .eq('tenant_id', tenantId)
     .order('name');
   
   if (error) {
@@ -113,4 +111,9 @@ export const fetchCategories = async (): Promise<Category[]> => {
   }
   
   return data || [];
+};
+
+// New function to normalize category names for comparison
+export const normalizeCategoryName = (name: string): string => {
+  return name.trim().toLowerCase();
 };
