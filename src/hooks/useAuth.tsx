@@ -1,8 +1,7 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Session, User, AuthChangeEvent } from "@supabase/supabase-js";
+import { Session, User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
 type AuthContextType = {
@@ -25,7 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event: keyof typeof AuthChangeEvent, newSession) => {
+      (event, newSession) => {
         console.log("Auth state change:", event);
         setSession(newSession);
         setUser(newSession?.user ?? null);
@@ -59,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   navigate("/dashboard");
                 }
               })
-              .catch(error => {
+              .catch((error) => {
                 console.error("Error checking onboarding status:", error);
                 toast.error("Failed to check onboarding status");
               });
