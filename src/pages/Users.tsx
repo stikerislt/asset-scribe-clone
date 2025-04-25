@@ -175,10 +175,15 @@ const Users = () => {
         const isOwner = ownershipMap.get(profile.id) || profile.id === ownerId;
         const authUserData = authUsersMap.get(profile.id);
         
-        // Explicitly cast the invitationStatus to the union type
-        const invitationStatus = authUserData && 
-          (authUserData.confirmed_at || authUserData.email_confirmed_at || authUserData.last_sign_in_at) 
-            ? 'active' as const : 'pending' as const;
+        // Modified logic: owners are always considered active regardless of auth data
+        let invitationStatus: "active" | "pending";
+        if (isOwner) {
+          invitationStatus = "active" as const;
+        } else {
+          invitationStatus = authUserData && 
+            (authUserData.confirmed_at || authUserData.email_confirmed_at || authUserData.last_sign_in_at) 
+              ? "active" as const : "pending" as const;
+        }
             
         const user: EnhancedUser = {
           id: profile.id,
