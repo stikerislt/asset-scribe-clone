@@ -11,9 +11,53 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export function TenantSelector() {
-  const { currentTenant, userTenants, isLoading, switchTenant } = useTenant();
+  const { currentTenant, userTenants, isLoading, switchTenant, refreshTenants } = useTenant();
+  const { toast } = useToast();
+
+  const createTenant = async () => {
+    try {
+      const { data: tenant, error } = await supabase
+        .from('tenants')
+        .insert({
+          name: `My Organization ${userTenants.length + 1}`,
+          organization_size: 'small',
+          industry: 'Other'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Create membership for the user
+      const { error: membershipError } = await supabase
+        .from('tenant_memberships')
+        .insert({
+          tenant_id: tenant.id,
+          is_owner: true,
+          is_primary: true,
+          role: 'admin'
+        });
+
+      if (membershipError) throw membershipError;
+
+      await refreshTenants();
+      toast({
+        title: "Organization created",
+        description: "Your new organization has been created successfully.",
+      });
+    } catch (error) {
+      console.error('Error creating tenant:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create organization. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoading) {
     return <Skeleton className="h-9 w-[200px]" />;
@@ -22,7 +66,11 @@ export function TenantSelector() {
   // No tenants exist
   if (userTenants.length === 0) {
     return (
-      <Button variant="outline" className="w-[200px] justify-start border-dashed border-orange-300">
+      <Button 
+        variant="outline" 
+        className="w-[200px] justify-start border-dashed border-orange-300"
+        onClick={createTenant}
+      >
         <Plus className="mr-2 h-4 w-4 text-orange-500" />
         <span className="text-orange-500">Create Organization</span>
       </Button>
