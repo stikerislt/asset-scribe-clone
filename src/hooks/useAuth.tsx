@@ -25,10 +25,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
+      async (event, newSession) => {
+        console.log("Auth state change:", event);
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
+
+        if (event === "SIGNED_IN") {
+          // Check if this is right after email verification
+          const params = new URLSearchParams(window.location.hash);
+          if (params.get("type") === "recovery" || params.get("type") === "signup") {
+            toast.success("Email verified successfully! You can now log in.");
+            navigate("/auth/login");
+          }
+        }
+
         if (
           event === "PASSWORD_RECOVERY" ||
           (newSession?.user && (newSession as any).type === 'PASSWORD_RECOVERY')
@@ -38,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
+    // Initial session check
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
@@ -93,8 +105,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!authData.user) throw new Error("Signup failed. Please try again.");
 
       toast.success(
-        "Signup successful! Please check your email to verify your account."
+        "Success! Please check your email to verify your account."
       );
+
+      // Show a more detailed message with the email address
+      toast("Verification email sent", {
+        description: `We've sent a verification link to ${email}. Please check your inbox and spam folder.`,
+        duration: 6000,
+      });
 
       navigate("/auth/login");
     } catch (error: any) {
