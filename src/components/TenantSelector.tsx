@@ -1,5 +1,5 @@
 
-import { Building, ChevronDown } from 'lucide-react';
+import { Building, ChevronDown, Plus } from 'lucide-react';
 import { useTenant } from '@/hooks/useTenant';
 import {
   DropdownMenu,
@@ -19,10 +19,51 @@ export function TenantSelector() {
     return <Skeleton className="h-9 w-[200px]" />;
   }
 
-  if (!currentTenant || userTenants.length === 0) {
-    return null;
+  // No tenants exist
+  if (userTenants.length === 0) {
+    return (
+      <Button variant="outline" className="w-[200px] justify-start border-dashed border-orange-300">
+        <Plus className="mr-2 h-4 w-4 text-orange-500" />
+        <span className="text-orange-500">Create Organization</span>
+      </Button>
+    );
   }
 
+  // Has tenants but none selected (should be rare)
+  if (!currentTenant) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="w-[200px] justify-start border-orange-300">
+            <Building className="mr-2 h-4 w-4 text-orange-500" />
+            <span className="text-orange-500">Select Organization</span>
+            <ChevronDown className="ml-auto h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-[200px]">
+          <DropdownMenuLabel>Your Organizations</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {userTenants.map((tenant) => (
+            <DropdownMenuItem
+              key={tenant.id}
+              onClick={() => switchTenant(tenant.id)}
+              className="cursor-pointer"
+            >
+              <Building className="mr-2 h-4 w-4" />
+              <div className="flex flex-col">
+                <span>{tenant.name}</span>
+                {tenant.description && (
+                  <span className="text-xs text-muted-foreground">{tenant.description}</span>
+                )}
+              </div>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
+  // Normal case - tenant selected
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

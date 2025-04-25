@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
 import { CSVPreview } from "@/components/CSVPreview";
@@ -9,6 +10,9 @@ import { Package } from "lucide-react";
 import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ImportAssetsDialogProps {
   isOpen: boolean;
@@ -26,11 +30,17 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
   const queryClient = useQueryClient();
   const { logActivity } = useActivity();
   const { user } = useAuth();
-  const { currentTenant } = useTenant();
+  const { currentTenant, userTenants, isLoading: tenantsLoading } = useTenant();
 
   const normalizeColumnName = (header: string): string => {
     return header.toLowerCase().trim();
   };
+
+  // If no organization is selected, show a warning and don't allow import
+  const noOrganizationSelected = !tenantsLoading && !currentTenant;
+  
+  // If user has no organizations at all, show a different message
+  const noOrganizationsExist = !tenantsLoading && userTenants.length === 0;
 
   const handleImportConfirm = async () => {
     if (previewData.data.length === 0) {
@@ -127,7 +137,7 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
         return asset;
       });
 
-      console.log("Importing assets with tenant_id:", assets);
+      console.log("Importing assets with tenant_id:", currentTenant.id);
 
       const { data, error } = await supabase
         .from('assets')
@@ -181,6 +191,38 @@ export const ImportAssetsDialog = ({ isOpen, onClose, previewData }: ImportAsset
       setIsImporting(false);
     }
   };
+
+  // Show organization selection alert if needed
+  if (noOrganizationSelected || noOrganizationsExist) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent>
+          <DialogTitle>Organization Required</DialogTitle>
+          <DialogDescription>
+            {noOrganizationsExist ? 
+              "You need to create an organization before importing assets." : 
+              "Please select an organization before importing assets."}
+          </DialogDescription>
+          
+          <Alert variant="destructive" className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>
+              {noOrganizationsExist ? "No Organizations Found" : "No Organization Selected"}
+            </AlertTitle>
+            <AlertDescription>
+              {noOrganizationsExist 
+                ? "You don't have any organizations. Please create one first." 
+                : "You have organizations, but none is currently selected."}
+            </AlertDescription>
+          </Alert>
+          
+          <div className="flex justify-end mt-6">
+            <Button onClick={onClose}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
