@@ -19,29 +19,20 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
   const [showHelpInfo, setShowHelpInfo] = useState(false);
   const { logout, user } = useAuth();
   
+  // Force the dialog to stay open
+  const [forceOpen, setForceOpen] = useState(true);
+  
   // Log when the dialog state changes
   useEffect(() => {
-    console.log("[TenantSetupDialog] Dialog isOpen:", isOpen, "User:", user?.id);
-    
-    // Force dialog to open if it's closed but should be open
-    // This helps prevent any bugs where the dialog might not show
-    if (!isOpen) {
-      console.log("[TenantSetupDialog] Dialog should be open, forcing open state");
-    }
-  }, [isOpen, user]);
+    console.log("[TenantSetupDialog] Dialog isOpen:", isOpen, "User:", user?.id, "forceOpen:", forceOpen);
+  }, [isOpen, user, forceOpen]);
 
   const handleOpenChange = (open: boolean) => {
-    // Prevent dialog from closing if we're submitting or there's an error
-    if (!open && (isSubmitting || hasError)) {
-      console.log("[TenantSetupDialog] Prevented dialog from closing due to submission or error state");
-      toast.error("Please complete the organization setup or refresh the page to try again");
-      return;
-    }
-    
-    // Only allow explicit completion (not manual closing)
+    // Always prevent dialog from closing manually
     if (!open) {
-      console.log("[TenantSetupDialog] Attempted to close dialog manually");
+      console.log("[TenantSetupDialog] Prevented dialog from closing");
       toast.error("Please complete the organization setup to continue");
+      setForceOpen(true); // Force dialog to stay open
     }
   };
 
@@ -64,11 +55,14 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
 
   // Debug render
   console.log("[TenantSetupDialog] Rendering with state:", { 
-    isOpen, isSubmitting, hasError, errorMessage, userId: user?.id 
+    isOpen, forceOpen, isSubmitting, hasError, errorMessage, userId: user?.id 
   });
 
+  // Always render the dialog when forceOpen is true, regardless of isOpen prop
+  const dialogOpen = forceOpen || isOpen;
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Create your organization</DialogTitle>

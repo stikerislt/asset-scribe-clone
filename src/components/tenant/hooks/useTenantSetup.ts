@@ -36,8 +36,8 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       
       console.log("[useTenantSetup] Session confirmed:", sessionData.session.user.id);
 
-      // Insert the tenant in a simpler way (the auth system will handle permission checks via RLS)
-      const { data: tenantData, error: tenantError } = await supabase
+      // Insert the tenant with a maximum timeout of 10 seconds
+      const tenantPromise = supabase
         .from('tenants')
         .insert({
           name: data.name,
@@ -49,14 +49,23 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         })
         .select()
         .single();
+      
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Tenant creation timed out after 10 seconds")), 10000)
+      );
+      
+      // Race between the fetch and the timeout
+      const { data: tenantData, error: tenantError } = await Promise.race([
+        tenantPromise,
+        timeoutPromise.then(() => { 
+          throw new Error("Tenant creation timed out");
+        })
+      ]) as any;
 
       if (tenantError) {
         console.error("[useTenantSetup] Tenant creation error:", tenantError);
-        if (tenantError.code === '42501') { // Permission denied
-          throw new Error("You don't have permission to create an organization. Please check your account settings.");
-        } else {
-          throw new Error("Failed to create organization: " + tenantError.message);
-        }
+        throw new Error("Failed to create organization: " + tenantError.message);
       }
 
       if (!tenantData) {
@@ -65,8 +74,8 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       
       console.log("[useTenantSetup] Tenant created successfully:", tenantData.id);
 
-      // Create tenant membership
-      const { error: membershipError } = await supabase
+      // Create tenant membership with timeout
+      const membershipPromise = supabase
         .from('tenant_memberships')
         .insert({
           tenant_id: tenantData.id,
@@ -75,6 +84,13 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
           is_primary: true,
           is_owner: true
         });
+      
+      const { error: membershipError } = await Promise.race([
+        membershipPromise,
+        timeoutPromise.then(() => { 
+          throw new Error("Membership creation timed out");
+        })
+      ]) as any;
 
       if (membershipError) {
         console.error("[useTenantSetup] Membership creation error:", membershipError);
@@ -83,11 +99,18 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       
       console.log("[useTenantSetup] Membership created successfully");
 
-      // Update profile onboarding status
-      const { error: profileError } = await supabase
+      // Update profile onboarding status with timeout
+      const profilePromise = supabase
         .from('profiles')
         .update({ onboarding_completed: true })
         .eq('id', user.id);
+      
+      const { error: profileError } = await Promise.race([
+        profilePromise,
+        timeoutPromise.then(() => { 
+          throw new Error("Profile update timed out");
+        })
+      ]) as any;
 
       if (profileError) {
         console.error("[useTenantSetup] Profile update error:", profileError);
@@ -105,7 +128,11 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       });
 
       toast.success("Organization created successfully!");
-      onComplete();
+      
+      // Add a small delay before completing to ensure Supabase has time to update
+      setTimeout(() => {
+        onComplete();
+      }, 500);
     } catch (error: any) {
       console.error("[useTenantSetup] Error during organization setup:", error);
       setHasError(true);
