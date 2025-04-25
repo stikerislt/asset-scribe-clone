@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,12 +30,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(newSession?.user ?? null);
         setLoading(false);
 
+        if (event === "SIGNED_UP") {
+          const email = newSession?.user?.email;
+          if (email) {
+            localStorage.setItem('pendingVerificationEmail', email);
+          }
+        }
+
         if (event === "SIGNED_IN") {
+          localStorage.removeItem('pendingVerificationEmail');
+          
           // Check if this is right after email verification
           const params = new URLSearchParams(window.location.hash);
           if (params.get("type") === "recovery" || params.get("type") === "signup") {
-            toast.success("Email verified successfully! You can now log in.");
-            navigate("/auth/login");
+            toast.success("Email verified successfully!");
+            navigate("/onboarding");
           }
         }
 
@@ -91,24 +99,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = async (email: string, password: string, fullName: string) => {
     try {
+      localStorage.setItem('pendingVerificationEmail', email);
+      
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
-          }
+          },
+          emailRedirectTo: window.location.origin + '/auth/login'
         }
       });
       
       if (authError) throw authError;
       if (!authData.user) throw new Error("Signup failed. Please try again.");
 
-      toast.success(
-        "Success! Please check your email to verify your account."
-      );
-
-      // Show a more detailed message with the email address
+      toast.success("Success! Please check your email to verify your account.");
       toast("Verification email sent", {
         description: `We've sent a verification link to ${email}. Please check your inbox and spam folder.`,
         duration: 6000,
@@ -116,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       navigate("/auth/login");
     } catch (error: any) {
+      localStorage.removeItem('pendingVerificationEmail');
       toast.error("Signup failed: " + error.message);
     }
   };
