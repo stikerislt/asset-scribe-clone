@@ -313,9 +313,9 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
-          industry: string
+          industry: string | null
           name: string
-          organization_size: string
+          organization_size: string | null
           owner_id: string | null
           subscription_status: string | null
           updated_at: string
@@ -325,9 +325,9 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          industry: string
+          industry?: string | null
           name: string
-          organization_size: string
+          organization_size?: string | null
           owner_id?: string | null
           subscription_status?: string | null
           updated_at?: string
@@ -337,9 +337,9 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          industry?: string
+          industry?: string | null
           name?: string
-          organization_size?: string
+          organization_size?: string | null
           owner_id?: string | null
           subscription_status?: string | null
           updated_at?: string
