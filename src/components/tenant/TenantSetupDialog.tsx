@@ -4,6 +4,7 @@ import { TenantSetupForm } from "./TenantSetupForm";
 import { useTenantSetup } from "./hooks/useTenantSetup";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 interface TenantSetupDialogProps {
   isOpen: boolean;
@@ -13,19 +14,23 @@ interface TenantSetupDialogProps {
 export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps) {
   const { handleSubmit, isSubmitting, hasError, errorMessage } = useTenantSetup({ onComplete });
 
+  const handleOpenChange = (open: boolean) => {
+    // Prevent dialog from closing if we're submitting or there's an error
+    if (!open && (isSubmitting || hasError)) {
+      console.log("[TenantSetupDialog] Prevented dialog from closing due to submission or error state");
+      toast.error("Please complete the organization setup or refresh the page to try again");
+      return;
+    }
+    
+    // Only allow explicit completion (not manual closing)
+    if (!open) {
+      console.log("[TenantSetupDialog] Attempted to close dialog manually");
+      toast.error("Please complete the organization setup to continue");
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      // Prevent dialog from closing if we're submitting or there's an error
-      if (!open && (isSubmitting || hasError)) {
-        console.log("[TenantSetupDialog] Prevented dialog from closing due to submission or error state");
-        return;
-      }
-      
-      // Only allow explicit completion (not manual closing)
-      if (!open) {
-        console.log("[TenantSetupDialog] Attempted to close dialog manually");
-      }
-    }}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Create your organization</DialogTitle>

@@ -23,11 +23,10 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     setHasError(false);
     setErrorMessage(null);
 
-    // Begin transaction
     try {
       console.log("[useTenantSetup] Starting tenant creation with data:", data);
       
-      // Step 1: Create tenant
+      // Begin transaction
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
         .insert({
@@ -38,21 +37,22 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
           organization_size: data.organizationSize,
           owner_id: user.id
         })
-        .select();
+        .select()
+        .single();
 
       if (tenantError) {
         console.error("[useTenantSetup] Tenant creation error:", tenantError);
-        throw new Error(`Failed to create tenant: ${tenantError.message}`);
+        throw new Error(`Failed to create organization: ${tenantError.message}`);
       }
 
-      if (!tenantData || tenantData.length === 0) {
-        throw new Error("No data returned after tenant creation");
+      if (!tenantData) {
+        throw new Error("No data returned after organization creation");
       }
 
-      console.log("[useTenantSetup] Tenant created successfully:", tenantData[0]);
-      const newTenantId = tenantData[0].id;
+      console.log("[useTenantSetup] Organization created successfully:", tenantData);
+      const newTenantId = tenantData.id;
 
-      // Step 2: Create tenant membership
+      // Create tenant membership
       const { error: membershipError } = await supabase
         .from('tenant_memberships')
         .insert({
@@ -68,24 +68,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         throw new Error(`Failed to create membership: ${membershipError.message}`);
       }
 
-      console.log("[useTenantSetup] Tenant membership created successfully");
-
-      // Step 3: Create user role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: user.id,
-          role: 'admin'
-        });
-
-      if (roleError) {
-        console.error("[useTenantSetup] User role creation error:", roleError);
-        throw new Error(`Failed to create user role: ${roleError.message}`);
-      }
-
-      console.log("[useTenantSetup] User role created successfully");
-
-      // Step 4: Update profile onboarding status
+      // Update profile onboarding status
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ onboarding_completed: true })
@@ -95,8 +78,6 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         console.error("[useTenantSetup] Profile update error:", profileError);
         throw new Error(`Failed to update profile: ${profileError.message}`);
       }
-
-      console.log("[useTenantSetup] Profile updated successfully");
 
       // Log activity
       await logActivity({
