@@ -20,7 +20,11 @@ const updatePasswordSchema = z.object({
 
 type UpdatePasswordFormValues = z.infer<typeof updatePasswordSchema>;
 
-const UpdatePasswordForm = () => {
+interface UpdatePasswordFormProps {
+  isInviteFlow?: boolean;
+}
+
+const UpdatePasswordForm = ({ isInviteFlow = false }: UpdatePasswordFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
@@ -42,12 +46,29 @@ const UpdatePasswordForm = () => {
       }
 
       toast({
-        title: "Password updated",
-        description: "Your password has been updated successfully.",
+        title: isInviteFlow ? "Account setup complete" : "Password updated",
+        description: isInviteFlow 
+          ? "Your password has been set and you can now access the system." 
+          : "Your password has been updated successfully.",
       });
       
-      // Redirect to login page
-      setTimeout(() => navigate("/auth/login"), 1500);
+      // Redirect to appropriate page
+      if (isInviteFlow) {
+        // For invited users, go to onboarding or dashboard
+        const { data: onboardingComplete, error: checkError } = await supabase.rpc('has_completed_onboarding', {
+          user_id: (await supabase.auth.getUser()).data.user?.id
+        });
+        
+        if (checkError) {
+          console.error("Error checking onboarding status:", checkError);
+          setTimeout(() => navigate("/dashboard"), 1500);
+        } else {
+          setTimeout(() => navigate(onboardingComplete ? "/dashboard" : "/onboarding"), 1500);
+        }
+      } else {
+        // For password reset, go to login
+        setTimeout(() => navigate("/auth/login"), 1500);
+      }
     } catch (error) {
       toast({
         title: "Failed to update password",
@@ -63,9 +84,13 @@ const UpdatePasswordForm = () => {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <div className="text-center space-y-2 mb-4">
-          <h3 className="text-lg font-medium">Create a new password</h3>
+          <h3 className="text-lg font-medium">
+            {isInviteFlow ? "Create your password" : "Create a new password"}
+          </h3>
           <p className="text-sm text-muted-foreground">
-            Enter a new secure password for your account.
+            {isInviteFlow 
+              ? "To access your team's workspace, please create a secure password for your account." 
+              : "Enter a new secure password for your account."}
           </p>
         </div>
 
@@ -98,7 +123,9 @@ const UpdatePasswordForm = () => {
         />
         
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Updating..." : "Update Password"}
+          {isSubmitting 
+            ? (isInviteFlow ? "Setting up..." : "Updating...") 
+            : (isInviteFlow ? "Set Password & Continue" : "Update Password")}
         </Button>
       </form>
     </Form>

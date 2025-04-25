@@ -26,33 +26,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
+        console.log("Auth state changed:", event, newSession?.user?.email);
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
-        if (
-          event === "PASSWORD_RECOVERY" ||
-          (newSession?.user && (newSession as any).type === 'PASSWORD_RECOVERY')
-        ) {
+        
+        // Handle password recovery and invite events
+        if (event === "PASSWORD_RECOVERY") {
           navigate("/auth/update-password", { replace: true });
+        } else if (event === "USER_UPDATED") {
+          // After password is updated, redirect to dashboard
+          const redirectTo = location.pathname === "/auth/update-password" ? "/dashboard" : undefined;
+          if (redirectTo) {
+            setTimeout(() => navigate(redirectTo, { replace: true }), 1000);
+          }
+        } else if (event === "SIGNED_IN" && newSession?.user) {
+          // For existing sessions, check if accessing an invite link
+          const hash = window.location.hash;
+          if (hash.includes("type=recovery") || hash.includes("type=invite")) {
+            navigate("/auth/update-password", { replace: true });
+          }
         }
       }
     );
 
+    // Check for existing session and URL parameters
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);
+      
+      // Check URL hash for recovery or invite tokens
       const hash = window.location.hash;
-      if (
-        (hash.includes("type=recovery") || hash.includes("type=invite")) &&
-        currentSession?.user
-      ) {
+      if ((hash.includes("type=recovery") || hash.includes("type=invite")) && currentSession?.user) {
+        console.log("Found recovery or invite token, redirecting to password update");
         navigate("/auth/update-password", { replace: true });
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   const login = async (email: string, password: string) => {
     try {
