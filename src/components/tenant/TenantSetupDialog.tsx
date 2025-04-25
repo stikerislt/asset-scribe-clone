@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { TenantSetupForm } from "./TenantSetupForm";
 import { useTenantSetup } from "./hooks/useTenantSetup";
@@ -15,6 +14,8 @@ interface TenantSetupDialogProps {
 }
 
 export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps) {
+  console.log("[TenantSetupDialog] Rendering with isOpen:", isOpen);
+  
   const { handleSubmit, isSubmitting, hasError, errorMessage } = useTenantSetup({ 
     onComplete: () => {
       console.log("[TenantSetupDialog] onComplete callback triggered");
@@ -23,8 +24,6 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
   });
   const [showHelpInfo, setShowHelpInfo] = useState(false);
   const { logout, user } = useAuth();
-  
-  // Always force the dialog to stay open, no need for state
   
   const handleOpenChange = (open: boolean) => {
     // Always prevent dialog from closing manually
@@ -57,7 +56,7 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
   });
 
   return (
-    <Dialog open={true} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Create your organization</DialogTitle>
