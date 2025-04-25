@@ -1,10 +1,11 @@
-
 import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { TenantSetupDialog } from "@/components/tenant/TenantSetupDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { RefreshCcw } from "lucide-react";
 
 export default function Onboarding() {
   const [showDialog, setShowDialog] = useState(true);
