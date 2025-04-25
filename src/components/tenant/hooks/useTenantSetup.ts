@@ -14,6 +14,11 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
   const { logActivity } = useActivity();
 
   const handleSubmit = async (data: TenantSetupValues): Promise<void> => {
+    console.log("[useTenantSetup] Starting tenant creation with data:", {
+      ...data,
+      userId: user?.id
+    });
+
     if (!user) {
       const errorMsg = "No authenticated user found";
       console.error(`[useTenantSetup] ${errorMsg}`);
@@ -47,9 +52,14 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         .eq('id', user.id)
         .single();
         
-      console.log("[useTenantSetup] Profile check result:", { profile, error: profileError });
+      console.log("[useTenantSetup] Profile check result:", { 
+        profile, 
+        error: profileError,
+        hasProfile: !!profile
+      });
 
       if (profileError) {
+        console.log("[useTenantSetup] Profile not found, creating new profile");
         // If profile doesn't exist, try to create it
         const { error: createProfileError } = await supabase
           .from('profiles')
@@ -64,6 +74,8 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
           console.error("[useTenantSetup] Failed to create profile:", createProfileError);
           throw new Error("Failed to setup user profile");
         }
+        
+        console.log("[useTenantSetup] Profile created successfully");
       }
       
       console.log("[useTenantSetup] Creating tenant with data:", {
@@ -86,7 +98,12 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         .single();
       
       if (tenantError) {
-        console.error("[useTenantSetup] Tenant creation error:", tenantError);
+        console.error("[useTenantSetup] Tenant creation error:", {
+          error: tenantError,
+          code: tenantError.code,
+          details: tenantError.details,
+          message: tenantError.message
+        });
         throw new Error(`Failed to create organization: ${tenantError.message}`);
       }
 
@@ -104,7 +121,11 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         });
 
       if (membershipError) {
-        console.error("[useTenantSetup] Membership creation error:", membershipError);
+        console.error("[useTenantSetup] Membership creation error:", {
+          error: membershipError,
+          code: membershipError.code,
+          details: membershipError.details
+        });
         throw new Error(`Failed to set up organization membership: ${membershipError.message}`);
       }
 
@@ -117,7 +138,11 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         .eq('id', user.id);
 
       if (profileUpdateError) {
-        console.error("[useTenantSetup] Profile update error:", profileUpdateError);
+        console.error("[useTenantSetup] Profile update error:", {
+          error: profileUpdateError,
+          code: profileUpdateError.code,
+          details: profileUpdateError.details
+        });
       }
 
       await logActivity({
@@ -127,11 +152,16 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         tenant_id: tenantData.id
       });
 
+      console.log("[useTenantSetup] Setup completed successfully");
       toast.success("Organization created successfully!");
       onComplete();
       
     } catch (error: any) {
-      console.error("[useTenantSetup] Error during organization setup:", error);
+      console.error("[useTenantSetup] Error during organization setup:", {
+        error,
+        message: error.message,
+        stack: error.stack
+      });
       setHasError(true);
       setErrorMessage(error.message || "Failed to create organization");
       toast.error(error.message || "Failed to create organization");

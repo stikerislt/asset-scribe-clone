@@ -17,7 +17,16 @@ export default function Onboarding() {
     let isMounted = true;
 
     const validateAuthStatus = async () => {
-      if (loading) return;
+      console.log("[Onboarding] Starting validation with state:", {
+        loading,
+        userId: user?.id,
+        isValidating
+      });
+      
+      if (loading) {
+        console.log("[Onboarding] Still loading auth state, skipping validation");
+        return;
+      }
       
       if (!user) {
         console.log("[Onboarding] No user session, redirecting to login");
@@ -48,7 +57,12 @@ export default function Onboarding() {
           .eq('id', user.id)
           .single();
           
-        console.log("[Onboarding] Profile check result:", { profile, error: profileError });
+        console.log("[Onboarding] Profile check result:", { 
+          profile, 
+          error: profileError,
+          errorCode: profileError?.code,
+          userId: user.id 
+        });
 
         if (profileError && profileError.code !== 'PGRST116') { // PGRST116 = no rows returned
           console.error("[Onboarding] Profile check error:", profileError);
@@ -68,14 +82,22 @@ export default function Onboarding() {
             });
             
           if (createError) {
-            console.error("[Onboarding] Failed to create profile:", createError);
+            console.error("[Onboarding] Failed to create profile:", {
+              error: createError,
+              code: createError.code,
+              details: createError.details
+            });
             throw new Error("Failed to create user profile");
           }
           
           console.log("[Onboarding] Profile created successfully");
         }
       } catch (error: any) {
-        console.error("[Onboarding] Auth validation error:", error);
+        console.error("[Onboarding] Auth validation error:", {
+          error,
+          message: error.message,
+          stack: error.stack
+        });
         toast.error(error.message || "Failed to validate user session");
         navigate("/auth/login");
       } finally {
