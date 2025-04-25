@@ -128,7 +128,8 @@ export const createUser = async (
       name,
       role,
       active,
-      tenant_id: tenantData
+      tenant_id: tenantData,
+      mark_email_verified: true // Add this flag to mark email as verified upon creation
     };
     
     console.log("Sending payload to edge function:", {

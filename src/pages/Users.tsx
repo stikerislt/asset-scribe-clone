@@ -155,7 +155,21 @@ const Users = () => {
 
       const userIds = profiles.map(profile => profile.id);
       
-      // Fix type issue by properly typing the auth.admin.listUsers() response
+      const { data: userSessionsData, error: userSessionsError } = await supabase
+        .from('sessions')
+        .select('user_id')
+        .in('user_id', userIds)
+        .distinct();
+      
+      if (userSessionsError) {
+        console.error('Error fetching user sessions:', userSessionsError);
+      }
+      
+      const loggedInUsers = new Set();
+      userSessionsData?.forEach(session => {
+        loggedInUsers.add(session.user_id);
+      });
+      
       interface AuthUser {
         id: string;
         confirmed_at: string | null;
@@ -163,7 +177,6 @@ const Users = () => {
         last_sign_in_at: string | null;
       }
       
-      // Fix the type issue with authUsers by explicitly typing it
       const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers();
       
       if (authError) {
@@ -176,7 +189,6 @@ const Users = () => {
         last_sign_in_at: string | null;
       }>();
       
-      // Safely access the users array with proper type checking
       const authUsers = authResponse?.users || [];
       authUsers.forEach((authUser: any) => {
         if (authUser && authUser.id) {
@@ -199,17 +211,21 @@ const Users = () => {
         const isOwner = ownershipMap.get(profile.id) || profile.id === ownerId;
         const authUserData = authUsersMap.get(profile.id);
         
-        // Modified logic: owners are always considered active regardless of auth data
         let invitationStatus: "active" | "pending";
+        
         if (isOwner) {
-          invitationStatus = "active" as const;
+          invitationStatus = "active";
+        } else if (loggedInUsers.has(profile.id)) {
+          invitationStatus = "active";
+        } else if (authUserData && 
+                (authUserData.confirmed_at || 
+                 authUserData.email_confirmed_at || 
+                 authUserData.last_sign_in_at)) {
+          invitationStatus = "active";
         } else {
-          invitationStatus = authUserData && 
-            (authUserData.confirmed_at || authUserData.email_confirmed_at || authUserData.last_sign_in_at) 
-              ? "active" as const : "pending" as const;
+          invitationStatus = "pending";
         }
         
-        // If the user is an owner, always set dbRole to 'admin' regardless of what's in the database
         const userDbRole = isOwner ? 'admin' as UserRole : (roleMap.get(profile.id) as UserRole || null);
             
         const user: EnhancedUser = {
@@ -327,7 +343,6 @@ const Users = () => {
       
       if (error) throw error;
       
-      // Don't change the role if the user is an owner - they should remain admin
       if (!selectedUser.isOwner) {
         const newDbRole = formValues.role.toLowerCase() as UserRole;
         if (selectedUser.dbRole !== newDbRole) {
@@ -345,7 +360,6 @@ const Users = () => {
       
       toast.success(`User ${formValues.name} updated successfully`);
       
-      // When updating users in the state, respect owner status for role display
       setUsers(prev => prev.map(user => 
         user.id === selectedUser.id 
           ? { 

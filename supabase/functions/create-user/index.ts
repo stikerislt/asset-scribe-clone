@@ -13,6 +13,7 @@ interface CreateUserPayload {
   role: string;
   active: boolean;
   tenant_id: string;
+  mark_email_verified?: boolean; // Add optional parameter to mark email as verified
 }
 
 serve(async (req) => {
@@ -34,7 +35,7 @@ serve(async (req) => {
 
     // Get request payload
     const payload: CreateUserPayload = await req.json();
-    const { email, password, name, role, active, tenant_id } = payload;
+    const { email, password, name, role, active, tenant_id, mark_email_verified } = payload;
 
     // Validate required fields
     if (!email || !name || !role || !tenant_id) {
@@ -74,6 +75,20 @@ serve(async (req) => {
         // User already exists, use the existing ID
         userId = existingUser.id;
         console.log("User already exists in auth system, using existing ID:", userId);
+
+        // If mark_email_verified is true, update the user to mark email as confirmed
+        if (mark_email_verified) {
+          console.log("Marking existing user's email as verified:", userId);
+          await supabase.auth.admin.updateUserById(userId, {
+            email_confirm: true,
+            app_metadata: { 
+              email_confirmed_at: new Date().toISOString(),
+              tenant_id: tenant_id 
+            }
+          });
+          
+          console.log("User email marked as verified");
+        }
       } else {
         isNewUser = true;
       }
@@ -87,14 +102,15 @@ serve(async (req) => {
       const { data: userData, error: createError } = await supabase.auth.admin.createUser({
         email,
         password,
-        email_confirm: false,
+        email_confirm: mark_email_verified === true, // Set email as confirmed if specified
         user_metadata: {
           full_name: name,
-          tenant_id: tenant_id // Store tenant_id in user metadata
+          tenant_id: tenant_id
         },
         app_metadata: {
           active: active,
-          tenant_id: tenant_id // Store tenant_id in app metadata too
+          tenant_id: tenant_id,
+          email_confirmed_at: mark_email_verified ? new Date().toISOString() : null
         },
       });
 
@@ -111,12 +127,17 @@ serve(async (req) => {
       userId = userData.user.id;
       console.log("User created successfully:", userId);
       
-      // Send invitation email - will include the update password flow automatically
-      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email);
-      if (inviteError) {
-        console.error("Error sending invitation email:", inviteError);
+      // Send invitation email only if we're not marking the email as verified
+      if (!mark_email_verified) {
+        console.log("Sending invitation email to:", email);
+        const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email);
+        if (inviteError) {
+          console.error("Error sending invitation email:", inviteError);
+        } else {
+          console.log("Invitation email sent successfully to:", email);
+        }
       } else {
-        console.log("Invitation email sent successfully to:", email);
+        console.log("Skipping invitation email as email is marked as verified");
       }
     }
 
@@ -184,6 +205,22 @@ serve(async (req) => {
     } catch (error) {
       console.error("Exception in user role upsert:", error);
       throw error;
+    }
+
+    // Create a session for the user
+    if (mark_email_verified && isNewUser) {
+      try {
+        console.log("Creating session record for user:", userId);
+        const { error: sessionError } = await supabase.rpc('create_user_session_record', { user_id_param: userId });
+        
+        if (sessionError) {
+          console.error("Error creating session record:", sessionError);
+        } else {
+          console.log("Session record created successfully");
+        }
+      } catch (sessionError) {
+        console.error("Exception creating session record:", sessionError);
+      }
     }
 
     // Verify tenant associations - using separate queries to avoid join issues
@@ -272,7 +309,7 @@ serve(async (req) => {
         active,
         tenant_id,
         message: isNewUser ? "User invited successfully" : "User added to organization successfully",
-        verification_status: isNewUser ? "invitation_sent" : "existing_user"
+        verification_status: isNewUser ? (mark_email_verified ? "email_verified" : "invitation_sent") : "existing_user"
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
