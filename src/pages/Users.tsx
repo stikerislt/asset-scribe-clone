@@ -136,7 +136,16 @@ const Users = () => {
         throw profilesError;
       }
 
-      console.log("Found profiles:", profiles);
+      console.log("Found profiles:", profiles?.length || 0, "profiles for tenant:", currentTenant.id);
+      if (profiles?.length === 0) {
+        console.log("No profiles found with matching tenant_id:", currentTenant.id);
+        // Log the first few profiles regardless of tenant_id to debug
+        const { data: allProfiles } = await supabase
+          .from('profiles')
+          .select('id, email, tenant_id')
+          .limit(5);
+        console.log("Sample of all profiles:", allProfiles);
+      }
       
       if (!profiles || profiles.length === 0) {
         console.log("No profiles found for tenant:", currentTenant.id);
@@ -221,6 +230,7 @@ const Users = () => {
         return user;
       });
       
+      console.log("Formatted users:", formattedUsers.length);
       setUsers(formattedUsers);
     } catch (error: any) {
       console.error('Error fetching users:', error);

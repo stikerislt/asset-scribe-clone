@@ -116,88 +116,111 @@ serve(async (req) => {
       }
     }
 
-    // Create profile with tenant_id
-    console.log("Creating user profile with tenant_id:", tenant_id);
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .insert({
-        id: userId,
-        email,
-        full_name: name,
-        tenant_id: tenant_id
-      })
-      .select();
+    // Create or update profile with tenant_id
+    console.log("Creating or updating user profile with tenant_id:", tenant_id);
+    try {
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: userId,
+          email,
+          full_name: name,
+          tenant_id: tenant_id
+        });
 
-    if (profileError) {
-      console.error("Error creating profile:", profileError);
-      // If it's a duplicate key error, update the existing profile
-      if (profileError.message.includes("duplicate key")) {
-        const { error: updateError } = await supabase
-          .from("profiles")
-          .update({ 
-            tenant_id: tenant_id,
-            full_name: name,
-            email: email 
-          })
-          .eq("id", userId);
-          
-        if (updateError) {
-          console.error("Error updating existing profile:", updateError);
-          throw updateError;
-        }
-      } else {
+      if (profileError) {
+        console.error("Error upserting profile:", profileError);
         throw profileError;
       }
+      console.log("Profile created or updated successfully for user:", userId);
+    } catch (error) {
+      console.error("Exception in profile upsert:", error);
+      throw error;
     }
 
     // Create tenant membership
     console.log("Creating tenant membership for user:", userId, "in tenant:", tenant_id);
-    const { error: membershipError } = await supabase
-      .from("tenant_memberships")
-      .insert({
-        user_id: userId,
-        tenant_id: tenant_id,
-        role: role.toLowerCase(),
-        is_primary: true,  // Set this as primary since it's their first/only tenant
-        is_owner: false    // Never make new users owners by default
-      });
+    try {
+      const { error: membershipError } = await supabase
+        .from("tenant_memberships")
+        .upsert({
+          user_id: userId,
+          tenant_id: tenant_id,
+          role: role.toLowerCase(),
+          is_primary: true,  // Set this as primary since it's their first/only tenant
+          is_owner: false    // Never make new users owners by default
+        });
 
-    if (membershipError) {
-      console.error("Error creating tenant membership:", membershipError);
-      throw membershipError;
+      if (membershipError) {
+        console.error("Error creating tenant membership:", membershipError);
+        throw membershipError;
+      }
+      console.log("Tenant membership created successfully for user:", userId);
+    } catch (error) {
+      console.error("Exception in tenant membership upsert:", error);
+      throw error;
     }
 
     // Add role to user_roles table
-    const { error: roleError } = await supabase
-      .from("user_roles")
-      .upsert({
-        user_id: userId,
-        role: role.toLowerCase(),
-        updated_at: new Date().toISOString(),
-      });
+    try {
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .upsert({
+          user_id: userId,
+          role: role.toLowerCase(),
+          updated_at: new Date().toISOString(),
+        });
 
-    if (roleError) {
-      console.error("Error setting user role:", roleError);
-      throw roleError;
+      if (roleError) {
+        console.error("Error setting user role:", roleError);
+        throw roleError;
+      }
+      console.log("User role set successfully for user:", userId);
+    } catch (error) {
+      console.error("Exception in user role upsert:", error);
+      throw error;
     }
 
-    // Verify tenant associations were created correctly
+    // Verify tenant associations - but don't use inner join since this is causing the error
     console.log("Verifying tenant associations for user:", userId);
-    const { data: verifyData, error: verifyError } = await supabase
-      .from('profiles')
-      .select(`
-        id,
-        tenant_id,
-        tenant_memberships!inner(
-          tenant_id
-        )
-      `)
-      .eq('id', userId)
-      .single();
-
-    if (verifyError || !verifyData) {
-      console.error("Error verifying tenant associations:", verifyError);
-      throw new Error("Failed to verify tenant associations");
+    try {
+      // First check if profile exists with correct tenant_id
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, tenant_id')
+        .eq('id', userId)
+        .single();
+      
+      if (profileError || !profileData) {
+        console.error("Error verifying profile:", profileError);
+        throw new Error("Failed to verify profile");
+      }
+      
+      if (profileData.tenant_id !== tenant_id) {
+        console.error("Profile tenant_id mismatch:", profileData.tenant_id, "expected:", tenant_id);
+        throw new Error("Profile tenant_id mismatch");
+      }
+      
+      // Then check if tenant membership exists
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('tenant_memberships')
+        .select('tenant_id')
+        .eq('user_id', userId)
+        .eq('tenant_id', tenant_id)
+        .single();
+      
+      if (membershipError || !membershipData) {
+        console.error("Error verifying tenant membership:", membershipError);
+        throw new Error("Failed to verify tenant membership");
+      }
+      
+      console.log("Tenant associations verified successfully for user:", userId);
+    } catch (error) {
+      console.error("Error verifying tenant associations:", error);
+      return new Response(
+        JSON.stringify({ error: "Failed to verify tenant associations: " + error.message }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(

@@ -145,13 +145,15 @@ export const createUser = async (
       body: JSON.stringify(payload)
     });
 
+    const responseBody = await response.text();
+    console.log(`Edge function response (${response.status}):`, responseBody);
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Error response from create-user function:", response.status, errorText);
-      throw new Error(`Failed to create user: ${errorText || `HTTP ${response.status}`}`);
+      console.error("Error response from create-user function:", response.status, responseBody);
+      throw new Error(`Failed to create user: ${responseBody || `HTTP ${response.status}`}`);
     }
 
-    const result = await response.json();
+    const result = JSON.parse(responseBody);
     console.log("User creation successful:", result);
     
     if (result.verification_status === "invitation_sent") {
