@@ -25,25 +25,8 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
     try {
       console.log("[useTenantSetup] Starting tenant creation with data:", data);
-      
-      // First, validate the session is active
-      const { data: authState, error: authError } = await supabase.auth.getSession();
-      
-      if (authError) {
-        console.error("[useTenantSetup] Authentication check error:", authError);
-        throw new Error(`Authentication error: ${authError.message}. Please try logging out and back in.`);
-      }
-      
-      if (!authState.session) {
-        console.error("[useTenantSetup] No active session found");
-        throw new Error("Your session has expired. Please log out and log back in to continue.");
-      }
 
-      // Try to insert the tenant without RLS restrictions
-      // We'll use a different approach by using RPC to bypass RLS
-      // This requires setting up a database function in Supabase
-      
-      // For now, attempt a direct insert as a fallback
+      // Insert the tenant
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
         .insert({
@@ -59,27 +42,18 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
       if (tenantError) {
         console.error("[useTenantSetup] Tenant creation error:", tenantError);
-        
-        if (tenantError.code === '42501') {
-          // This is a Row Level Security policy violation
-          throw new Error(`Failed to create organization due to insufficient permissions. Please try refreshing the page, or log out and log in again.`);
-        } else {
-          throw new Error(`Failed to create organization: ${tenantError.message}`);
-        }
+        throw new Error("Failed to create organization. Please try again.");
       }
 
       if (!tenantData) {
         throw new Error("No data returned after organization creation");
       }
 
-      console.log("[useTenantSetup] Organization created successfully:", tenantData);
-      const newTenantId = tenantData.id;
-
       // Create tenant membership
       const { error: membershipError } = await supabase
         .from('tenant_memberships')
         .insert({
-          tenant_id: newTenantId,
+          tenant_id: tenantData.id,
           user_id: user.id,
           role: 'admin',
           is_primary: true,
@@ -88,7 +62,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
       if (membershipError) {
         console.error("[useTenantSetup] Membership creation error:", membershipError);
-        throw new Error(`Failed to create membership: ${membershipError.message}`);
+        throw new Error("Failed to set up organization membership");
       }
 
       // Update profile onboarding status
@@ -99,7 +73,6 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
       if (profileError) {
         console.error("[useTenantSetup] Profile update error:", profileError);
-        throw new Error(`Failed to update profile: ${profileError.message}`);
       }
 
       // Log activity
