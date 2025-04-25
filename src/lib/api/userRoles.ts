@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -333,17 +332,39 @@ export const deleteUser = async (userId: string): Promise<boolean> => {
 // Function to check user's session status
 export const checkUserSessionStatus = async (userId: string): Promise<boolean> => {
   try {
-    // Call the RPC function that creates a session record
-    const { data: hasSessions, error: sessionError } = await supabase.rpc('has_user_session', {
-      user_id_param: userId
-    });
-
-    if (sessionError) {
-      console.error("Error checking user session status:", sessionError);
+    // Instead of using RPC, we'll call the Edge Function directly
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error("No active session found");
       return false;
     }
-
-    return !!hasSessions;
+    
+    const supabaseUrl = "https://tbefdkwtjpbonuunxytk.supabase.co";
+    const getUserStatusEndpoint = `${supabaseUrl}/functions/v1/get-user-status`;
+    
+    const response = await fetch(getUserStatusEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ userId })
+    });
+    
+    if (!response.ok) {
+      console.error("Error response from get-user-status function:", response.status);
+      return false;
+    }
+    
+    const result = await response.json();
+    const userData = result.user;
+    
+    // Consider user active if they have any of these timestamps
+    return !!(userData && (
+      userData.confirmed_at || 
+      userData.email_confirmed_at || 
+      userData.last_sign_in_at
+    ));
   } catch (error) {
     console.error("Error in checkUserSessionStatus:", error);
     return false;
