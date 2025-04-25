@@ -23,7 +23,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     };
   }, [creationTimeout]);
 
-  const handleSubmit = async (data: TenantSetupValues) => {
+  const handleSubmit = async (data: TenantSetupValues): Promise<void> => {
     if (!user) {
       toast.error("You must be logged in to create an organization");
       return;
@@ -50,12 +50,36 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
       // First, ensure we have a valid session
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !sessionData.session) {
+      if (sessionError) {
         console.error("[useTenantSetup] Session error:", sessionError);
         throw new Error("Your session has expired. Please log in again.");
       }
+
+      if (!sessionData.session) {
+        console.error("[useTenantSetup] No active session found");
+        throw new Error("No active session found. Please log in again.");
+      }
       
       console.log("[useTenantSetup] Session confirmed:", sessionData.session.user.id);
+
+      // Check if user profile exists
+      const { data: profileData, error: profileCheckError } = await supabase
+        .from('profiles')
+        .select('id, onboarding_completed')
+        .eq('id', user.id)
+        .single();
+        
+      if (profileCheckError) {
+        console.error("[useTenantSetup] Profile check error:", profileCheckError);
+        throw new Error("Failed to verify user profile: " + profileCheckError.message);
+      }
+
+      if (!profileData) {
+        console.error("[useTenantSetup] Profile not found for user:", user.id);
+        throw new Error("User profile not found. Please contact support.");
+      }
+
+      console.log("[useTenantSetup] User profile verified:", profileData);
 
       // Create the tenant
       const { data: tenantData, error: tenantError } = await supabase

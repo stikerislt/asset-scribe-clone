@@ -5,7 +5,7 @@ import { useTenantSetup } from "./hooks/useTenantSetup";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Info, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
@@ -26,10 +26,6 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
   
   // Always force the dialog to stay open, no need for state
   
-  useEffect(() => {
-    console.log("[TenantSetupDialog] Dialog rendered, user:", user?.id);
-  }, [user]);
-
   const handleOpenChange = (open: boolean) => {
     // Always prevent dialog from closing manually
     if (!open) {
@@ -60,7 +56,6 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
     isOpen, isSubmitting, hasError, errorMessage, userId: user?.id 
   });
 
-  // Always render the dialog as open
   return (
     <Dialog open={true} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -123,9 +118,9 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
         )}
 
         <TenantSetupForm 
-          onSubmit={(values) => {
+          onSubmit={async (values) => {
             console.log("[TenantSetupDialog] Form submitted with values:", values);
-            handleSubmit(values);
+            await handleSubmit(values);
           }}
           isSubmitting={isSubmitting}
           hasError={hasError}
