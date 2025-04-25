@@ -286,7 +286,11 @@ const Categories = () => {
     }
 
     setLocalCategories(prev => [newCategory, ...prev]);
-    logCategoryActivity("Created", newCategory);
+    try {
+      await logCategoryActivity("Created", newCategory);
+    } catch (error) {
+      console.error("Error logging category activity:", error);
+    }
     setIsAddDialogOpen(false);
   };
 
@@ -305,7 +309,13 @@ const Categories = () => {
     setLocalCategories(prev => 
       prev.map(cat => cat.id === updatedCategory.id ? updatedCategory : cat)
     );
-    logCategoryActivity("Updated", updatedCategory);
+    
+    try {
+      await logCategoryActivity("Updated", updatedCategory);
+    } catch (error) {
+      console.error("Error logging category activity:", error);
+    }
+    
     setIsEditDialogOpen(false);
     setCurrentCategory(null);
   };
@@ -337,7 +347,11 @@ const Categories = () => {
       
       const deletedCategory = localCategories.find(cat => cat.id === categoryId);
       if (deletedCategory) {
-        logCategoryActivity("Deleted", deletedCategory);
+        try {
+          await logCategoryActivity("Deleted", deletedCategory);
+        } catch (error) {
+          console.error("Error logging deletion activity:", error);
+        }
       }
       
       toast.success("Category deleted successfully");
