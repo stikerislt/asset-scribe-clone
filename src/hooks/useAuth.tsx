@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Session, User, AuthChangeEvent } from "@supabase/supabase-js";
+import { Session, User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
 type AuthContextType = {
@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, newSession) => {
+      async (event, newSession) => {
         console.log("Auth state change:", event);
         setSession(newSession);
         setUser(newSession?.user ?? null);
@@ -41,11 +41,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event === "SIGNED_IN") {
           localStorage.removeItem('pendingVerificationEmail');
           
+          // Clear any activity data on sign in to prevent seeing other users' activities
+          localStorage.removeItem('activities');
+          
           // Check if this is right after email verification
           const params = new URLSearchParams(window.location.hash);
           if (params.get("type") === "recovery" || params.get("type") === "signup") {
             toast.success("Email verified successfully!");
+            
+            // Direct to onboarding regardless of onboarding status to ensure user sets up tenant
             navigate("/onboarding");
+          } else {
+            // Check if user has completed onboarding
+            const { data, error } = await supabase.rpc('has_completed_onboarding', {
+              user_id: newSession?.user?.id
+            });
+
+            if (error) {
+              console.error("Error checking onboarding status:", error);
+            }
+
+            // Always navigate to onboarding if not completed yet
+            if (!data && newSession?.user) {
+              console.log("User has not completed onboarding, redirecting...");
+              navigate("/onboarding");
+            }
           }
         }
 
@@ -80,6 +100,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       
+      // Clear any existing activities in localStorage to prevent seeing other users' data
+      localStorage.removeItem('activities');
+      
       toast.success("Login successful");
       
       // Check if user has completed onboarding
@@ -101,6 +124,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = async (email: string, password: string, fullName: string) => {
     try {
       localStorage.setItem('pendingVerificationEmail', email);
+      
+      // Clear any existing activities to ensure a fresh start
+      localStorage.removeItem('activities');
       
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -135,6 +161,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toast.error("Logout failed: " + error.message);
       return;
     }
+    
+    // Clear all activities on logout for security
+    localStorage.removeItem('activities');
+    
     toast.success("Logged out successfully");
     navigate("/auth/login");
   };

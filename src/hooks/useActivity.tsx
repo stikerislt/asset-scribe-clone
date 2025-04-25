@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Package, Users, Tag, AlertTriangle } from 'lucide-react';
 import { useTenant } from '@/hooks/useTenant';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface Activity {
   id: string;
@@ -9,7 +10,9 @@ export interface Activity {
   timestamp: string;
   icon?: React.ReactNode;
   category: 'asset' | 'user' | 'category' | 'license' | 'system';
-  tenant_id?: string; // Added tenant_id to track which tenant this activity belongs to
+  tenant_id?: string;
+  user_id?: string;
+  created_at?: string;
 }
 
 interface ActivityContextType {
@@ -30,77 +33,77 @@ const formatTimestamp = () => {
 export const ActivityProvider = ({ children }: { children: ReactNode }) => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const { currentTenant } = useTenant();
+  const { user } = useAuth();
 
-  // Load activities from localStorage on mount, filtering by current tenant
   useEffect(() => {
-    try {
-      // Get all saved activities
-      const savedActivities = localStorage.getItem('activities');
-      if (savedActivities) {
-        // Parse activities
-        const parsedActivities = JSON.parse(savedActivities);
-        
-        // Filter for current tenant if one is selected
-        const filteredActivities = currentTenant?.id
-          ? parsedActivities.filter((act: Activity) => !act.tenant_id || act.tenant_id === currentTenant.id)
-          : parsedActivities;
+    if (!user) return;
 
-        // Reassign icons based on category
-        const activitiesWithIcons = filteredActivities.map((activity: Partial<Activity>) => ({
-          ...activity,
-          icon: activity.category ? getActivityIcon(activity.category) : undefined
-        }));
+    const savedActivities = localStorage.getItem('activities');
+    if (savedActivities) {
+      const parsedActivities = JSON.parse(savedActivities);
+      
+      const filteredActivities = parsedActivities.filter((act: Activity) => {
+        const userMatches = !act.user_id || act.user_id === user.id;
+        const tenantMatches = !act.tenant_id || !currentTenant?.id || act.tenant_id === currentTenant?.id;
         
-        setActivities(activitiesWithIcons);
-      }
-    } catch (error) {
-      console.error('Failed to load activities from localStorage:', error);
+        return userMatches && tenantMatches;
+      });
+
+      const activitiesWithIcons = filteredActivities.map((activity: Partial<Activity>) => ({
+        ...activity,
+        icon: activity.category ? getActivityIcon(activity.category) : undefined
+      }));
+      
+      setActivities(activitiesWithIcons);
     }
-  }, [currentTenant?.id]); // Re-run when tenant changes
+  }, [currentTenant?.id, user?.id]);
 
-  // Save activities to localStorage when they change
   useEffect(() => {
+    if (!user) return;
+
     try {
-      // Get all existing activities
       const savedActivities = localStorage.getItem('activities');
       let allActivities = savedActivities ? JSON.parse(savedActivities) : [];
       
-      // Remove icon before storing (can't serialize React elements)
       const currentActivitiesToStore = activities.map(({ icon, ...rest }) => rest);
       
       if (currentTenant?.id) {
-        // For tenant-specific activities:
-        // 1. Keep activities from other tenants
-        const otherTenantActivities = allActivities.filter(
-          (act: Activity) => act.tenant_id && act.tenant_id !== currentTenant.id
+        const otherActivities = allActivities.filter(
+          (act: Activity) => 
+            (act.tenant_id && act.tenant_id !== currentTenant.id) || 
+            (act.user_id && act.user_id !== user.id)
         );
         
-        // 2. Replace current tenant's activities with the new set
-        allActivities = [...otherTenantActivities, ...currentActivitiesToStore];
+        allActivities = [...otherActivities, ...currentActivitiesToStore];
       } else {
-        // If no tenant is selected, just store the current activities
-        allActivities = currentActivitiesToStore;
+        const otherUserActivities = allActivities.filter(
+          (act: Activity) => act.user_id && act.user_id !== user.id
+        );
+        
+        allActivities = [...otherUserActivities, ...currentActivitiesToStore];
       }
       
-      // Store all activities
       localStorage.setItem('activities', JSON.stringify(allActivities));
     } catch (error) {
       console.error('Failed to save activities to localStorage:', error);
     }
-  }, [activities, currentTenant?.id]);
+  }, [activities, currentTenant?.id, user?.id]);
 
   const logActivity = (activity: Omit<Activity, 'id' | 'timestamp'>) => {
-    // Ensure tenant_id is set if available
+    if (!user) return;
+
     const tenant_id = currentTenant?.id;
+    const user_id = user?.id;
     
     const newActivity: Activity = {
       ...activity,
-      tenant_id, // Add tenant_id to activity
+      tenant_id,
+      user_id,
       id: Date.now().toString(),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      created_at: new Date().toISOString()
     };
 
-    // Prepend new activity to the list and keep only the latest 20 activities
     setActivities(prev => [newActivity, ...prev].slice(0, 20));
   };
 
@@ -123,7 +126,6 @@ export const useActivity = () => {
   return context;
 };
 
-// Icon helpers for common activity types
 export const getActivityIcon = (category: Activity['category']) => {
   switch (category) {
     case 'asset':

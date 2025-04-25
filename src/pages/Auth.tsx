@@ -20,13 +20,26 @@ const Auth = () => {
   const [verificationError, setVerificationError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check for email confirmation error in URL
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const error = hashParams.get('error_description');
-    if (error === 'Email link is invalid or has expired') {
-      setVerificationError('The verification link has expired. Please request a new one.');
-    }
-  }, []);
+    // Check for auth errors in URL hash params (from email verification)
+    const checkHashParams = () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const error = hashParams.get('error_description');
+      const type = hashParams.get('type');
+      
+      // If there's an error in the URL
+      if (error === 'Email link is invalid or has expired') {
+        setVerificationError('The verification link has expired. Please request a new one.');
+      }
+      
+      // Clear the URL hash params after reading them
+      if (error || type) {
+        // Clear the hash without reloading the page
+        window.history.replaceState(null, '', location.pathname + location.search);
+      }
+    };
+    
+    checkHashParams();
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (location.pathname === "/auth/signup") {
@@ -38,8 +51,31 @@ const Auth = () => {
     }
   }, [location.pathname]);
 
+  // If user is authenticated, redirect to dashboard or onboarding
   if (user) {
-    const from = location.state?.from?.pathname || "/dashboard";
+    const checkOnboardingStatus = async () => {
+      try {
+        const { data, error } = await supabase.rpc('has_completed_onboarding', {
+          user_id: user.id
+        });
+        
+        if (error) throw error;
+        
+        // Redirect based on onboarding status
+        if (data) {
+          return "/dashboard";
+        } else {
+          return "/onboarding";
+        }
+      } catch (error) {
+        console.error("Error checking onboarding status:", error);
+        // Default to onboarding if there's an error
+        return "/onboarding";
+      }
+    };
+    
+    // Use from location state if available, otherwise check onboarding status
+    const from = location.state?.from?.pathname || "/onboarding";
     return <Navigate to={from} replace />;
   }
 
@@ -110,17 +146,21 @@ const Auth = () => {
   function toggleMode() {
     if (authMode === "login") {
       setAuthMode("signup");
+      navigate("/auth/signup", { replace: true });
     } else {
       setAuthMode("login");
+      navigate("/auth/login", { replace: true });
     }
   }
 
   function showForgotPassword() {
     setAuthMode("forgot-password");
+    navigate("/auth/forgot-password", { replace: true });
   }
 
   function showLogin() {
     setAuthMode("login");
+    navigate("/auth/login", { replace: true });
   }
 };
 
