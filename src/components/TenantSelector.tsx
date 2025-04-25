@@ -20,6 +20,12 @@ export function TenantSelector() {
 
   const createTenant = async () => {
     try {
+      // First, get the current user
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) {
+        throw new Error('User not authenticated');
+      }
+
       const { data: tenant, error } = await supabase
         .from('tenants')
         .insert({
@@ -32,11 +38,12 @@ export function TenantSelector() {
 
       if (error) throw error;
 
-      // Create membership for the user
+      // Create membership for the user with the required user_id
       const { error: membershipError } = await supabase
         .from('tenant_memberships')
         .insert({
           tenant_id: tenant.id,
+          user_id: authData.user.id, // Add the user_id here
           is_owner: true,
           is_primary: true,
           role: 'admin'
