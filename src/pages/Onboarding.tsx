@@ -7,64 +7,76 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export default function Onboarding() {
-  const [showDialog, setShowDialog] = useState(true);
+  const [showDialog, setShowDialog] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
   const validateProfile = async () => {
+    if (!user?.id) {
+      setIsValidating(false);
+      return;
+    }
+
     try {
-      console.log("[Onboarding] Checking profile for user:", user?.id);
+      console.log("[Onboarding] Checking profile for user:", user.id);
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
-        .eq('id', user?.id)
+        .select('onboarding_completed')
+        .eq('id', user.id)
         .single();
         
       console.log("[Onboarding] Profile check result:", { 
         profile, 
         error: profileError,
-        errorCode: profileError?.code,
-        userId: user?.id 
+        hasProfile: !!profile,
+        onboardingCompleted: profile?.onboarding_completed
       });
 
-      // Check if the profile exists and has completed onboarding
+      if (profileError) {
+        throw profileError;
+      }
+
+      // If onboarding is completed, redirect to dashboard
       if (profile?.onboarding_completed) {
-        console.log("[Onboarding] User has already completed onboarding, redirecting to dashboard");
+        console.log("[Onboarding] User has completed onboarding, redirecting to dashboard");
         navigate("/dashboard");
         return;
       }
 
+      // Show dialog if onboarding is not completed
+      console.log("[Onboarding] User has not completed onboarding, showing dialog");
       setShowDialog(true);
     } catch (error: any) {
       console.error("[Onboarding] Profile validation error:", error);
-      toast.error("Failed to validate user profile");
+      toast.error("Failed to validate user profile. Please try refreshing the page.");
     } finally {
+      console.log("[Onboarding] Setting isValidating to false");
       setIsValidating(false);
     }
   };
 
-  // Effect to handle auth state and profile validation
   useEffect(() => {
-    console.log("[Onboarding] Starting validation with state:", {
+    console.log("[Onboarding] Component state:", {
       loading,
       userId: user?.id,
-      isValidating
+      isValidating,
+      showDialog
     });
     
     if (loading) {
-      console.log("[Onboarding] Still loading auth state, skipping validation");
+      console.log("[Onboarding] Still loading auth state");
       return;
     }
     
     if (!user) {
-      console.log("[Onboarding] No user session, redirecting to login");
+      console.log("[Onboarding] No user found, redirecting to login");
       navigate("/auth/login");
       return;
     }
 
     validateProfile();
-  }, [user, loading, navigate]);
+  }, [user, loading]);
 
   if (loading || isValidating) {
     return (
@@ -72,7 +84,9 @@ export default function Onboarding() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p>Preparing your setup...</p>
-          <p className="text-sm text-muted-foreground mt-2">Validating your account...</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            {loading ? "Loading your account..." : "Validating your profile..."}
+          </p>
         </div>
       </div>
     );
@@ -88,7 +102,11 @@ export default function Onboarding() {
     navigate("/dashboard");
   };
 
-  console.log("[Onboarding] Rendering with state:", { showDialog, isValidating, userId: user?.id });
+  console.log("[Onboarding] Rendering with state:", { 
+    showDialog, 
+    isValidating, 
+    userId: user?.id 
+  });
 
   return (
     <div className="min-h-screen bg-background">
