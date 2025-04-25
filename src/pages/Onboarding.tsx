@@ -49,61 +49,42 @@ export default function Onboarding() {
         setStatusMessage("Creating organization...");
         setProgressValue(50);
         
-        // Need to use RPC function or service role to bypass RLS
-        // For now, let's try using the service role client (if available) or an RPC function
-        // This is a safer approach than disabling RLS
-        const { data: tenant, error: tenantError } = await supabase
-          .rpc('create_tenant_for_user', { 
-            tenant_name: 'My Organization',
-            org_size: 'small',
-            org_industry: 'Other'
-          });
-          
-        if (tenantError) {
-          console.error("Error creating tenant:", tenantError);
-          // Fallback approach - try direct insert but this might still fail depending on RLS
-          const directInsertResult = await supabase
-            .from('tenants')
-            .insert({
-              name: 'My Organization',
-              organization_size: 'small',
-              industry: 'Other',
-              // Explicitly set the owner_id to the current user
-              owner_id: user.id
-            })
-            .select()
-            .single();
-            
-          if (directInsertResult.error) {
-            throw directInsertResult.error;
-          }
-          
-          // Use the tenant from direct insert
-          setProgressValue(70);
-          setStatusMessage("Setting up membership...");
-          
-          // Step 3: Create membership for the user
-          const { error: membershipError } = await supabase
-            .from('tenant_memberships')
-            .insert({
-              tenant_id: directInsertResult.data.id,
-              user_id: user.id,
-              is_owner: true,
-              is_primary: true,
-              role: 'admin'
-            });
-          
-          if (membershipError) throw membershipError;
-        } else {
-          setProgressValue(70);
-          setStatusMessage("Organization created successfully!");
-          // If the RPC function was successful, we don't need to create a membership
-          // as the RPC function should have taken care of that
+        // Call our edge function to create a tenant
+        const supabaseUrl = "https://tbefdkwtjpbonuunxytk.supabase.co";
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          throw new Error("No valid session found. Please log in again.");
         }
         
-        // Step 4: Mark onboarding as completed
+        const createTenantResponse = await fetch(
+          `${supabaseUrl}/functions/v1/create-tenant-for-user`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+              tenant_name: 'My Organization',
+              org_size: 'small',
+              org_industry: 'Other'
+            })
+          }
+        );
+        
+        if (!createTenantResponse.ok) {
+          const errorData = await createTenantResponse.json();
+          throw new Error(`Failed to create organization: ${errorData.error || createTenantResponse.statusText}`);
+        }
+        
+        const tenantData = await createTenantResponse.json();
+        console.log("Tenant created:", tenantData);
+        
         setProgressValue(90);
         setStatusMessage("Finalizing account setup...");
+        
+        // Step 3: Mark onboarding as completed
         await completeOnboarding();
         
         setProgressValue(100);
