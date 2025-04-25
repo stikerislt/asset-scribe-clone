@@ -9,6 +9,7 @@ import { toast } from "sonner";
 export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { user } = useAuth();
   const { logActivity } = useActivity();
 
@@ -20,8 +21,13 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     
     setIsSubmitting(true);
     setHasError(false);
+    setErrorMessage(null);
 
+    // Begin transaction
     try {
+      console.log("[useTenantSetup] Starting tenant creation with data:", data);
+      
+      // Step 1: Create tenant
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
         .insert({
@@ -35,6 +41,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         .select();
 
       if (tenantError) {
+        console.error("[useTenantSetup] Tenant creation error:", tenantError);
         throw new Error(`Failed to create tenant: ${tenantError.message}`);
       }
 
@@ -42,8 +49,10 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         throw new Error("No data returned after tenant creation");
       }
 
+      console.log("[useTenantSetup] Tenant created successfully:", tenantData[0]);
       const newTenantId = tenantData[0].id;
 
+      // Step 2: Create tenant membership
       const { error: membershipError } = await supabase
         .from('tenant_memberships')
         .insert({
@@ -55,9 +64,13 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         });
 
       if (membershipError) {
+        console.error("[useTenantSetup] Membership creation error:", membershipError);
         throw new Error(`Failed to create membership: ${membershipError.message}`);
       }
 
+      console.log("[useTenantSetup] Tenant membership created successfully");
+
+      // Step 3: Create user role
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
@@ -66,18 +79,26 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         });
 
       if (roleError) {
+        console.error("[useTenantSetup] User role creation error:", roleError);
         throw new Error(`Failed to create user role: ${roleError.message}`);
       }
 
+      console.log("[useTenantSetup] User role created successfully");
+
+      // Step 4: Update profile onboarding status
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ onboarding_completed: true })
         .eq('id', user.id);
 
       if (profileError) {
+        console.error("[useTenantSetup] Profile update error:", profileError);
         throw new Error(`Failed to update profile: ${profileError.message}`);
       }
 
+      console.log("[useTenantSetup] Profile updated successfully");
+
+      // Log activity
       await logActivity({
         title: "Organization Created",
         description: `Created organization ${data.name}`,
@@ -87,9 +108,10 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       toast.success("Organization created successfully!");
       onComplete();
     } catch (error: any) {
-      console.error("[TenantSetupDialog] Error during organization setup:", error);
+      console.error("[useTenantSetup] Error during organization setup:", error);
       setHasError(true);
-      toast.error(error.message);
+      setErrorMessage(error.message);
+      toast.error(error.message || "Failed to create organization");
     } finally {
       setIsSubmitting(false);
     }
@@ -98,6 +120,7 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
   return {
     handleSubmit,
     isSubmitting,
-    hasError
+    hasError,
+    errorMessage
   };
 }
