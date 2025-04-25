@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -326,5 +327,64 @@ export const deleteUser = async (userId: string): Promise<boolean> => {
     console.error("Error deleting user:", error);
     toast.error(error.message || "Failed to delete user");
     return false;
+  }
+};
+
+// Function to check user's session status
+export const checkUserSessionStatus = async (userId: string): Promise<boolean> => {
+  try {
+    // Call the RPC function that creates a session record
+    const { data: hasSessions, error: sessionError } = await supabase.rpc('has_user_session', {
+      user_id_param: userId
+    });
+
+    if (sessionError) {
+      console.error("Error checking user session status:", sessionError);
+      return false;
+    }
+
+    return !!hasSessions;
+  } catch (error) {
+    console.error("Error in checkUserSessionStatus:", error);
+    return false;
+  }
+};
+
+// Function to get auth user status
+export const getAuthUserStatus = async (userId: string): Promise<{
+  confirmed_at: string | null;
+  email_confirmed_at: string | null;
+  last_sign_in_at: string | null;
+} | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error("No active session found");
+      return null;
+    }
+    
+    const supabaseUrl = "https://tbefdkwtjpbonuunxytk.supabase.co";
+    const getUserStatusEndpoint = `${supabaseUrl}/functions/v1/get-user-status`;
+    
+    const response = await fetch(getUserStatusEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ userId })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Error response from get-user-status function:", response.status, errorText);
+      return null;
+    }
+    
+    const result = await response.json();
+    return result.user || null;
+  } catch (error) {
+    console.error("Error getting auth user status:", error);
+    return null;
   }
 };

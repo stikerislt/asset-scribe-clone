@@ -1,4 +1,19 @@
 
+-- Create a function to check if a user has a session record
+CREATE OR REPLACE FUNCTION public.has_user_session(user_id_param UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM auth.sessions
+    WHERE user_id = user_id_param
+  );
+END;
+$$;
+
 -- Create a function to insert a session record for a user
 CREATE OR REPLACE FUNCTION public.create_user_session_record(user_id_param UUID)
 RETURNS VOID

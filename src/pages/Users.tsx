@@ -10,7 +10,11 @@ import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserRole, isAdmin, updateUserRole, updateUserRoleByEmail, getAllUserRoles, createUser } from "@/lib/api/userRoles";
+import { 
+  UserRole, isAdmin, updateUserRole, updateUserRoleByEmail, getAllUserRoles, 
+  createUser, transferTenantOwnership, canDeleteUser, deleteUser,
+  checkUserSessionStatus, getAuthUserStatus
+} from "@/lib/api/userRoles";
 import { EnhancedUser } from "@/types/user";
 import { UserSearch } from "@/components/users/UserSearch";
 import { UsersTable } from "@/components/users/UsersTable";
@@ -19,9 +23,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { UserActionButtons } from "@/components/users/UserActionButtons";
 import { UserList } from "@/components/users/UserList";
 import { UserDialogs } from "@/components/users/UserDialogs";
-import { transferTenantOwnership, canDeleteUser } from "@/lib/api/userRoles";
 import { UserDeleteDialog } from "@/components/users/UserDeleteDialog";
-import { deleteUser } from "@/lib/api/userRoles";
 
 const Users = () => {
   const { currentTenant } = useTenant();
@@ -155,32 +157,13 @@ const Users = () => {
 
       const userIds = profiles.map(profile => profile.id);
       
-      const { data: userSessionsData, error: userSessionsError } = await supabase
-        .from('sessions')
-        .select('user_id')
-        .in('user_id', userIds)
-        .distinct();
-      
-      if (userSessionsError) {
-        console.error('Error fetching user sessions:', userSessionsError);
-      }
-      
       const loggedInUsers = new Set();
-      userSessionsData?.forEach(session => {
-        loggedInUsers.add(session.user_id);
-      });
       
-      interface AuthUser {
-        id: string;
-        confirmed_at: string | null;
-        email_confirmed_at: string | null;
-        last_sign_in_at: string | null;
-      }
-      
-      const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) {
-        console.error('Error fetching auth users:', authError);
+      for (const userId of userIds) {
+        const hasActiveSession = await checkUserSessionStatus(userId);
+        if (hasActiveSession) {
+          loggedInUsers.add(userId);
+        }
       }
       
       const authUsersMap = new Map<string, {
@@ -189,16 +172,12 @@ const Users = () => {
         last_sign_in_at: string | null;
       }>();
       
-      const authUsers = authResponse?.users || [];
-      authUsers.forEach((authUser: any) => {
-        if (authUser && authUser.id) {
-          authUsersMap.set(authUser.id, {
-            confirmed_at: authUser.confirmed_at || null,
-            email_confirmed_at: authUser.email_confirmed_at || null,
-            last_sign_in_at: authUser.last_sign_in_at || null,
-          });
+      for (const userId of userIds) {
+        const authUserData = await getAuthUserStatus(userId);
+        if (authUserData) {
+          authUsersMap.set(userId, authUserData);
         }
-      });
+      }
       
       const userRolesData = await getAllUserRoles();
       
@@ -211,7 +190,7 @@ const Users = () => {
         const isOwner = ownershipMap.get(profile.id) || profile.id === ownerId;
         const authUserData = authUsersMap.get(profile.id);
         
-        let invitationStatus: "active" | "pending";
+        let invitationStatus: "active" | "pending" = "pending";
         
         if (isOwner) {
           invitationStatus = "active";
@@ -222,8 +201,6 @@ const Users = () => {
                  authUserData.email_confirmed_at || 
                  authUserData.last_sign_in_at)) {
           invitationStatus = "active";
-        } else {
-          invitationStatus = "pending";
         }
         
         const userDbRole = isOwner ? 'admin' as UserRole : (roleMap.get(profile.id) as UserRole || null);
@@ -543,7 +520,6 @@ const Users = () => {
           fetchUsers(); // Refresh the list
         }
       }
-      
     } catch (error) {
       console.error('Error syncing users to tenant:', error);
       toast.error('Failed to sync users to organization');
