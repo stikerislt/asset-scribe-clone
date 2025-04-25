@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Crown } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Define the schema for form validation
@@ -58,9 +58,10 @@ interface UserFormProps {
   isSubmitting: boolean;
   defaultValues?: Partial<UserFormValues>;
   isEditMode?: boolean;
+  isOwner?: boolean;
 }
 
-export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValues, isEditMode = false }: UserFormProps) {
+export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValues, isEditMode = false, isOwner = false }: UserFormProps) {
   // Define validation schema based on mode
   const schema = isEditMode 
     ? userFormSchema.omit({ password: true }).merge(
@@ -73,16 +74,22 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValue
   // Initialize the form
   const form = useForm<UserFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues || {
-      name: "",
-      email: "",
-      password: "",
-      role: "User",
-      active: true,
-    },
+    defaultValues: isOwner && defaultValues 
+      ? { ...defaultValues, role: "Admin" } // Force Admin role for owners
+      : defaultValues || {
+          name: "",
+          email: "",
+          password: "",
+          role: "User",
+          active: true,
+        },
   });
 
   const handleSubmit = (values: UserFormValues) => {
+    // If the user is an owner, always submit with Admin role regardless of selection
+    if (isOwner) {
+      values.role = "Admin";
+    }
     onSubmit(values);
   };
 
@@ -161,14 +168,23 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValue
           name="role"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>User Role</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel>User Role</FormLabel>
+                {isOwner && (
+                  <span className="inline-flex items-center text-amber-600 text-sm">
+                    <Crown className="h-3.5 w-3.5 mr-1" />
+                    Organization Owner
+                  </span>
+                )}
+              </div>
               <Select 
                 onValueChange={field.onChange} 
                 defaultValue={field.value}
                 value={field.value}
+                disabled={isOwner} // Disable role selection for owners
               >
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className={isOwner ? "bg-amber-50" : ""}>
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                 </FormControl>
@@ -181,7 +197,9 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValue
                 </SelectContent>
               </Select>
               <FormDescription>
-                The user's permission level in the system.
+                {isOwner 
+                  ? "Organization owners automatically have Admin privileges." 
+                  : "The user's permission level in the system."}
               </FormDescription>
               <FormMessage />
             </FormItem>

@@ -184,13 +184,16 @@ const Users = () => {
             (authUserData.confirmed_at || authUserData.email_confirmed_at || authUserData.last_sign_in_at) 
               ? "active" as const : "pending" as const;
         }
+        
+        // If the user is an owner, always set dbRole to 'admin' regardless of what's in the database
+        const userDbRole = isOwner ? 'admin' as UserRole : (roleMap.get(profile.id) as UserRole || null);
             
         const user: EnhancedUser = {
           id: profile.id,
           name: profile.full_name || 'Unnamed User',
           email: profile.email || 'No email provided',
           role: profile.id === currentUser?.id ? 'Admin' : 'User',
-          dbRole: roleMap.get(profile.id) as UserRole || null,
+          dbRole: userDbRole,
           active: true,
           isOwner: isOwner,
           invitationStatus: invitationStatus
@@ -299,10 +302,13 @@ const Users = () => {
       
       if (error) throw error;
       
-      const newDbRole = formValues.role.toLowerCase() as UserRole;
-      if (selectedUser.dbRole !== newDbRole) {
-        const success = await updateUserRole(selectedUser.id, newRole);
-        if (!success) throw new Error("Failed to update role");
+      // Don't change the role if the user is an owner - they should remain admin
+      if (!selectedUser.isOwner) {
+        const newDbRole = formValues.role.toLowerCase() as UserRole;
+        if (selectedUser.dbRole !== newDbRole) {
+          const success = await updateUserRole(selectedUser.id, newDbRole);
+          if (!success) throw new Error("Failed to update role");
+        }
       }
       
       logActivity({
@@ -314,13 +320,14 @@ const Users = () => {
       
       toast.success(`User ${formValues.name} updated successfully`);
       
+      // When updating users in the state, respect owner status for role display
       setUsers(prev => prev.map(user => 
         user.id === selectedUser.id 
           ? { 
               ...user, 
               name: formValues.name, 
               email: formValues.email, 
-              dbRole: newDbRole, 
+              dbRole: user.isOwner ? 'admin' : formValues.role.toLowerCase() as UserRole, 
               active: formValues.active 
             } 
           : user
