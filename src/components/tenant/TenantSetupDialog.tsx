@@ -1,10 +1,11 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { TenantSetupForm } from "./TenantSetupForm";
 import { useTenantSetup } from "./hooks/useTenantSetup";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Info, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
@@ -24,6 +25,11 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
   });
   const [showHelpInfo, setShowHelpInfo] = useState(false);
   const { logout, user } = useAuth();
+  
+  // Force dialog to be open when the component mounts
+  useEffect(() => {
+    console.log("[TenantSetupDialog] Component mounted with isOpen:", isOpen);
+  }, []);
   
   const handleOpenChange = (open: boolean) => {
     // Always prevent dialog from closing manually

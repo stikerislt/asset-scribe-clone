@@ -7,17 +7,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export default function Onboarding() {
-  const [showDialog, setShowDialog] = useState(false);
-  const [isValidating, setIsValidating] = useState(true);
+  const [showDialog, setShowDialog] = useState(true); // Set to true by default
+  const [isValidating, setIsValidating] = useState(false); // Start with false to avoid blocking UI
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
+  console.log("[Onboarding] Initial render state:", { 
+    showDialog, 
+    isValidating, 
+    loading,
+    userId: user?.id 
+  });
+
   const validateProfile = async () => {
     if (!user?.id) {
+      console.log("[Onboarding] No user ID available, cannot validate profile");
       setIsValidating(false);
       return;
     }
 
+    setIsValidating(true);
     try {
       console.log("[Onboarding] Checking profile for user:", user.id);
       const { data: profile, error: profileError } = await supabase
@@ -33,7 +42,7 @@ export default function Onboarding() {
         onboardingCompleted: profile?.onboarding_completed
       });
 
-      if (profileError) {
+      if (profileError && profileError.code !== 'PGRST116') {
         throw profileError;
       }
 
@@ -45,11 +54,13 @@ export default function Onboarding() {
       }
 
       // Show dialog if onboarding is not completed
-      console.log("[Onboarding] User has not completed onboarding, showing dialog");
-      setShowDialog(true);
+      console.log("[Onboarding] User has not completed onboarding, ensuring dialog is shown");
+      setShowDialog(true); // Ensure dialog is shown
     } catch (error: any) {
       console.error("[Onboarding] Profile validation error:", error);
       toast.error("Failed to validate user profile. Please try refreshing the page.");
+      // Show dialog anyway in case of error
+      setShowDialog(true);
     } finally {
       console.log("[Onboarding] Setting isValidating to false");
       setIsValidating(false);
@@ -57,7 +68,7 @@ export default function Onboarding() {
   };
 
   useEffect(() => {
-    console.log("[Onboarding] Component state:", {
+    console.log("[Onboarding] Component state in effect:", {
       loading,
       userId: user?.id,
       isValidating,
@@ -78,15 +89,23 @@ export default function Onboarding() {
     validateProfile();
   }, [user, loading]);
 
-  if (loading || isValidating) {
+  // Force dialog to show after a small delay if still not showing
+  useEffect(() => {
+    if (user && !loading && !isValidating && !showDialog) {
+      console.log("[Onboarding] Dialog not showing after validation, forcing it to show");
+      const timer = setTimeout(() => {
+        setShowDialog(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [user, loading, isValidating, showDialog]);
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Preparing your setup...</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            {loading ? "Loading your account..." : "Validating your profile..."}
-          </p>
+          <p>Loading your account...</p>
         </div>
       </div>
     );
@@ -102,12 +121,13 @@ export default function Onboarding() {
     navigate("/dashboard");
   };
 
-  console.log("[Onboarding] Rendering with state:", { 
+  console.log("[Onboarding] Final render state:", { 
     showDialog, 
     isValidating, 
     userId: user?.id 
   });
 
+  // Always show the dialog if we have a user and we're not loading
   return (
     <div className="min-h-screen bg-background">
       <TenantSetupDialog 
