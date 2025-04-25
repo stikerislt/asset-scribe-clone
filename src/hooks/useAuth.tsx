@@ -89,19 +89,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (authError) throw authError;
       if (!authData.user) throw new Error("Signup failed. Please try again.");
 
-      // Use database function to create tenant - bypassing RLS
-      const { data: functionData, error: functionError } = await supabase.rpc(
-        'handle_new_tenant_signup', 
-        { 
-          user_id: authData.user.id,
-          user_name: fullName,
-          user_email: email
-        }
-      );
+      // Create tenant and membership directly without using RPC
+      // Step 2: Create a new tenant for the user
+      const tenantName = `${fullName}'s Organization`;
+      const { data: tenantData, error: tenantError } = await supabase
+        .from('tenants')
+        .insert({
+          name: tenantName,
+          description: 'Default organization',
+          owner_id: authData.user.id
+        })
+        .select()
+        .single();
       
-      if (functionError) {
-        console.error("Error creating tenant via function:", functionError);
-        throw new Error(`Failed to create organization: ${functionError.message}`);
+      if (tenantError) {
+        console.error("Error creating tenant:", tenantError);
+        throw new Error(`Failed to create organization: ${tenantError.message}`);
+      }
+
+      // Step 3: Create tenant membership with admin role
+      if (tenantData) {
+        const { error: membershipError } = await supabase
+          .from('tenant_memberships')
+          .insert({
+            tenant_id: tenantData.id,
+            user_id: authData.user.id,
+            role: 'admin',
+            is_primary: true,
+            is_owner: true
+          });
+        
+        if (membershipError) {
+          console.error("Error creating membership:", membershipError);
+          throw new Error(`Failed to create membership: ${membershipError.message}`);
+        }
+
+        // Step 4: Create user role record
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role: 'admin'
+          });
+          
+        if (roleError) {
+          console.error("Error creating user role:", roleError);
+          // Non-blocking error - don't throw
+        }
       }
 
       toast({
