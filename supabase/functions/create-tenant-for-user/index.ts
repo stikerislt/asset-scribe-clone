@@ -70,7 +70,7 @@ serve(async (req) => {
 
     if (tenantError) {
       return new Response(
-        JSON.stringify({ error: "Failed to create tenant", details: tenantError }),
+        JSON.stringify({ error: "Failed to set up account", details: tenantError }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -92,7 +92,7 @@ serve(async (req) => {
     if (membershipError) {
       return new Response(
         JSON.stringify({
-          error: "Failed to create tenant membership",
+          error: "Failed to complete account setup",
           details: membershipError,
         }),
         {
@@ -107,7 +107,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         tenant_id: tenant.id,
-        message: "Tenant created successfully",
+        message: "Account setup completed successfully",
       }),
       {
         status: 200,
@@ -116,7 +116,7 @@ serve(async (req) => {
     );
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: "Internal server error", details: error.message }),
+      JSON.stringify({ error: "Account setup failed", details: error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -124,3 +124,4 @@ serve(async (req) => {
     );
   }
 });
+
