@@ -1,4 +1,3 @@
-
 import { Navigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -13,11 +12,25 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  const { data: userRole, isLoading: roleLoading } = useQuery({
-    queryKey: ['user-role', user?.id],
+  const { data: userAccess, isLoading: accessLoading } = useQuery({
+    queryKey: ['user-access', user?.id],
     queryFn: async () => {
-      if (!user?.id) return 'user';
+      if (!user?.id) return { role: 'user', isOwner: false };
       
+      // Check if the user is an owner of any tenant
+      const { data: ownerData, error: ownerError } = await supabase
+        .from('tenant_memberships')
+        .select('is_owner')
+        .eq('user_id', user.id)
+        .eq('is_owner', true)
+        .single();
+          
+      // If the user is an owner, they have admin access
+      if (!ownerError && ownerData && ownerData.is_owner) {
+        return { role: 'admin', isOwner: true };
+      }
+      
+      // Otherwise, check their role from user_roles table
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -25,27 +38,15 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         .single();
       
       if (error || !data) {
-        // Check if the user is an owner of any tenant
-        const { data: ownerData, error: ownerError } = await supabase
-          .from('tenant_memberships')
-          .select('is_owner')
-          .eq('user_id', user.id)
-          .eq('is_owner', true)
-          .single();
-          
-        // If the user is an owner, give them admin role by default
-        if (!ownerError && ownerData && ownerData.is_owner) {
-          return 'admin';
-        }
-        
-        return 'user';
+        return { role: 'user', isOwner: false };
       }
-      return data.role;
+      
+      return { role: data.role, isOwner: false };
     },
     enabled: !!user
   });
 
-  if (loading || roleLoading) {
+  if (loading || accessLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
@@ -60,11 +61,18 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
   // Check role-based access
   if (requiredRole) {
     const hasAccess = (() => {
+      // Tenant owners always have access to everything (admin level)
+      if (userAccess?.isOwner) {
+        return true;
+      }
+      
+      const role = userAccess?.role || 'user';
+      
       switch (requiredRole) {
         case 'admin':
-          return userRole === 'admin';
+          return role === 'admin';
         case 'manager':
-          return userRole === 'admin' || userRole === 'manager';
+          return role === 'admin' || role === 'manager';
         case 'user':
           return true; // all authenticated users can access user-level routes
         default:

@@ -27,85 +27,103 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-const getMenuItemsByRole = (role: string) => {
-  // Base menu items available to all roles
-  const baseMenu = [
-    {
-      title: "Dashboard",
-      path: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "Assets",
-      path: "/assets",
-      icon: Package,
-    },
-  ];
-
-  // Additional items for managers and admins
-  const managerMenu = [
-    {
-      title: "Employees",
-      path: "/employees",
-      icon: Users,
-    },
-    {
-      title: "Categories",
-      path: "/categories",
-      icon: Tag,
-    },
-    {
-      title: "Analytics",
-      path: "/analytics",
-      icon: BarChart3,
-    },
-    {
-      title: "Users",
-      path: "/users",
-      icon: Shield,
-    },
-  ];
-
-  // Settings only for admins
-  const adminMenu = [
-    {
-      title: "Settings",
-      path: "/settings",
-      icon: Settings,
-    },
-  ];
-
+const getMenuItemsByRole = (role: string, isOwner: boolean) => {
+  // If the user is an owner, they should have admin access regardless of their role
+  if (isOwner) {
+    return getAdminMenuItems();
+  }
+  
   switch (role) {
     case 'admin':
-      return [...baseMenu, ...managerMenu, ...adminMenu];
+      return getAdminMenuItems();
     case 'manager':
-      return [...baseMenu, ...managerMenu];
+      return getManagerMenuItems();
     default: // user role
-      return baseMenu;
+      return getUserMenuItems();
   }
 };
+
+// Base menu items available to all roles
+const getUserMenuItems = () => [
+  {
+    title: "Dashboard",
+    path: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Assets",
+    path: "/assets",
+    icon: Package,
+  },
+];
+
+// Additional items for managers
+const getManagerMenuItems = () => [
+  ...getUserMenuItems(),
+  {
+    title: "Employees",
+    path: "/employees",
+    icon: Users,
+  },
+  {
+    title: "Categories",
+    path: "/categories",
+    icon: Tag,
+  },
+  {
+    title: "Analytics",
+    path: "/analytics",
+    icon: BarChart3,
+  },
+  {
+    title: "Users",
+    path: "/users",
+    icon: Shield,
+  },
+];
+
+// All items for admins and owners
+const getAdminMenuItems = () => [
+  ...getManagerMenuItems(),
+  {
+    title: "Settings",
+    path: "/settings",
+    icon: Settings,
+  },
+];
 
 export function AppSidebar() {
   const { logout, user } = useAuth();
 
-  // Fetch user role
-  const { data: userRole = 'user' } = useQuery({
-    queryKey: ['user-role', user?.id],
+  // Fetch user role and owner status
+  const { data: userInfo = { role: 'user', isOwner: false } } = useQuery({
+    queryKey: ['user-info', user?.id],
     queryFn: async () => {
-      if (!user?.id) return 'user';
+      if (!user?.id) return { role: 'user', isOwner: false };
       
-      const { data, error } = await supabase
+      // Get user role
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .single();
       
-      if (error || !data) return 'user';
-      return data.role;
+      // Check if user is a tenant owner
+      const { data: ownerData, error: ownerError } = await supabase
+        .from('tenant_memberships')
+        .select('is_owner')
+        .eq('user_id', user.id)
+        .eq('is_owner', true)
+        .single();
+      
+      const isOwner = !ownerError && ownerData && ownerData.is_owner === true;
+      const role = roleError || !roleData ? 'user' : roleData.role;
+      
+      return { role, isOwner };
     },
   });
 
-  const menuItems = getMenuItemsByRole(userRole);
+  const menuItems = getMenuItemsByRole(userInfo.role, userInfo.isOwner);
 
   const handleLogout = async () => {
     try {
