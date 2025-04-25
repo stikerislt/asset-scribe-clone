@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TenantSetupValues } from "../types/tenant-setup";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,8 +10,18 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [creationTimeout, setCreationTimeout] = useState<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
   const { logActivity } = useActivity();
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (creationTimeout) {
+        clearTimeout(creationTimeout);
+      }
+    };
+  }, [creationTimeout]);
 
   const handleSubmit = async (data: TenantSetupValues) => {
     if (!user) {
@@ -23,6 +33,17 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     setIsSubmitting(true);
     setHasError(false);
     setErrorMessage(null);
+
+    // Set a timeout to prevent hanging indefinitely
+    const timeout = setTimeout(() => {
+      console.log("[useTenantSetup] Operation timed out after 20 seconds");
+      setIsSubmitting(false);
+      setHasError(true);
+      setErrorMessage("Operation timed out. Please try again.");
+      toast.error("Organization creation timed out. Please try again.");
+    }, 20000);
+    
+    setCreationTimeout(timeout);
 
     try {
       console.log("[useTenantSetup] Submitting tenant data:", data);
@@ -92,21 +113,38 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         console.log("[useTenantSetup] Profile updated successfully");
       }
 
+      // Clear the timeout since we succeeded
+      if (creationTimeout) {
+        clearTimeout(creationTimeout);
+        setCreationTimeout(null);
+      }
+
       // Log activity
-      await logActivity({
-        title: "Organization Created",
-        description: `Created organization ${data.name}`,
-        category: 'system',
-        tenant_id: tenantData.id
-      });
+      try {
+        await logActivity({
+          title: "Organization Created",
+          description: `Created organization ${data.name}`,
+          category: 'system',
+          tenant_id: tenantData.id
+        });
+      } catch (activityError) {
+        console.error("[useTenantSetup] Failed to log activity, but continuing:", activityError);
+      }
 
       toast.success("Organization created successfully!");
       
       // Add a small delay before completing to ensure Supabase has time to update
       setTimeout(() => {
+        console.log("[useTenantSetup] Setup complete, triggering onComplete callback");
         onComplete();
       }, 500);
     } catch (error: any) {
+      // Clear the timeout if there's an error
+      if (creationTimeout) {
+        clearTimeout(creationTimeout);
+        setCreationTimeout(null);
+      }
+      
       console.error("[useTenantSetup] Error during organization setup:", error);
       setHasError(true);
       setErrorMessage(error.message || "Failed to create organization");

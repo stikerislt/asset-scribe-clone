@@ -10,7 +10,7 @@ export default function Onboarding() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Simplified approach - just log the current state
+  // Simplified approach - just log the current state and show the dialog
   useEffect(() => {
     console.log("[Onboarding] Page loaded with user:", user?.id);
   }, [user]);
@@ -21,15 +21,17 @@ export default function Onboarding() {
     return <Navigate to="/auth/login" replace />;
   }
 
+  const handleComplete = () => {
+    console.log("[Onboarding] Setup completed, navigating to dashboard");
+    setShowDialog(false);
+    navigate("/dashboard");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <TenantSetupDialog 
         isOpen={showDialog} 
-        onComplete={() => {
-          console.log("[Onboarding] Setup completed, navigating to dashboard");
-          setShowDialog(false);
-          navigate("/dashboard");
-        }}
+        onComplete={handleComplete}
       />
     </div>
   );

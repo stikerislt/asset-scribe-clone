@@ -15,7 +15,12 @@ interface TenantSetupDialogProps {
 }
 
 export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps) {
-  const { handleSubmit, isSubmitting, hasError, errorMessage } = useTenantSetup({ onComplete });
+  const { handleSubmit, isSubmitting, hasError, errorMessage } = useTenantSetup({ 
+    onComplete: () => {
+      console.log("[TenantSetupDialog] onComplete callback triggered");
+      onComplete();
+    } 
+  });
   const [showHelpInfo, setShowHelpInfo] = useState(false);
   const { logout, user } = useAuth();
   
@@ -118,7 +123,10 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
         )}
 
         <TenantSetupForm 
-          onSubmit={handleSubmit}
+          onSubmit={(values) => {
+            console.log("[TenantSetupDialog] Form submitted with values:", values);
+            handleSubmit(values);
+          }}
           isSubmitting={isSubmitting}
           hasError={hasError}
         />
