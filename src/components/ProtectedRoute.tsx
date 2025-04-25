@@ -24,7 +24,22 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         .eq('user_id', user.id)
         .single();
       
-      if (error || !data) return 'user';
+      if (error || !data) {
+        // Check if the user is an owner of any tenant
+        const { data: ownerData, error: ownerError } = await supabase
+          .from('tenant_memberships')
+          .select('is_owner')
+          .eq('user_id', user.id)
+          .eq('is_owner', true)
+          .single();
+          
+        // If the user is an owner, give them admin role by default
+        if (!ownerError && ownerData && ownerData.is_owner) {
+          return 'admin';
+        }
+        
+        return 'user';
+      }
       return data.role;
     },
     enabled: !!user

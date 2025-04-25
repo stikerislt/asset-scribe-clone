@@ -1,3 +1,4 @@
+
 import { RouteObject } from "react-router-dom";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
@@ -15,6 +16,7 @@ import NotFound from "@/pages/NotFound";
 import { AppLayout } from "@/components/AppLayout";
 import UpdatePassword from "@/pages/UpdatePassword";
 import Onboarding from "@/pages/Onboarding";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 /**
  * Public routes accessible to all users
