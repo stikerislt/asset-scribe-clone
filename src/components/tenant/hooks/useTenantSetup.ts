@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { TenantSetupValues } from "../types/tenant-setup";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +13,6 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
   const { user } = useAuth();
   const { logActivity } = useActivity();
 
-  // Clear timeout on unmount
   useEffect(() => {
     return () => {
       if (creationTimeout) {
@@ -24,7 +22,6 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
   }, [creationTimeout]);
 
   const handleSubmit = async (data: TenantSetupValues): Promise<void> => {
-    // Comprehensive logging of input data
     console.log("[useTenantSetup] Starting tenant creation with data:", {
       ...data,
       userId: user?.id,
@@ -44,7 +41,6 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     setHasError(false);
     setErrorMessage(null);
 
-    // Set a timeout to prevent hanging indefinitely
     const timeout = setTimeout(() => {
       console.error("[useTenantSetup] Operation timed out after 20 seconds");
       setIsSubmitting(false);
@@ -56,7 +52,6 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     setCreationTimeout(timeout);
 
     try {
-      // Detailed session verification
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
         console.error("[useTenantSetup] Session retrieval error:", sessionError);
@@ -70,7 +65,6 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       
       console.log("[useTenantSetup] Session confirmed:", sessionData.session.user.id);
 
-      // Comprehensive profile check
       const { data: profileData, error: profileCheckError } = await supabase
         .from('profiles')
         .select('id, onboarding_completed, email')
@@ -89,7 +83,6 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
       console.log("[useTenantSetup] User profile verified:", profileData);
 
-      // Tenant creation with comprehensive error handling
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
         .insert({
@@ -114,7 +107,6 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       
       console.log("[useTenantSetup] Tenant created successfully:", tenantData.id);
 
-      // Create tenant membership with error handling
       const { error: membershipError } = await supabase
         .from('tenant_memberships')
         .insert({
@@ -132,7 +124,6 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       
       console.log("[useTenantSetup] Membership created successfully");
 
-      // Update profile onboarding status
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ onboarding_completed: true })
@@ -140,18 +131,15 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
       if (profileError) {
         console.error("[useTenantSetup] Profile update error:", profileError);
-        // Don't throw here, as the essential parts of setup are complete
       } else {
         console.log("[useTenantSetup] Profile updated successfully");
       }
 
-      // Clear the timeout since we succeeded
       if (creationTimeout) {
         clearTimeout(creationTimeout);
         setCreationTimeout(null);
       }
 
-      // Log activity with comprehensive error handling
       try {
         await logActivity({
           title: "Organization Created",
@@ -165,13 +153,11 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
 
       toast.success("Organization created successfully!");
       
-      // Add a small delay before completing to ensure Supabase has time to update
       setTimeout(() => {
         console.log("[useTenantSetup] Setup complete, triggering onComplete callback");
         onComplete();
       }, 500);
     } catch (error: any) {
-      // Clear the timeout if there's an error
       if (creationTimeout) {
         clearTimeout(creationTimeout);
         setCreationTimeout(null);
