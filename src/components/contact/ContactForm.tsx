@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { mail } from "lucide-react";
+import { Mail } from "lucide-react";
 
 export function ContactForm({ onClose }: { onClose: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -95,7 +95,7 @@ export function ContactForm({ onClose }: { onClose: () => void }) {
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>
-        <mail className="mr-2 h-4 w-4" />
+        <Mail className="mr-2 h-4 w-4" />
         {isLoading ? "Sending..." : "Send Message"}
       </Button>
     </form>
