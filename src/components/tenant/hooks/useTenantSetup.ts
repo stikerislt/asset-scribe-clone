@@ -10,25 +10,10 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [creationTimeout, setCreationTimeout] = useState<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
   const { logActivity } = useActivity();
 
-  useEffect(() => {
-    return () => {
-      if (creationTimeout) {
-        clearTimeout(creationTimeout);
-      }
-    };
-  }, [creationTimeout]);
-
   const handleSubmit = async (data: TenantSetupValues): Promise<void> => {
-    console.log("[useTenantSetup] Starting tenant creation with data:", {
-      ...data,
-      userId: user?.id,
-      userEmail: user?.email
-    });
-    
     if (!user) {
       const errorMsg = "No authenticated user found";
       console.error(`[useTenantSetup] ${errorMsg}`);
@@ -42,84 +27,51 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
     setHasError(false);
     setErrorMessage(null);
 
-    const timeout = setTimeout(() => {
-      console.error("[useTenantSetup] Operation timed out after 20 seconds");
-      setIsSubmitting(false);
-      setHasError(true);
-      setErrorMessage("Operation timed out. Please try again.");
-      toast.error("Organization creation timed out. Please try again.");
-    }, 20000);
-    
-    setCreationTimeout(timeout);
-
     try {
-      // Force refresh the session to ensure we have the latest auth state
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      // Force refresh the session first
+      const { data: sessionData, error: sessionError } = await supabase.auth.refreshSession();
+      console.log("[useTenantSetup] Session refresh result:", { 
+        success: !!sessionData.session,
+        error: sessionError,
+        userId: sessionData.session?.user?.id 
+      });
       
-      if (refreshError) {
-        console.error("[useTenantSetup] Session refresh error:", refreshError);
-        throw new Error(`Auth refresh error: ${refreshError.message}`);
+      if (sessionError || !sessionData.session) {
+        throw new Error("Failed to refresh auth session");
       }
 
-      if (!refreshData.session) {
-        console.error("[useTenantSetup] No session after refresh");
-        throw new Error("Authentication session lost. Please log in again.");
-      }
-      
-      console.log("[useTenantSetup] Session refreshed:", refreshData.session.user.id);
-
-      // Verify that the user exists in profiles
-      const { data: profileData, error: profileCheckError } = await supabase
+      // Verify user profile exists
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, onboarding_completed, email')
+        .select('id, onboarding_completed')
         .eq('id', user.id)
         .single();
         
-      if (profileCheckError) {
-        console.error("[useTenantSetup] Profile check error:", profileCheckError);
-        throw new Error(`Profile verification failed: ${profileCheckError.message}`);
-      }
+      console.log("[useTenantSetup] Profile check result:", { profile, error: profileError });
 
-      if (!profileData) {
-        console.error("[useTenantSetup] Profile not found for user:", user.id);
-        
-        // Try to create the profile if missing
-        const { data: newProfile, error: profileInsertError } = await supabase
+      if (profileError) {
+        // If profile doesn't exist, try to create it
+        const { error: createProfileError } = await supabase
           .from('profiles')
           .insert({
             id: user.id,
             email: user.email,
             full_name: user.user_metadata?.full_name || '',
             onboarding_completed: false
-          })
-          .select()
-          .single();
+          });
           
-        if (profileInsertError) {
-          console.error("[useTenantSetup] Failed to create missing profile:", profileInsertError);
-          throw new Error(`User profile creation failed: ${profileInsertError.message}`);
+        if (createProfileError) {
+          console.error("[useTenantSetup] Failed to create profile:", createProfileError);
+          throw new Error("Failed to setup user profile");
         }
-        
-        console.log("[useTenantSetup] Created missing user profile:", newProfile);
-      } else {
-        console.log("[useTenantSetup] User profile verified:", profileData);
       }
-
-      // Check if the user already has tenant memberships
-      const { data: existingMemberships, error: membershipCheckError } = await supabase
-        .from('tenant_memberships')
-        .select('tenant_id')
-        .eq('user_id', user.id);
-        
-      if (membershipCheckError) {
-        console.warn("[useTenantSetup] Error checking existing memberships:", membershipCheckError);
-      } else if (existingMemberships && existingMemberships.length > 0) {
-        console.warn("[useTenantSetup] User already has existing memberships:", existingMemberships);
-      }
-
-      // Create the tenant with explicit auth context
-      console.log("[useTenantSetup] Creating tenant with owner_id:", user.id);
       
+      console.log("[useTenantSetup] Creating tenant with data:", {
+        ...data,
+        owner_id: user.id
+      });
+
+      // Create the tenant with explicit owner_id
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
         .insert({
@@ -128,31 +80,19 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
           website: data.website || null,
           industry: data.industry,
           organization_size: data.organizationSize,
-          owner_id: user.id
+          owner_id: user.id // Explicitly set owner_id
         })
         .select()
         .single();
       
       if (tenantError) {
         console.error("[useTenantSetup] Tenant creation error:", tenantError);
-        
-        // Check for RLS issues by logging additional information
-        console.log("[useTenantSetup] Debugging auth state:", { 
-          uid: supabase.auth.getSession().then(s => console.log("Current session:", s)),
-          hasValidSession: !!refreshData.session,
-          sessionUserMatches: refreshData.session?.user.id === user.id
-        });
-        
         throw new Error(`Failed to create organization: ${tenantError.message}`);
       }
 
-      if (!tenantData) {
-        throw new Error("No data returned after organization creation");
-      }
-      
-      console.log("[useTenantSetup] Tenant created successfully:", tenantData.id);
+      console.log("[useTenantSetup] Tenant created successfully:", tenantData);
 
-      // Create membership with explicit auth context
+      // Create membership for the owner
       const { error: membershipError } = await supabase
         .from('tenant_memberships')
         .insert({
@@ -167,49 +107,30 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         console.error("[useTenantSetup] Membership creation error:", membershipError);
         throw new Error(`Failed to set up organization membership: ${membershipError.message}`);
       }
-      
+
       console.log("[useTenantSetup] Membership created successfully");
 
       // Mark onboarding as completed
-      const { error: profileError } = await supabase
+      const { error: profileUpdateError } = await supabase
         .from('profiles')
         .update({ onboarding_completed: true })
         .eq('id', user.id);
 
-      if (profileError) {
-        console.error("[useTenantSetup] Profile update error:", profileError);
-      } else {
-        console.log("[useTenantSetup] Profile updated successfully");
+      if (profileUpdateError) {
+        console.error("[useTenantSetup] Profile update error:", profileUpdateError);
       }
 
-      if (creationTimeout) {
-        clearTimeout(creationTimeout);
-        setCreationTimeout(null);
-      }
-
-      try {
-        await logActivity({
-          title: "Organization Created",
-          description: `Created organization ${data.name}`,
-          category: 'system',
-          tenant_id: tenantData.id
-        });
-      } catch (activityError) {
-        console.error("[useTenantSetup] Failed to log activity:", activityError);
-      }
+      await logActivity({
+        title: "Organization Created",
+        description: `Created organization ${data.name}`,
+        category: 'system',
+        tenant_id: tenantData.id
+      });
 
       toast.success("Organization created successfully!");
+      onComplete();
       
-      setTimeout(() => {
-        console.log("[useTenantSetup] Setup complete, triggering onComplete callback");
-        onComplete();
-      }, 500);
     } catch (error: any) {
-      if (creationTimeout) {
-        clearTimeout(creationTimeout);
-        setCreationTimeout(null);
-      }
-      
       console.error("[useTenantSetup] Error during organization setup:", error);
       setHasError(true);
       setErrorMessage(error.message || "Failed to create organization");

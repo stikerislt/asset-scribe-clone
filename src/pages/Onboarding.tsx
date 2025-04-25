@@ -14,6 +14,8 @@ export default function Onboarding() {
 
   // Validate auth status when component loads
   useEffect(() => {
+    let isMounted = true;
+
     const validateAuthStatus = async () => {
       if (loading) return;
       
@@ -24,7 +26,13 @@ export default function Onboarding() {
       }
       
       try {
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        // Force refresh the session
+        const { data: sessionData, error: sessionError } = await supabase.auth.refreshSession();
+        console.log("[Onboarding] Session refresh result:", { 
+          success: !!sessionData.session,
+          error: sessionError,
+          userId: sessionData.session?.user?.id 
+        });
         
         if (sessionError || !sessionData.session) {
           console.error("[Onboarding] Session validation error:", sessionError || "No session found");
@@ -33,8 +41,6 @@ export default function Onboarding() {
           return;
         }
         
-        console.log("[Onboarding] Session validation passed:", sessionData.session.user.id);
-        
         // Ensure user has a profile record
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -42,12 +48,15 @@ export default function Onboarding() {
           .eq('id', user.id)
           .single();
           
+        console.log("[Onboarding] Profile check result:", { profile, error: profileError });
+
         if (profileError && profileError.code !== 'PGRST116') { // PGRST116 = no rows returned
           console.error("[Onboarding] Profile check error:", profileError);
+          throw new Error("Failed to verify user profile");
         }
         
         if (!profile) {
-          console.log("[Onboarding] Profile not found, creating one");
+          console.log("[Onboarding] Creating new profile for user:", user.id);
           
           const { error: createError } = await supabase
             .from('profiles')
@@ -60,36 +69,43 @@ export default function Onboarding() {
             
           if (createError) {
             console.error("[Onboarding] Failed to create profile:", createError);
+            throw new Error("Failed to create user profile");
           }
+          
+          console.log("[Onboarding] Profile created successfully");
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("[Onboarding] Auth validation error:", error);
+        toast.error(error.message || "Failed to validate user session");
+        navigate("/auth/login");
       } finally {
-        setIsValidating(false);
+        if (isMounted) {
+          setIsValidating(false);
+        }
       }
     };
     
     validateAuthStatus();
+    return () => {
+      isMounted = false;
+    };
   }, [user, loading, navigate]);
 
-  // If still validating auth, show loading
   if (loading || isValidating) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p>Preparing your setup...</p>
+          <p className="text-sm text-muted-foreground mt-2">Validating your account...</p>
         </div>
       </div>
     );
   }
 
-  // If no user is logged in, redirect to login
   if (!user) {
     return <Navigate to="/auth/login" replace />;
   }
-
-  console.log("[Onboarding] Page loaded with user:", user.id);
 
   const handleComplete = () => {
     console.log("[Onboarding] Setup completed, navigating to dashboard");
