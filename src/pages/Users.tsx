@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -130,19 +131,37 @@ const Users = () => {
       
       const userIds = profiles.map(profile => profile.id);
       
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      // Fix type issue by properly typing the auth.admin.listUsers() response
+      interface AuthUser {
+        id: string;
+        confirmed_at: string | null;
+        email_confirmed_at: string | null;
+        last_sign_in_at: string | null;
+      }
+      
+      // Fix the type issue with authUsers by explicitly typing it
+      const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers();
       
       if (authError) {
         console.error('Error fetching auth users:', authError);
       }
       
-      const authUsersMap = new Map();
-      authUsers?.users?.forEach(authUser => {
-        authUsersMap.set(authUser.id, {
-          confirmed_at: authUser.confirmed_at,
-          email_confirmed_at: authUser.email_confirmed_at,
-          last_sign_in_at: authUser.last_sign_in_at,
-        });
+      const authUsersMap = new Map<string, {
+        confirmed_at: string | null;
+        email_confirmed_at: string | null;
+        last_sign_in_at: string | null;
+      }>();
+      
+      // Safely access the users array with proper type checking
+      const authUsers = authResponse?.users || [];
+      authUsers.forEach((authUser: any) => {
+        if (authUser && authUser.id) {
+          authUsersMap.set(authUser.id, {
+            confirmed_at: authUser.confirmed_at || null,
+            email_confirmed_at: authUser.email_confirmed_at || null,
+            last_sign_in_at: authUser.last_sign_in_at || null,
+          });
+        }
       });
       
       const userRolesData = await getAllUserRoles();
@@ -155,11 +174,13 @@ const Users = () => {
       const formattedUsers: EnhancedUser[] = profiles.map(profile => {
         const isOwner = ownershipMap.get(profile.id) || profile.id === ownerId;
         const authUserData = authUsersMap.get(profile.id);
+        
+        // Explicitly cast the invitationStatus to the union type
         const invitationStatus = authUserData && 
           (authUserData.confirmed_at || authUserData.email_confirmed_at || authUserData.last_sign_in_at) 
-            ? 'active' : 'pending';
+            ? 'active' as const : 'pending' as const;
             
-        const user = {
+        const user: EnhancedUser = {
           id: profile.id,
           name: profile.full_name || 'Unnamed User',
           email: profile.email || 'No email provided',
