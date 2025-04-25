@@ -1,49 +1,32 @@
-
-import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { TenantSetupDialog } from "@/components/tenant/TenantSetupDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Onboarding() {
-  const [showDialog, setShowDialog] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check if user has already completed onboarding
-    const checkOnboarding = async () => {
-      if (!user) return;
-      
-      const { data, error } = await supabase.rpc('has_completed_onboarding', {
-        user_id: user.id
-      });
-      
-      if (error) {
-        console.error("Error checking onboarding status:", error);
-        return;
-      }
-      
-      if (data) {
-        navigate("/dashboard");
-      }
-    };
-
-    checkOnboarding();
-  }, [user, navigate]);
-
+  // If no user, redirect to login
   if (!user) {
     return <Navigate to="/auth/login" replace />;
   }
 
-  const handleComplete = () => {
-    setShowDialog(false);
+  // Otherwise, mark onboarding as completed and redirect to dashboard
+  const completeOnboarding = async () => {
+    try {
+      await supabase
+        .from('profiles')
+        .update({ onboarding_completed: true })
+        .eq('id', user.id);
+    } catch (error) {
+      console.error("Error updating onboarding status:", error);
+    }
+    
     navigate("/dashboard");
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <TenantSetupDialog isOpen={showDialog} onComplete={handleComplete} />
-    </div>
-  );
+  // Execute onboarding completion
+  completeOnboarding();
+
+  return null;
 }
