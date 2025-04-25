@@ -1,10 +1,14 @@
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Box, Package, Infinity } from "lucide-react";
+import { ContactDialog } from "@/components/contact/ContactDialog";
 
 export const PricingSection = () => {
+  const [isContactOpen, setIsContactOpen] = useState(false);
+
   return (
     <section className="py-24 px-6 bg-secondary/30">
       <div className="max-w-7xl mx-auto">
@@ -129,12 +133,14 @@ export const PricingSection = () => {
                 SLA guarantees
               </li>
             </ul>
-            <Button className="w-full" variant="outline" asChild>
-              <Link to="mailto:contact@example.com">Contact Sales</Link>
+            <Button className="w-full" variant="outline" onClick={() => setIsContactOpen(true)}>
+              Contact Sales
             </Button>
           </motion.div>
         </div>
       </div>
+
+      <ContactDialog open={isContactOpen} onOpenChange={setIsContactOpen} />
     </section>
   );
 };
