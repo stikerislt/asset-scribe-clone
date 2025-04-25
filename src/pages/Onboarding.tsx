@@ -28,30 +28,40 @@ export default function Onboarding() {
     try {
       console.log("[Onboarding] Checking onboarding status for user:", user.id);
       
-      const { data, error } = await supabase.rpc('has_completed_onboarding', {
+      // Add explicit timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Request timed out")), 10000)
+      );
+      
+      const fetchPromise = supabase.rpc('has_completed_onboarding', {
         user_id: user.id
       });
       
+      // Race between the fetch and the timeout
+      const { data, error } = await Promise.race([
+        fetchPromise,
+        timeoutPromise.then(() => { 
+          throw new Error("Request timed out after 10 seconds");
+        })
+      ]) as any;
+      
       if (error) {
         console.error("[Onboarding] Error checking onboarding status:", error);
-        setCheckError(error.message);
-        toast.error("Failed to check onboarding status: " + error.message);
-        setIsChecking(false);
-        return;
+        throw error;
       }
       
-      console.log("[Onboarding] Onboarding status:", data);
+      console.log("[Onboarding] Onboarding status response:", data);
       
       if (data === true) {
         console.log("[Onboarding] User has completed onboarding, redirecting to dashboard");
         navigate("/dashboard");
       } else {
-        console.log("[Onboarding] User needs to complete onboarding");
+        console.log("[Onboarding] User needs to complete onboarding, showing dialog");
         setShowDialog(true);
       }
     } catch (error: any) {
-      console.error("[Onboarding] Error:", error);
-      setCheckError(error.message);
+      console.error("[Onboarding] Error checking onboarding status:", error);
+      setCheckError(error.message || "An unknown error occurred");
       toast.error("An error occurred checking onboarding status. Please try again.");
     } finally {
       setIsChecking(false);
@@ -61,11 +71,17 @@ export default function Onboarding() {
   useEffect(() => {
     // Use a small delay to ensure auth state is fully loaded
     const timer = setTimeout(() => {
+      console.log("[Onboarding] Starting onboarding check for user:", user?.id);
       checkOnboardingStatus();
     }, 500);
 
     return () => clearTimeout(timer);
   }, [user, navigate]);
+
+  // Add debug render logging
+  console.log("[Onboarding] Rendering with state:", { 
+    showDialog, isChecking, checkError, hasUser: !!user 
+  });
 
   if (isChecking) {
     return (
@@ -73,6 +89,7 @@ export default function Onboarding() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           <p className="text-muted-foreground">Checking onboarding status...</p>
+          <p className="text-sm text-muted-foreground">User ID: {user?.id || "Not authenticated"}</p>
         </div>
       </div>
     );
@@ -109,15 +126,27 @@ export default function Onboarding() {
     );
   }
 
+  // If we get here, we should show the tenant setup dialog
   return (
     <div className="min-h-screen bg-background">
-      <TenantSetupDialog 
-        isOpen={showDialog} 
-        onComplete={() => {
-          setShowDialog(false);
-          navigate("/dashboard");
-        }} 
-      />
+      {showDialog ? (
+        <TenantSetupDialog 
+          isOpen={showDialog} 
+          onComplete={() => {
+            setShowDialog(false);
+            navigate("/dashboard");
+          }}
+        />
+      ) : (
+        <div className="flex items-center justify-center min-h-screen">
+          <Button 
+            onClick={() => setShowDialog(true)}
+            variant="default"
+          >
+            Complete Organization Setup
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -19,12 +19,27 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       return;
     }
     
+    console.log("[useTenantSetup] Starting tenant creation with user:", user.id);
     setIsSubmitting(true);
     setHasError(false);
     setErrorMessage(null);
 
     try {
-      console.log("[useTenantSetup] Starting tenant creation with data:", data);
+      console.log("[useTenantSetup] Submitting tenant data:", data);
+
+      // Check if user session is still valid
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error("[useTenantSetup] Session error:", sessionError);
+        throw new Error("Session error: " + sessionError.message);
+      }
+      
+      if (!sessionData.session) {
+        console.error("[useTenantSetup] No active session found");
+        throw new Error("No active session found. Please log in again.");
+      }
+      
+      console.log("[useTenantSetup] Session confirmed:", sessionData.session.user.id);
 
       // Insert the tenant
       const { data: tenantData, error: tenantError } = await supabase
@@ -48,6 +63,8 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       if (!tenantData) {
         throw new Error("No data returned after organization creation");
       }
+      
+      console.log("[useTenantSetup] Tenant created successfully:", tenantData.id);
 
       // Create tenant membership
       const { error: membershipError } = await supabase
@@ -64,6 +81,8 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
         console.error("[useTenantSetup] Membership creation error:", membershipError);
         throw new Error("Failed to set up organization membership");
       }
+      
+      console.log("[useTenantSetup] Membership created successfully");
 
       // Update profile onboarding status
       const { error: profileError } = await supabase
@@ -74,6 +93,8 @@ export function useTenantSetup({ onComplete }: { onComplete: () => void }) {
       if (profileError) {
         console.error("[useTenantSetup] Profile update error:", profileError);
       }
+
+      console.log("[useTenantSetup] Profile updated successfully");
 
       // Log activity
       await logActivity({

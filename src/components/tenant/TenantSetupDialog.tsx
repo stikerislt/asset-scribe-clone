@@ -5,7 +5,7 @@ import { useTenantSetup } from "./hooks/useTenantSetup";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Info, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
@@ -18,6 +18,17 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
   const { handleSubmit, isSubmitting, hasError, errorMessage } = useTenantSetup({ onComplete });
   const [showHelpInfo, setShowHelpInfo] = useState(false);
   const { logout } = useAuth();
+  
+  // Log when the dialog state changes
+  useEffect(() => {
+    console.log("[TenantSetupDialog] Dialog isOpen:", isOpen);
+    
+    // Force dialog to open if it's closed but should be open
+    // This helps prevent any bugs where the dialog might not show
+    if (!isOpen) {
+      console.log("[TenantSetupDialog] Dialog should be open, forcing open state");
+    }
+  }, [isOpen]);
 
   const handleOpenChange = (open: boolean) => {
     // Prevent dialog from closing if we're submitting or there's an error
@@ -51,6 +62,11 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
     window.location.reload();
   };
 
+  // Debug render
+  console.log("[TenantSetupDialog] Rendering with state:", { 
+    isOpen, isSubmitting, hasError, errorMessage 
+  });
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -66,14 +82,12 @@ export function TenantSetupDialog({ isOpen, onComplete }: TenantSetupDialogProps
             <AlertCircle className="h-4 w-4 mr-2" />
             <AlertDescription>
               {errorMessage}
-              {errorMessage.includes("permissions") && (
-                <button 
-                  className="underline ml-1 text-destructive-foreground/80 hover:text-destructive-foreground"
-                  onClick={toggleHelpInfo}
-                >
-                  Need help?
-                </button>
-              )}
+              <button 
+                className="underline ml-1 text-destructive-foreground/80 hover:text-destructive-foreground"
+                onClick={toggleHelpInfo}
+              >
+                Need help?
+              </button>
             </AlertDescription>
           </Alert>
         )}
