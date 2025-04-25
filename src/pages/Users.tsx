@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,9 +87,12 @@ const Users = () => {
       setIsLoading(true);
       
       if (!currentTenant) {
+        console.log("No current tenant, setting users to empty array");
         setUsers([]);
         return;
       }
+      
+      console.log("Fetching users for tenant:", currentTenant.id);
       
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
@@ -103,6 +105,7 @@ const Users = () => {
       }
       
       const ownerId = tenantData?.owner_id;
+      console.log("Tenant owner ID:", ownerId);
       
       const { data: memberships, error: membershipError } = await supabase
         .from('tenant_memberships')
@@ -111,7 +114,10 @@ const Users = () => {
         
       if (membershipError) {
         console.error('Error fetching memberships:', membershipError);
+        throw membershipError;
       }
+
+      console.log("Found memberships:", memberships);
       
       const ownershipMap = new Map();
       memberships?.forEach((membership) => {
@@ -126,9 +132,18 @@ const Users = () => {
         .eq('tenant_id', currentTenant.id);
       
       if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
         throw profilesError;
       }
+
+      console.log("Found profiles:", profiles);
       
+      if (!profiles || profiles.length === 0) {
+        console.log("No profiles found for tenant:", currentTenant.id);
+        setUsers([]);
+        return;
+      }
+
       const userIds = profiles.map(profile => profile.id);
       
       // Fix type issue by properly typing the auth.admin.listUsers() response
