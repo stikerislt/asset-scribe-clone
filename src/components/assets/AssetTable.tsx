@@ -123,7 +123,7 @@ export const AssetTable = ({
               </TableHead>
             ))}
             <TableHead>Status</TableHead>
-            <TableHead>Status Color</TableHead>
+            <TableHead>Condition</TableHead>
             <TableHead className="w-[80px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -184,11 +184,13 @@ export const AssetTable = ({
               </TableCell>
               
               <TableCell>
-                {hasAdminPrivileges && (
-                  <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2">
+                  <StatusColorIndicator color={asset.status_color} size="md" />
+                  
+                  {hasAdminPrivileges && (
                     <RadioGroup 
                       value={asset.status_color || 'green'} 
-                      className="flex flex-row"
+                      className="flex flex-row ml-2"
                       onValueChange={(value) => handleStatusColorChange(asset.id, value as StatusColor)}
                     >
                       <div className="flex items-center space-x-1">
@@ -225,8 +227,8 @@ export const AssetTable = ({
                         />
                       </div>
                     </RadioGroup>
-                  </div>
-                )}
+                  )}
+                </div>
               </TableCell>
               
               <TableCell>
