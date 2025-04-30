@@ -28,8 +28,8 @@ interface Transaction {
   expected_return_date: string | null;
   created_at: string;
   notes: string | null;
-  user_full_name?: string;
-  user_email?: string;
+  user_full_name?: string | null;
+  user_email?: string | null;
 }
 
 interface AssetTransactionHistoryProps {

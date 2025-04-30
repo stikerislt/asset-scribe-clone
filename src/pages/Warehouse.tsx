@@ -44,13 +44,13 @@ interface Transaction {
   expected_return_date: string | null;
   created_at: string;
   notes: string | null;
-  asset: {
+  asset?: {
     id: string;
     name: string;
     tag: string;
     status: string;
   } | null;
-  profiles: {
+  profiles?: {
     full_name: string | null;
     email: string | null;
   } | null;
@@ -107,7 +107,8 @@ const Warehouse = () => {
 
       if (error) throw error;
       
-      return data as Transaction[];
+      // Explicitly cast the data to satisfy TypeScript
+      return (data || []) as unknown as Transaction[];
     },
     enabled: !!currentTenant?.id,
   });
