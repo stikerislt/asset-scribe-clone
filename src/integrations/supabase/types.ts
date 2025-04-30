@@ -60,6 +60,60 @@ export type Database = {
           },
         ]
       }
+      asset_transactions: {
+        Row: {
+          asset_id: string
+          created_at: string
+          expected_return_date: string | null
+          id: string
+          notes: string | null
+          purpose: string | null
+          quantity: number
+          tenant_id: string | null
+          transaction_type: string
+          user_id: string | null
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          expected_return_date?: string | null
+          id?: string
+          notes?: string | null
+          purpose?: string | null
+          quantity: number
+          tenant_id?: string | null
+          transaction_type: string
+          user_id?: string | null
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          expected_return_date?: string | null
+          id?: string
+          notes?: string | null
+          purpose?: string | null
+          quantity?: number
+          tenant_id?: string | null
+          transaction_type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_transactions_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           assigned_to: string | null
@@ -219,6 +273,101 @@ export type Database = {
           },
           {
             foreignKeyName: "employees_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_settings: {
+        Row: {
+          asset_checkout_alerts: boolean | null
+          created_at: string
+          email_notifications: boolean | null
+          id: string
+          low_inventory_alerts: boolean | null
+          low_inventory_threshold: number | null
+          tenant_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_checkout_alerts?: boolean | null
+          created_at?: string
+          email_notifications?: boolean | null
+          id?: string
+          low_inventory_alerts?: boolean | null
+          low_inventory_threshold?: number | null
+          tenant_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_checkout_alerts?: boolean | null
+          created_at?: string
+          email_notifications?: boolean | null
+          id?: string
+          low_inventory_alerts?: boolean | null
+          low_inventory_threshold?: number | null
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean | null
+          message: string
+          notification_type: string
+          related_asset_id: string | null
+          tenant_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message: string
+          notification_type: string
+          related_asset_id?: string | null
+          tenant_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          notification_type?: string
+          related_asset_id?: string | null
+          tenant_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_related_asset_id_fkey"
+            columns: ["related_asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
