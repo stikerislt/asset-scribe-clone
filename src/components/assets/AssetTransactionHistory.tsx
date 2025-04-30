@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -67,8 +68,11 @@ export function AssetTransactionHistory({
 
       if (error) throw error;
       
-      // Cast the data to the correct type
-      return (data || []) as Transaction[];
+      // Cast the data to the correct type and handle the profiles property
+      return (data || []).map(item => ({
+        ...item,
+        profiles: typeof item.profiles === 'object' ? item.profiles : null
+      })) as Transaction[];
     },
   });
 
