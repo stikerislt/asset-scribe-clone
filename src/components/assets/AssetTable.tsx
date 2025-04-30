@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Asset, AssetStatus } from "@/lib/api/assets";
 import { StatusColor } from "@/lib/data";
@@ -36,14 +35,18 @@ interface AssetTableProps {
   assets: Asset[];
   columns: ColumnDef[];
   onDeleteAsset: (asset: Asset) => void;
-  onStatusColorChange: (assetId: string, newColor: StatusColor) => void;
+  onStatusColorChange: (assetId: string, color: StatusColor) => void;
+  onCheckOut?: (asset: Asset) => void;
+  onCheckIn?: (asset: Asset) => void;
 }
 
 export const AssetTable = ({ 
   assets, 
   columns, 
   onDeleteAsset,
-  onStatusColorChange 
+  onStatusColorChange,
+  onCheckOut,
+  onCheckIn 
 }: AssetTableProps) => {
   const { toast } = useToast();
   const { logActivity } = useActivity();
@@ -112,6 +115,63 @@ export const AssetTable = ({
     onStatusColorChange(assetId, newColor);
   };
   
+  const renderActions = (asset: Asset) => {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm">
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">Open menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem asChild>
+            <Link to={`/assets/${asset.id}`}>View Details</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to={`/assets/edit/${asset.id}`}>Edit Asset</Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+
+          {/* Add check out and check in if the callbacks are provided */}
+          {onCheckOut && (
+            <DropdownMenuItem 
+              onClick={() => onCheckOut(asset)}
+              disabled={!asset.qty || asset.qty <= 0}
+            >
+              Check Out
+            </DropdownMenuItem>
+          )}
+          {onCheckIn && (
+            <DropdownMenuItem onClick={() => onCheckIn(asset)}>
+              Check In
+            </DropdownMenuItem>
+          )}
+          
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Set Status Color</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {statusColors.map((color) => (
+                <DropdownMenuItem
+                  key={color}
+                  onClick={() => handleStatusColorChange(asset.id, color)}
+                >
+                  <StatusColorIndicator color={color} className="mr-2" />
+                  {color === null ? "Clear" : capitalizeFirstLetter(color)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => handleDeleteAsset(asset)} className="text-red-600">
+            Delete Asset
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
   return (
     <div className="border rounded-md">
       <Table>
@@ -232,50 +292,7 @@ export const AssetTable = ({
               </TableCell>
               
               <TableCell>
-                {hasAdminPrivileges ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger>
-                      <MoreHorizontal className="h-5 w-5" />
-                      <span className="sr-only">Open menu</span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      
-                      <DropdownMenuItem asChild>
-                        <Link to={`/assets/${asset.id}`}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          View Details
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={`/assets/${asset.id}/edit`}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit Asset
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={`/employees?assign=${asset.id}`}>
-                          <UserPlus className="h-4 w-4 mr-2" />
-                          Assign
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        className="text-red-600"
-                        onClick={() => onDeleteAsset(asset)}
-                      >
-                        <Trash className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to={`/assets/${asset.id}`}>
-                      View
-                    </Link>
-                  </Button>
-                )}
+                {renderActions(asset)}
               </TableCell>
             </TableRow>
           ))}

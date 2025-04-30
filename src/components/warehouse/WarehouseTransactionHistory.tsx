@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Package, ArrowUpRight, ArrowDownRight, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Asset } from "@/lib/api/assets";
 
 import {
   Table,
@@ -18,60 +17,74 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface Transaction {
+interface WarehouseTransaction {
   id: string;
-  asset_id: string;
-  user_id: string;
-  transaction_type: "check_out" | "check_in";
+  warehouse_item_id: string;
+  transaction_type: "add" | "remove";
   quantity: number;
-  purpose: string | null;
-  expected_return_date: string | null;
-  created_at: string;
+  reason: string | null;
   notes: string | null;
+  user_id: string | null;
+  tenant_id: string | null;
+  created_at: string;
   profiles?: {
     full_name: string | null;
     email: string | null;
   } | null;
+  warehouse_items?: {
+    name: string;
+    tag: string;
+  } | null;
 }
 
-interface AssetTransactionHistoryProps {
-  asset: Asset;
+interface WarehouseTransactionHistoryProps {
+  itemId?: string;
   limit?: number;
   showViewAll?: boolean;
+  showItemDetails?: boolean;
 }
 
-export function AssetTransactionHistory({
-  asset,
+export function WarehouseTransactionHistory({
+  itemId,
   limit = 5,
   showViewAll = true,
-}: AssetTransactionHistoryProps) {
+  showItemDetails = false,
+}: WarehouseTransactionHistoryProps) {
   const [showAll, setShowAll] = useState(false);
   const effectiveLimit = showAll ? 100 : limit;
 
   const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ["asset-transactions", asset.id, effectiveLimit],
+    queryKey: [
+      "warehouse-transactions",
+      itemId,
+      effectiveLimit,
+      showItemDetails,
+    ],
     queryFn: async () => {
-      // Use proper typing for the query result
-      type TransactionQueryResult = Omit<Transaction, 'profiles'> & {
-        profiles: { full_name: string | null; email: string | null; } | null;
-      };
-
-      const { data, error } = await supabase
-        .from("asset_transactions")
+      // Build the query
+      let query = supabase
+        .from("warehouse_transactions")
         .select(`
           *,
           profiles(
             full_name,
             email
           )
+          ${showItemDetails ? `,warehouse_items(name, tag)` : ""}
         `)
-        .eq("asset_id", asset.id)
         .order("created_at", { ascending: false })
         .limit(effectiveLimit);
 
+      // If an item ID is specified, filter by it
+      if (itemId) {
+        query = query.eq("warehouse_item_id", itemId);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
-      
-      return (data || []) as TransactionQueryResult[];
+
+      return data as WarehouseTransaction[];
     },
   });
 
@@ -99,11 +112,11 @@ export function AssetTransactionHistory({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
+                    {showItemDetails && <TableHead>Item</TableHead>}
                     <TableHead>Type</TableHead>
-                    <TableHead>Qty</TableHead>
+                    <TableHead>Quantity</TableHead>
                     <TableHead>By</TableHead>
-                    <TableHead>Purpose</TableHead>
-                    <TableHead>Return Date</TableHead>
+                    <TableHead>Reason</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -115,16 +128,28 @@ export function AssetTransactionHistory({
                           "MMM d, yyyy h:mm a"
                         )}
                       </TableCell>
+                      {showItemDetails && (
+                        <TableCell>
+                          {transaction.warehouse_items?.name} (
+                          {transaction.warehouse_items?.tag})
+                        </TableCell>
+                      )}
                       <TableCell>
-                        {transaction.transaction_type === "check_out" ? (
-                          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+                        {transaction.transaction_type === "remove" ? (
+                          <Badge
+                            variant="outline"
+                            className="bg-red-100 text-red-800 border-red-200"
+                          >
                             <ArrowUpRight className="mr-1 h-3 w-3" />
-                            Out
+                            Remove
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                          <Badge
+                            variant="outline"
+                            className="bg-green-100 text-green-800 border-green-200"
+                          >
                             <ArrowDownRight className="mr-1 h-3 w-3" />
-                            In
+                            Add
                           </Badge>
                         )}
                       </TableCell>
@@ -140,17 +165,9 @@ export function AssetTransactionHistory({
                         </div>
                       </TableCell>
                       <TableCell>
-                        {transaction.purpose || (
+                        {transaction.reason || (
                           <span className="text-muted-foreground">-</span>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        {transaction.expected_return_date
-                          ? format(
-                              new Date(transaction.expected_return_date),
-                              "MMM d, yyyy"
-                            )
-                          : null}
                       </TableCell>
                     </TableRow>
                   ))}

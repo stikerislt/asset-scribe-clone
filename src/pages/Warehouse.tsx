@@ -1,28 +1,15 @@
 
 import React, { useState } from 'react';
-import { Package, LogOut, LogIn, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Package, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Asset } from "@/lib/api/assets";
 import { useTenant } from "@/hooks/useTenant";
-import { AssetTransactionDialog } from "@/components/assets/AssetTransactionDialog";
-import { format } from "date-fns";
+import { WarehouseItem, WarehouseItemTransactionDialog } from "@/components/warehouse/WarehouseItemTransactionDialog";
+import { WarehouseItemDialog } from "@/components/warehouse/WarehouseItemDialog";
+import { WarehouseTransactionHistory } from "@/components/warehouse/WarehouseTransactionHistory";
+import { WarehouseItemsTable } from "@/components/warehouse/WarehouseItemsTable";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Tabs,
   TabsContent,
@@ -31,36 +18,21 @@ import {
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { AssetStatusBadge } from "@/components/AssetStatusBadge";
-
-interface Transaction {
-  id: string;
-  asset_id: string;
-  user_id: string;
-  transaction_type: "check_out" | "check_in";
-  quantity: number;
-  purpose: string | null;
-  expected_return_date: string | null;
-  created_at: string;
-  notes: string | null;
-  asset?: {
-    id: string;
-    name: string;
-    tag: string;
-    status: string;
-  } | null;
-  profiles?: {
-    full_name: string | null;
-    email: string | null;
-  } | null;
-}
+import { AssetTransactionDialog } from "@/components/assets/AssetTransactionDialog";
+import { AssetTable } from "@/components/assets/AssetTable";
 
 const Warehouse = () => {
   const { currentTenant } = useTenant();
   const [searchTerm, setSearchTerm] = useState("");
   const [transactionAsset, setTransactionAsset] = useState<Asset | null>(null);
   const [transactionType, setTransactionType] = useState<"check_out" | "check_in">("check_out");
+  
+  // State for warehouse items
+  const [selectedWarehouseItem, setSelectedWarehouseItem] = useState<WarehouseItem | null>(null);
+  const [warehouseItemTransactionType, setWarehouseItemTransactionType] = useState<"add" | "remove">("add");
+  const [isWarehouseTransactionDialogOpen, setIsWarehouseTransactionDialogOpen] = useState(false);
+  const [isAddWarehouseItemDialogOpen, setIsAddWarehouseItemDialogOpen] = useState(false);
+  const [warehouseItemToEdit, setWarehouseItemToEdit] = useState<WarehouseItem | null>(null);
 
   // Fetch assets for the tenant
   const { data: assets = [], isLoading: isLoadingAssets } = useQuery({
@@ -80,35 +52,20 @@ const Warehouse = () => {
     enabled: !!currentTenant?.id,
   });
 
-  // Fetch recent transactions
-  const { data: recentTransactions = [], isLoading: isLoadingTransactions } = useQuery({
-    queryKey: ['recent-transactions', currentTenant?.id],
+  // Fetch warehouse items
+  const { data: warehouseItems = [], isLoading: isLoadingWarehouseItems } = useQuery({
+    queryKey: ['warehouse-items', currentTenant?.id],
     queryFn: async () => {
       if (!currentTenant?.id) return [];
       
       const { data, error } = await supabase
-        .from('asset_transactions')
-        .select(`
-          *,
-          asset:asset_id (
-            id,
-            name,
-            tag,
-            status
-          ),
-          profiles:user_id (
-            full_name,
-            email
-          )
-        `)
-        .eq('tenant_id', currentTenant.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .from('warehouse_items')
+        .select('*')
+        .eq('tenant_id', currentTenant.id);
 
       if (error) throw error;
       
-      // Explicitly cast the data to satisfy TypeScript
-      return (data || []) as unknown as Transaction[];
+      return data as WarehouseItem[];
     },
     enabled: !!currentTenant?.id,
   });
@@ -118,13 +75,49 @@ const Warehouse = () => {
     asset.tag.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const openTransactionDialog = (asset: Asset, type: "check_out" | "check_in") => {
+  const filteredWarehouseItems = warehouseItems.filter(item => 
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.tag.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const openTransactionDialog = (asset: Asset) => {
     setTransactionAsset(asset);
-    setTransactionType(type);
   };
 
   const closeTransactionDialog = () => {
     setTransactionAsset(null);
+  };
+
+  const handleAddWarehouseItem = () => {
+    setWarehouseItemToEdit(null);
+    setIsAddWarehouseItemDialogOpen(true);
+  };
+  
+  const handleEditWarehouseItem = (item: WarehouseItem) => {
+    setWarehouseItemToEdit(item);
+    setIsAddWarehouseItemDialogOpen(true);
+  };
+  
+  const handleWarehouseItemAdd = (item: WarehouseItem) => {
+    setSelectedWarehouseItem(item);
+    setWarehouseItemTransactionType("add");
+    setIsWarehouseTransactionDialogOpen(true);
+  };
+  
+  const handleWarehouseItemRemove = (item: WarehouseItem) => {
+    setSelectedWarehouseItem(item);
+    setWarehouseItemTransactionType("remove");
+    setIsWarehouseTransactionDialogOpen(true);
+  };
+
+  const handleDeleteAsset = () => {
+    // This is just a placeholder to satisfy the AssetTable props
+    // We're not implementing asset deletion in this view
+  };
+
+  const handleStatusColorChange = () => {
+    // This is just a placeholder to satisfy the AssetTable props
+    // We're not implementing status color changes in this view
   };
 
   return (
@@ -133,17 +126,47 @@ const Warehouse = () => {
         <div>
           <h1 className="text-3xl font-bold">Warehouse Management</h1>
           <p className="text-muted-foreground mt-1">
-            Check out and return assets from your inventory
+            Manage warehouse inventory and asset check-outs
           </p>
+        </div>
+        <div className="flex gap-2 mt-4 sm:mt-0">
+          <Button onClick={handleAddWarehouseItem}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Warehouse Item
+          </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="inventory" className="space-y-4">
+      <Tabs defaultValue="warehouse" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="inventory">Inventory</TabsTrigger>
+          <TabsTrigger value="warehouse">Warehouse Items</TabsTrigger>
+          <TabsTrigger value="inventory">Asset Inventory</TabsTrigger>
           <TabsTrigger value="transactions">Recent Transactions</TabsTrigger>
         </TabsList>
         
+        {/* Warehouse Items Tab */}
+        <TabsContent value="warehouse" className="space-y-4">
+          <div className="flex items-center mb-4">
+            <Input
+              placeholder="Search warehouse items..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
+
+          <WarehouseItemsTable 
+            items={filteredWarehouseItems} 
+            isLoading={isLoadingWarehouseItems}
+            onAddTransaction={handleWarehouseItemAdd}
+            onRemoveTransaction={handleWarehouseItemRemove}
+            onEditItem={handleEditWarehouseItem}
+          />
+          
+          <WarehouseTransactionHistory showItemDetails={true} />
+        </TabsContent>
+
+        {/* Assets Tab */}
         <TabsContent value="inventory" className="space-y-4">
           <div className="flex items-center mb-4">
             <Input
@@ -159,135 +182,36 @@ const Warehouse = () => {
               <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
               <p className="text-muted-foreground">Loading inventory...</p>
             </div>
-          ) : filteredAssets.length === 0 ? (
-            <Card>
-              <CardContent className="py-10 text-center">
-                <p className="text-muted-foreground">No assets match your search.</p>
-              </CardContent>
-            </Card>
           ) : (
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Asset Tag</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredAssets.map((asset) => (
-                      <TableRow key={asset.id}>
-                        <TableCell className="font-medium">{asset.tag}</TableCell>
-                        <TableCell>{asset.name}</TableCell>
-                        <TableCell><AssetStatusBadge status={asset.status} /></TableCell>
-                        <TableCell>{asset.qty || 0}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => openTransactionDialog(asset, "check_out")}
-                              disabled={!asset.qty || asset.qty <= 0}
-                            >
-                              <LogOut className="h-4 w-4 mr-1" />
-                              Check Out
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => openTransactionDialog(asset, "check_in")}
-                            >
-                              <LogIn className="h-4 w-4 mr-1" />
-                              Check In
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <AssetTable 
+              assets={filteredAssets}
+              columns={[
+                { id: "tag", label: "Asset Tag", isVisible: true },
+                { id: "name", label: "Name", isVisible: true },
+                { id: "status", label: "Status", isVisible: true },
+                { id: "quantity", label: "Qty", isVisible: true }
+              ]}
+              onDeleteAsset={handleDeleteAsset} 
+              onStatusColorChange={handleStatusColorChange}
+              onCheckOut={(asset) => {
+                setTransactionAsset(asset);
+                setTransactionType("check_out");
+              }}
+              onCheckIn={(asset) => {
+                setTransactionAsset(asset);
+                setTransactionType("check_in");
+              }}
+            />
           )}
         </TabsContent>
 
+        {/* Transactions Tab */}
         <TabsContent value="transactions" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Transactions</CardTitle>
-              <CardDescription>
-                History of recent asset check-outs and check-ins
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {isLoadingTransactions ? (
-                <div className="text-center py-10">
-                  <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-muted-foreground">Loading transactions...</p>
-                </div>
-              ) : recentTransactions.length === 0 ? (
-                <div className="text-center py-10">
-                  <p className="text-muted-foreground">No transactions recorded yet.</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Asset</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>Purpose</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentTransactions.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell>
-                          {format(new Date(transaction.created_at), "MMM d, yyyy h:mm a")}
-                        </TableCell>
-                        <TableCell>
-                          {transaction.asset ? (
-                            <span className="font-medium">{transaction.asset.name} ({transaction.asset.tag})</span>
-                          ) : (
-                            <span className="text-muted-foreground">Unknown asset</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {transaction.transaction_type === "check_out" ? (
-                            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
-                              <ArrowUpRight className="mr-1 h-3 w-3" />
-                              Out
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                              <ArrowDownRight className="mr-1 h-3 w-3" />
-                              In
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>{transaction.quantity}</TableCell>
-                        <TableCell>
-                          {transaction.profiles?.full_name || transaction.profiles?.email || "Unknown user"}
-                        </TableCell>
-                        <TableCell>
-                          {transaction.purpose || <span className="text-muted-foreground">-</span>}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+          <WarehouseTransactionHistory showItemDetails={true} limit={20} />
         </TabsContent>
       </Tabs>
 
+      {/* Asset Transaction Dialog */}
       {transactionAsset && (
         <AssetTransactionDialog
           asset={transactionAsset}
@@ -296,6 +220,23 @@ const Warehouse = () => {
           transactionType={transactionType}
         />
       )}
+
+      {/* Warehouse Item Transaction Dialog */}
+      <WarehouseItemTransactionDialog
+        item={selectedWarehouseItem}
+        isOpen={isWarehouseTransactionDialogOpen}
+        onClose={() => setIsWarehouseTransactionDialogOpen(false)}
+        transactionType={warehouseItemTransactionType}
+      />
+
+      {/* Add/Edit Warehouse Item Dialog */}
+      <WarehouseItemDialog
+        isOpen={isAddWarehouseItemDialogOpen}
+        onClose={() => setIsAddWarehouseItemDialogOpen(false)}
+        defaultValues={warehouseItemToEdit || undefined}
+        isEdit={!!warehouseItemToEdit}
+        itemId={warehouseItemToEdit?.id}
+      />
     </div>
   );
 };

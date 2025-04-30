@@ -68,6 +68,7 @@ export type Database = {
           id: string
           notes: string | null
           purpose: string | null
+          qty: number
           quantity: number
           tenant_id: string | null
           transaction_type: string
@@ -80,6 +81,7 @@ export type Database = {
           id?: string
           notes?: string | null
           purpose?: string | null
+          qty?: number
           quantity: number
           tenant_id?: string | null
           transaction_type: string
@@ -92,6 +94,7 @@ export type Database = {
           id?: string
           notes?: string | null
           purpose?: string | null
+          qty?: number
           quantity?: number
           tenant_id?: string | null
           transaction_type?: string
@@ -519,6 +522,119 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      warehouse_items: {
+        Row: {
+          category: string
+          cost: number | null
+          created_at: string
+          description: string | null
+          id: string
+          location: string | null
+          name: string
+          quantity: number
+          reorder_level: number | null
+          status: string
+          supplier: string | null
+          tag: string
+          tenant_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          category: string
+          cost?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          quantity?: number
+          reorder_level?: number | null
+          status?: string
+          supplier?: string | null
+          tag: string
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          cost?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          quantity?: number
+          reorder_level?: number | null
+          status?: string
+          supplier?: string | null
+          tag?: string
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouse_transactions: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          quantity: number
+          reason: string | null
+          tenant_id: string | null
+          transaction_type: string
+          user_id: string | null
+          warehouse_item_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quantity: number
+          reason?: string | null
+          tenant_id?: string | null
+          transaction_type: string
+          user_id?: string | null
+          warehouse_item_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+          reason?: string | null
+          tenant_id?: string | null
+          transaction_type?: string
+          user_id?: string | null
+          warehouse_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_transactions_warehouse_item_id_fkey"
+            columns: ["warehouse_item_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
