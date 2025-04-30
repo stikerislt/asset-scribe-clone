@@ -8,6 +8,7 @@ import { WarehouseItem, WarehouseItemTransactionDialog } from "@/components/ware
 import { WarehouseItemDialog } from "@/components/warehouse/WarehouseItemDialog";
 import { WarehouseTransactionHistory } from "@/components/warehouse/WarehouseTransactionHistory";
 import { WarehouseItemsTable } from "@/components/warehouse/WarehouseItemsTable";
+import { WarehouseImportExport } from "@/components/warehouse/WarehouseImportExport";
 
 import {
   Tabs,
@@ -84,6 +85,9 @@ const Warehouse = () => {
           </p>
         </div>
         <div className="flex gap-2 mt-4 sm:mt-0">
+          <WarehouseImportExport 
+            items={warehouseItems}
+          />
           <Button onClick={handleAddWarehouseItem}>
             <Plus className="h-4 w-4 mr-1" />
             Add Warehouse Item

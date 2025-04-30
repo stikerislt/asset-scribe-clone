@@ -10,20 +10,20 @@ interface ExportAssetsButtonProps {
 
 export const ExportAssetsButton = ({ assets }: ExportAssetsButtonProps) => {
   const csvHeaders = [
-    { label: "Name", key: "name" },
-    { label: "Tag", key: "tag" },
-    { label: "Category", key: "category" },
-    { label: "Status", key: "status" },
-    { label: "Status Color", key: "status_color" },
-    { label: "Assigned To", key: "assigned_to" },
-    { label: "Model", key: "model" },
-    { label: "Serial", key: "serial" },
-    { label: "Purchase Date", key: "purchase_date" },
-    { label: "Purchase Cost", key: "purchase_cost" },
-    { label: "Location", key: "location" },
-    { label: "Notes", key: "notes" },
-    { label: "Wear", key: "wear" },
-    { label: "Qty", key: "qty" },
+    { label: "name", key: "name" },
+    { label: "tag", key: "tag" },
+    { label: "category", key: "category" },
+    { label: "status", key: "status" },
+    { label: "status_color", key: "status_color" },
+    { label: "assigned_to", key: "assigned_to" },
+    { label: "model", key: "model" },
+    { label: "serial", key: "serial" },
+    { label: "purchase_date", key: "purchase_date" },
+    { label: "purchase_cost", key: "purchase_cost" },
+    { label: "location", key: "location" },
+    { label: "notes", key: "notes" },
+    { label: "wear", key: "wear" },
+    { label: "qty", key: "qty" },
   ];
 
   return (
