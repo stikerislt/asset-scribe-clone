@@ -1,12 +1,13 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Edit, Trash } from "lucide-react";
+import { Plus, Edit, Trash, Folder, FolderIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Category, logCategoryActivity, fetchCategories, normalizeCategoryName } from "@/lib/data";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
+import { CategoryIcon } from "@/components/CategoryIcon";
 
 import {
   Table,
@@ -101,7 +102,7 @@ const Categories = () => {
         .insert({
           name: values.name,
           type: values.type,
-          icon: values.icon,
+          icon: values.icon || "folder", // Default to folder icon if none provided
           tenant_id: currentTenant.id,
           user_id: user?.id,
           count: 0,
@@ -130,7 +131,11 @@ const Categories = () => {
     mutationFn: async ({ id, values }: { id: string; values: CategorySchemaType }) => {
       const { data, error } = await supabase
         .from("categories")
-        .update(values)
+        .update({
+          name: values.name,
+          type: values.type,
+          icon: values.icon || "folder", // Default to folder icon if none provided
+        })
         .eq("id", id)
         .select()
         .single();
@@ -194,7 +199,7 @@ const Categories = () => {
     setIsEditing(true);
     form.setValue("name", category.name);
     form.setValue("type", category.type);
-    form.setValue("icon", category.icon || "");
+    form.setValue("icon", category.icon || "folder");
   };
 
   const handleDelete = () => {
@@ -202,6 +207,15 @@ const Categories = () => {
       deleteCategoryMutation.mutate(selectedCategory.id);
     }
   };
+
+  // Icon options for the category form
+  const iconOptions = [
+    { value: "folder", label: "Folder" },
+    { value: "archive", label: "Archive" },
+    { value: "category", label: "Category" }, 
+    { value: "list", label: "List" },
+    { value: "list-tree", label: "List Tree" },
+  ];
 
   return (
     <div className="animate-fade-in">
@@ -212,7 +226,12 @@ const Categories = () => {
             Manage categories for your assets
           </p>
         </div>
-        <Dialog>
+        <Dialog open={isEditing} onOpenChange={(open) => {
+          if (!open) {
+            setIsEditing(false);
+            form.reset();
+          }
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -261,7 +280,17 @@ const Categories = () => {
                     <FormItem>
                       <FormLabel>Icon</FormLabel>
                       <FormControl>
-                        <Input placeholder="Category icon" {...field} />
+                        <select
+                          className="w-full p-2 rounded-md border border-input"
+                          {...field}
+                          defaultValue="folder"
+                        >
+                          {iconOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -302,7 +331,7 @@ const Categories = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
+                    <TableHead>Category</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -310,7 +339,14 @@ const Categories = () => {
                 <TableBody>
                   {categories.map((category) => (
                     <TableRow key={category.id}>
-                      <TableCell className="font-medium">{category.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <CategoryIcon 
+                          category={category.name}
+                          iconType={category.icon || "folder"} 
+                          size={16}
+                          className="inline-block"
+                        />
+                      </TableCell>
                       <TableCell>{category.type}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
