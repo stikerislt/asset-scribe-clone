@@ -28,8 +28,10 @@ interface Transaction {
   expected_return_date: string | null;
   created_at: string;
   notes: string | null;
-  user_full_name?: string | null;
-  user_email?: string | null;
+  profiles?: {
+    full_name: string | null;
+    email: string | null;
+  } | null;
 }
 
 interface AssetTransactionHistoryProps {
@@ -53,7 +55,7 @@ export function AssetTransactionHistory({
         .from("asset_transactions")
         .select(`
           *,
-          profiles:user_id (
+          profiles:profiles(
             full_name,
             email
           )
@@ -64,11 +66,7 @@ export function AssetTransactionHistory({
 
       if (error) throw error;
       
-      return (data || []).map((transaction) => ({
-        ...transaction,
-        user_full_name: transaction.profiles?.full_name || null,
-        user_email: transaction.profiles?.email || null,
-      })) as Transaction[];
+      return data as Transaction[];
     },
   });
 
@@ -130,8 +128,8 @@ export function AssetTransactionHistory({
                         <div className="flex items-center">
                           <User className="mr-2 h-4 w-4 text-muted-foreground" />
                           <span>
-                            {transaction.user_full_name ||
-                              transaction.user_email ||
+                            {transaction.profiles?.full_name ||
+                              transaction.profiles?.email ||
                               "Unknown"}
                           </span>
                         </div>

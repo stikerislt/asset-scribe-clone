@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Edit, Trash } from "lucide-react";
@@ -50,6 +51,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 const categorySchema = z.object({
   name: z.string().min(2, {
@@ -65,6 +67,7 @@ type CategorySchemaType = z.infer<typeof categorySchema>;
 
 const Categories = () => {
   const { currentTenant } = useTenant();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -95,14 +98,14 @@ const Categories = () => {
 
       const { data, error } = await supabase
         .from("categories")
-        .insert([
-          {
-            ...values,
-            tenant_id: currentTenant.id,
-            user_id: supabase.auth.currentUser?.id,
-            count: 0,
-          },
-        ])
+        .insert({
+          name: values.name,
+          type: values.type,
+          icon: values.icon,
+          tenant_id: currentTenant.id,
+          user_id: user?.id,
+          count: 0,
+        })
         .select()
         .single();
 
@@ -265,8 +268,8 @@ const Categories = () => {
                   )}
                 />
                 <DialogFooter>
-                  <Button type="submit" disabled={createCategoryMutation.isLoading || updateCategoryMutation.isLoading}>
-                    {createCategoryMutation.isLoading || updateCategoryMutation.isLoading ? (
+                  <Button type="submit" disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}>
+                    {createCategoryMutation.isPending || updateCategoryMutation.isPending ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                     ) : (
                       "Save"
