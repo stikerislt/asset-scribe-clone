@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -99,13 +98,21 @@ export function WarehouseItemForm({
           description: `${values.name} has been updated successfully`,
         });
       } else {
-        const { error } = await supabase.from("warehouse_items").insert({
+        // Fix the values object to ensure required fields are present
+        const itemData = {
           ...values,
+          name: values.name,
+          tag: values.tag,
+          category: values.category, // Ensure this is included
           tenant_id: currentTenant.id,
-          user_id: user?.id,
+          user_id: user?.id || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        });
+        };
+        
+        const { error } = await supabase
+          .from("warehouse_items")
+          .insert(itemData);
 
         if (error) throw error;
 

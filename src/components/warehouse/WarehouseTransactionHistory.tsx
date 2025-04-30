@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -17,6 +16,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+interface WarehouseItemDetail {
+  name: string;
+  tag: string;
+}
+
+interface Profile {
+  full_name: string | null;
+  email: string | null;
+}
+
 interface WarehouseTransaction {
   id: string;
   warehouse_item_id: string;
@@ -27,14 +36,8 @@ interface WarehouseTransaction {
   user_id: string | null;
   tenant_id: string | null;
   created_at: string;
-  profiles?: {
-    full_name: string | null;
-    email: string | null;
-  } | null;
-  warehouse_items?: {
-    name: string;
-    tag: string;
-  } | null;
+  profiles?: Profile | null;
+  warehouse_items?: WarehouseItemDetail | null;
 }
 
 interface WarehouseTransactionHistoryProps {
@@ -84,7 +87,7 @@ export function WarehouseTransactionHistory({
 
       if (error) throw error;
 
-      return data as WarehouseTransaction[];
+      return (data || []) as unknown as WarehouseTransaction[];
     },
   });
 

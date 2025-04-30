@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -18,6 +17,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+interface Profile {
+  full_name: string | null;
+  email: string | null;
+}
+
 interface Transaction {
   id: string;
   asset_id: string;
@@ -28,10 +32,7 @@ interface Transaction {
   expected_return_date: string | null;
   created_at: string;
   notes: string | null;
-  profiles?: {
-    full_name: string | null;
-    email: string | null;
-  } | null;
+  profiles?: Profile | null;
 }
 
 interface AssetTransactionHistoryProps {
@@ -51,11 +52,6 @@ export function AssetTransactionHistory({
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["asset-transactions", asset.id, effectiveLimit],
     queryFn: async () => {
-      // Use proper typing for the query result
-      type TransactionQueryResult = Omit<Transaction, 'profiles'> & {
-        profiles: { full_name: string | null; email: string | null; } | null;
-      };
-
       const { data, error } = await supabase
         .from("asset_transactions")
         .select(`
@@ -71,7 +67,8 @@ export function AssetTransactionHistory({
 
       if (error) throw error;
       
-      return (data || []) as TransactionQueryResult[];
+      // Cast the data to the correct type
+      return (data || []) as Transaction[];
     },
   });
 

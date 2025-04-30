@@ -21,7 +21,10 @@ import {
   DropdownMenuItem, 
   DropdownMenuLabel, 
   DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Edit, Trash, UserPlus } from "lucide-react";
 import { useActivity } from "@/hooks/useActivity";
@@ -30,6 +33,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+
+// Helper function to capitalize first letter
+const capitalizeFirstLetter = (string: string): string => {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+};
+
+// Status color options array
+const statusColors: (StatusColor | null)[] = ['green', 'yellow', 'red', null];
 
 interface AssetTableProps {
   assets: Asset[];
@@ -155,7 +166,7 @@ export const AssetTable = ({
               {statusColors.map((color) => (
                 <DropdownMenuItem
                   key={color}
-                  onClick={() => handleStatusColorChange(asset.id, color)}
+                  onClick={() => handleStatusColorChange(asset.id, color as StatusColor)}
                 >
                   <StatusColorIndicator color={color} className="mr-2" />
                   {color === null ? "Clear" : capitalizeFirstLetter(color)}
@@ -164,7 +175,7 @@ export const AssetTable = ({
             </DropdownMenuSubContent>
           </DropdownMenuSub>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => handleDeleteAsset(asset)} className="text-red-600">
+          <DropdownMenuItem onClick={() => onDeleteAsset(asset)} className="text-red-600">
             Delete Asset
           </DropdownMenuItem>
         </DropdownMenuContent>
