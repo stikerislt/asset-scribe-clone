@@ -24,14 +24,13 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash, UserPlus, LogOut, LogIn } from "lucide-react";
+import { MoreHorizontal, Edit, Trash, UserPlus } from "lucide-react";
 import { useActivity } from "@/hooks/useActivity";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { AssetTransactionDialog } from "./AssetTransactionDialog";
 
 interface AssetTableProps {
   assets: Asset[];
@@ -50,8 +49,6 @@ export const AssetTable = ({
   const { logActivity } = useActivity();
   const { user } = useAuth();
   const [localAssets, setLocalAssets] = useState<Asset[]>(assets);
-  const [transactionAsset, setTransactionAsset] = useState<Asset | null>(null);
-  const [transactionType, setTransactionType] = useState<"check_out" | "check_in">("check_out");
   
   const { data: userRole = 'user' } = useQuery({
     queryKey: ['user-role', user?.id],
@@ -113,15 +110,6 @@ export const AssetTable = ({
     });
     
     onStatusColorChange(assetId, newColor);
-  };
-
-  const openTransactionDialog = (asset: Asset, type: "check_out" | "check_in") => {
-    setTransactionAsset(asset);
-    setTransactionType(type);
-  };
-
-  const closeTransactionDialog = () => {
-    setTransactionAsset(null);
   };
   
   return (
@@ -253,18 +241,6 @@ export const AssetTable = ({
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       
-                      {/* Add Check Out / Check In options */}
-                      <DropdownMenuItem onClick={() => openTransactionDialog(asset, "check_out")}>
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Check Out
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => openTransactionDialog(asset, "check_in")}>
-                        <LogIn className="h-4 w-4 mr-2" />
-                        Check In
-                      </DropdownMenuItem>
-                      
-                      <DropdownMenuSeparator />
-                      
                       <DropdownMenuItem asChild>
                         <Link to={`/assets/${asset.id}`}>
                           <Edit className="h-4 w-4 mr-2" />
@@ -294,44 +270,17 @@ export const AssetTable = ({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
-                  <div className="flex space-x-1">
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link to={`/assets/${asset.id}`}>
-                        View
-                      </Link>
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => openTransactionDialog(asset, "check_out")}
-                    >
-                      <LogOut className="h-3 w-3 mr-1" />
-                      Out
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => openTransactionDialog(asset, "check_in")}
-                    >
-                      <LogIn className="h-3 w-3 mr-1" />
-                      In
-                    </Button>
-                  </div>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to={`/assets/${asset.id}`}>
+                      View
+                    </Link>
+                  </Button>
                 )}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-      
-      {transactionAsset && (
-        <AssetTransactionDialog
-          asset={transactionAsset}
-          isOpen={!!transactionAsset}
-          onClose={closeTransactionDialog}
-          transactionType={transactionType}
-        />
-      )}
     </div>
   );
 };

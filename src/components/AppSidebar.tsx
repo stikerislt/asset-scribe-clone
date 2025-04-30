@@ -19,7 +19,8 @@ import {
   Settings, 
   LogOut,
   BarChart3,
-  Shield
+  Shield,
+  Warehouse
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,6 +55,11 @@ const getUserMenuItems = () => [
     title: "Assets",
     path: "/assets",
     icon: Package,
+  },
+  {
+    title: "Warehouse",
+    path: "/warehouse",
+    icon: Warehouse,
   },
 ];
 

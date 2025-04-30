@@ -66,8 +66,8 @@ export function AssetTransactionHistory({
       
       return (data || []).map((transaction) => ({
         ...transaction,
-        user_full_name: transaction.profiles?.full_name,
-        user_email: transaction.profiles?.email,
+        user_full_name: transaction.profiles?.full_name || null,
+        user_email: transaction.profiles?.email || null,
       })) as Transaction[];
     },
   });

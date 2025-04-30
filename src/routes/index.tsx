@@ -17,6 +17,7 @@ import { AppLayout } from "@/components/AppLayout";
 import UpdatePassword from "@/pages/UpdatePassword";
 import Onboarding from "@/pages/Onboarding";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Warehouse from "@/pages/Warehouse";
 
 /**
  * Public routes accessible to all users
@@ -75,6 +76,10 @@ export const protectedRoutes: RouteObject[] = [
       {
         path: "assets/edit/:id",
         element: <ProtectedRoute requiredRole="manager"><EditAsset /></ProtectedRoute>
+      },
+      {
+        path: "warehouse",
+        element: <Warehouse />
       },
       {
         path: "employees",
