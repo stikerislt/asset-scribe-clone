@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
+import { UserPlus, DatabaseZap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
@@ -9,15 +9,43 @@ import { EmployeesList } from "@/components/employees/EmployeesList";
 import { AddEmployeeDialog } from "@/components/employees/AddEmployeeDialog";
 import { ExportEmployeesButton } from "@/components/employees/export/ExportEmployeesButton";
 import { ImportEmployeesButton } from "@/components/employees/import/ImportEmployeesButton";
+import { toast } from "sonner";
+import { runEmployeeDataMigration } from "@/lib/migrations/fixEmployeeDataIssues";
+import { useAdminAccess } from "@/hooks/useAdminAccess"; 
 
 const Employees = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const { isAdmin } = useAdminAccess();
 
   // Get employees
   const { data: employees, isLoading, error, refetch } = useQuery({
     queryKey: ['employees'],
     queryFn: getEmployees
   });
+
+  const handleRunMigration = async () => {
+    if (!isAdmin) {
+      toast.error("Only administrators can run data migrations");
+      return;
+    }
+    
+    setIsMigrating(true);
+    try {
+      const result = await runEmployeeDataMigration();
+      
+      if (result.success) {
+        toast.success(result.message);
+        refetch(); // Refresh employee data
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      toast.error(`Migration failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   return (
     <div className="animate-fade-in p-6">
@@ -33,6 +61,16 @@ const Employees = () => {
             <UserPlus className="mr-2 h-4 w-4" />
             Add Employee
           </Button>
+          {isAdmin && (
+            <Button 
+              variant="outline" 
+              onClick={handleRunMigration} 
+              disabled={isMigrating}
+            >
+              <DatabaseZap className="mr-2 h-4 w-4" />
+              {isMigrating ? "Fixing Data..." : "Fix Data Issues"}
+            </Button>
+          )}
         </div>
       </div>
       

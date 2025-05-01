@@ -61,7 +61,8 @@ export const createEmployeesFromAssetAssignments = async (
             .insert({
               profile_id: profileId,
               tenant_id: tenantId,
-              role: 'user' // Default role to 'user'
+              role: 'user', // Always set proper role
+              department: null // Don't add auto-generated department
             });
             
           if (createError) throw createError;
@@ -91,8 +92,8 @@ export const createEmployeesFromAssetAssignments = async (
           .insert({
             profile_id: newProfileId,  // Use the same UUID
             tenant_id: tenantId,
-            role: 'user', // Default role
-            department: null // No default department
+            role: 'user', // Always set proper role
+            department: null // Don't add auto-generated department
           });
           
         if (employeeError) throw employeeError;

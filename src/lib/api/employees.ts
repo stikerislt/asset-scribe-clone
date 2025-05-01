@@ -42,15 +42,34 @@ export const getEmployees = async (): Promise<Employee[]> => {
     throw employeesError;
   }
   
-  return (employeesData || []).map(emp => ({
-    id: emp.id,
-    name: emp.profiles?.full_name || '',
-    role: emp.role || 'user',
-    email: emp.profiles?.email,
-    avatar: emp.profiles?.avatar_url,
-    department: emp.department || '',
-    hire_date: emp.hire_date
-  }));
+  return (employeesData || []).map(emp => {
+    // Handle case where profile might be missing
+    let name = emp.profiles?.full_name || '';
+    let email = emp.profiles?.email;
+    let role = emp.role || 'user';
+    let department = emp.department || '';
+    
+    // Clean up potential legacy data formats
+    // If role field contains "Asset assigned to:" format, clean it up
+    if (role && role.startsWith('Asset assigned to:')) {
+      role = 'user'; // Reset role to proper value
+    }
+    
+    // If department has auto-generated placeholder text, clear it
+    if (department && department.toLowerCase().includes('auto-generated')) {
+      department = '';
+    }
+    
+    return {
+      id: emp.id,
+      name,
+      role,
+      email,
+      avatar: emp.profiles?.avatar_url,
+      department,
+      hire_date: emp.hire_date
+    };
+  });
 };
 
 // Get employee by ID
@@ -81,13 +100,27 @@ export const getEmployeeById = async (id: string): Promise<Employee | null> => {
   
   if (!employeeData) return null;
   
+  // Clean up potential legacy data formats
+  let role = employeeData.role || 'user';
+  let department = employeeData.department || '';
+  
+  // If role field contains "Asset assigned to:" format, clean it up
+  if (role && role.startsWith('Asset assigned to:')) {
+    role = 'user'; // Reset role to proper value
+  }
+  
+  // If department has auto-generated placeholder text, clear it
+  if (department && department.toLowerCase().includes('auto-generated')) {
+    department = '';
+  }
+  
   return {
     id: employeeData.id,
     name: employeeData.profiles?.full_name || '',
-    role: employeeData.role || 'user',
+    role,
     email: employeeData.profiles?.email,
     avatar: employeeData.profiles?.avatar_url,
-    department: employeeData.department || '',
+    department,
     hire_date: employeeData.hire_date
   };
 };
