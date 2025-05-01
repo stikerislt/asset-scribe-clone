@@ -68,25 +68,28 @@ export const createEmployeesFromAssetAssignments = async (
           result.created++;
         }
       } else {
-        // No matching profile found - create a new profile first
-        const { data: newProfile, error: profileError } = await supabase
+        // No matching profile found - we need to generate a UUID for the new profile
+        // Generate a UUID for the new profile
+        const newProfileId = crypto.randomUUID();
+        
+        // Create a new profile with the generated ID
+        const { error: profileError } = await supabase
           .from('profiles')
           .insert({
+            id: newProfileId,  // Use the generated UUID
             full_name: name,
             email: null
-          })
-          .select('id')
-          .single();
+          });
           
-        if (profileError || !newProfile) {
-          throw new Error("Failed to create profile for " + name);
+        if (profileError) {
+          throw new Error("Failed to create profile for " + name + ": " + profileError.message);
         }
         
         // Now create the employee record linked to the new profile
         const { error: employeeError } = await supabase
           .from('employees')
           .insert({
-            profile_id: newProfile.id,
+            profile_id: newProfileId,  // Use the same UUID
             tenant_id: tenantId,
             role: 'user', // Default role
             department: null // No default department

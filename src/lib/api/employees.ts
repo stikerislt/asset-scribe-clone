@@ -135,24 +135,27 @@ export const addEmployee = async (employee: NewEmployee) => {
     }
     
     // No existing profile with this email, create a new one
-    const { data: newProfile, error: profileError } = await supabase
+    // Generate a UUID for the new profile
+    const newProfileId = crypto.randomUUID();
+    
+    // Create a new profile with the generated ID
+    const { error: profileError } = await supabase
       .from('profiles')
       .insert({
+        id: newProfileId,  // Use the generated UUID
         full_name: fullName,
         email: email
-      })
-      .select('id')
-      .single();
+      });
       
-    if (profileError || !newProfile) {
-      throw new Error("Failed to create profile: " + (profileError?.message || "Unknown error"));
+    if (profileError) {
+      throw new Error("Failed to create profile: " + (profileError.message || "Unknown error"));
     }
     
     // Create employee record linked to the new profile
     const { data: newEmployee, error: employeeError } = await supabase
       .from('employees')
       .insert({
-        profile_id: newProfile.id,
+        profile_id: newProfileId,
         role: role || 'user',
         department: department || null,
         hire_date: hire_date || null
