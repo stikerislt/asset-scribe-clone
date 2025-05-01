@@ -10,11 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 export const createEmployeesFromAssetAssignments = async (
   assignedToNames: string[], 
   tenantId: string
-): Promise<{ 
-  created: number;
-  existing: number;
-  errors: string[];
-}> {
+) => { // Fixed: Changed "): Promise<{" to ") => {" - Arrow function syntax was incorrect
+  // Return type is inferred from the returned object
   if (!assignedToNames || assignedToNames.length === 0) {
     return { created: 0, existing: 0, errors: [] };
   }
