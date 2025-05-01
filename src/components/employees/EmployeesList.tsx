@@ -170,7 +170,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
                 <TableRow key={employee.id}>
                   <TableCell>
                     <Link to={`/employees/${employee.id}`} className="hover:underline">
-                      {employee.name}
+                      {employee.name || "Unnamed Employee"}
                     </Link>
                   </TableCell>
                   <TableCell>
@@ -218,7 +218,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
                   </TableCell>
                   <TableCell>
                     <Button variant="link" asChild>
-                      <Link to={`/assets?assigned=${encodeURIComponent(employee.name)}`}>
+                      <Link to={`/employees/${employee.id}`}>
                         View Assets
                       </Link>
                     </Button>

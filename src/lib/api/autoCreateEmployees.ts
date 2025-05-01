@@ -10,8 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const createEmployeesFromAssetAssignments = async (
   assignedToNames: string[], 
   tenantId: string
-) => { // Fixed: Changed "): Promise<{" to ") => {" - Arrow function syntax was incorrect
-  // Return type is inferred from the returned object
+) => {
   if (!assignedToNames || assignedToNames.length === 0) {
     return { created: 0, existing: 0, errors: [] };
   }
@@ -63,22 +62,34 @@ export const createEmployeesFromAssetAssignments = async (
               profile_id: profileId,
               tenant_id: tenantId,
               role: 'user' // Default role to 'user'
-              // Department is intentionally left empty
             });
             
           if (createError) throw createError;
           result.created++;
         }
       } else {
-        // FIXED: Don't try to create profiles directly since they're linked to auth.users
-        // Instead, just create employees with department and name info, without linking to profiles
+        // No matching profile found - create a new profile first
+        const { data: newProfile, error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            full_name: name,
+            email: null
+          })
+          .select('id')
+          .single();
+          
+        if (profileError || !newProfile) {
+          throw new Error("Failed to create profile for " + name);
+        }
+        
+        // Now create the employee record linked to the new profile
         const { error: employeeError } = await supabase
           .from('employees')
           .insert({
+            profile_id: newProfile.id,
             tenant_id: tenantId,
-            department: 'Auto-generated from Assets',
-            // Store the name as the department or role since we can't create a profile
-            role: `Asset assigned to: ${name}`
+            role: 'user', // Default role
+            department: null // No default department
           });
           
         if (employeeError) throw employeeError;
