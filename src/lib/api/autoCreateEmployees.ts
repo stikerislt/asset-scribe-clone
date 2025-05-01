@@ -73,27 +73,15 @@ export const createEmployeesFromAssetAssignments = async (
         // Generate an email based on the name (this is just a placeholder)
         const placeholderEmail = `${name.toLowerCase().replace(/\s+/g, '.')}@placeholder.com`;
         
-        // Insert a new placeholder profile
-        const { data: newProfile, error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            full_name: name,
-            email: placeholderEmail,
-            // Generate a random UUID for the profile ID since we're not creating an auth user
-            id: crypto.randomUUID()
-          })
-          .select()
-          .single();
-          
-        if (profileError) throw profileError;
-        
-        // Create employee record linked to new placeholder profile
+        // FIXED: Don't try to create profiles directly since they're linked to auth.users
+        // Instead, just create employees with department and name info, without linking to profiles
         const { error: employeeError } = await supabase
           .from('employees')
           .insert({
-            profile_id: newProfile.id,
             tenant_id: tenantId,
-            department: 'Auto-generated from Assets'
+            department: 'Auto-generated from Assets',
+            // Store the name as the department or role since we can't create a profile
+            role: `Asset assigned to: ${name}`
           });
           
         if (employeeError) throw employeeError;
