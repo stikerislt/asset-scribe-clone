@@ -92,19 +92,18 @@ export const logCategoryActivity = async (
   );
 };
 
-// Modified function to fetch categories from the database
-// Make tenantId parameter optional with current tenant as default
-export const fetchCategories = async (tenantId?: string): Promise<Category[]> => {
-  // If no tenantId provided, exit early with empty array
-  if (!tenantId) {
-    console.log("No tenant ID provided to fetchCategories");
+// Fetch categories with tenant_id filter
+export const fetchCategories = async (): Promise<Category[]> => {
+  const { currentTenant } = useTenant();
+  
+  if (!currentTenant?.id) {
     return [];
   }
   
   const { data, error } = await supabase
     .from('categories')
     .select('*')
-    .eq('tenant_id', tenantId)
+    .eq('tenant_id', currentTenant.id)
     .order('name');
   
   if (error) {
@@ -114,9 +113,4 @@ export const fetchCategories = async (tenantId?: string): Promise<Category[]> =>
   }
   
   return data || [];
-};
-
-// New function to normalize category names for comparison
-export const normalizeCategoryName = (name: string): string => {
-  return name.trim().toLowerCase();
 };

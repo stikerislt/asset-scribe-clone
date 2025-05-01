@@ -60,63 +60,6 @@ export type Database = {
           },
         ]
       }
-      asset_transactions: {
-        Row: {
-          asset_id: string
-          created_at: string
-          expected_return_date: string | null
-          id: string
-          notes: string | null
-          purpose: string | null
-          qty: number
-          quantity: number
-          tenant_id: string | null
-          transaction_type: string
-          user_id: string | null
-        }
-        Insert: {
-          asset_id: string
-          created_at?: string
-          expected_return_date?: string | null
-          id?: string
-          notes?: string | null
-          purpose?: string | null
-          qty?: number
-          quantity: number
-          tenant_id?: string | null
-          transaction_type: string
-          user_id?: string | null
-        }
-        Update: {
-          asset_id?: string
-          created_at?: string
-          expected_return_date?: string | null
-          id?: string
-          notes?: string | null
-          purpose?: string | null
-          qty?: number
-          quantity?: number
-          tenant_id?: string | null
-          transaction_type?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "asset_transactions_asset_id_fkey"
-            columns: ["asset_id"]
-            isOneToOne: false
-            referencedRelation: "assets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "asset_transactions_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       assets: {
         Row: {
           assigned_to: string | null
@@ -283,101 +226,6 @@ export type Database = {
           },
         ]
       }
-      notification_settings: {
-        Row: {
-          asset_checkout_alerts: boolean | null
-          created_at: string
-          email_notifications: boolean | null
-          id: string
-          low_inventory_alerts: boolean | null
-          low_inventory_threshold: number | null
-          tenant_id: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          asset_checkout_alerts?: boolean | null
-          created_at?: string
-          email_notifications?: boolean | null
-          id?: string
-          low_inventory_alerts?: boolean | null
-          low_inventory_threshold?: number | null
-          tenant_id?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          asset_checkout_alerts?: boolean | null
-          created_at?: string
-          email_notifications?: boolean | null
-          id?: string
-          low_inventory_alerts?: boolean | null
-          low_inventory_threshold?: number | null
-          tenant_id?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notification_settings_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      notifications: {
-        Row: {
-          created_at: string
-          id: string
-          is_read: boolean | null
-          message: string
-          notification_type: string
-          related_asset_id: string | null
-          tenant_id: string | null
-          title: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_read?: boolean | null
-          message: string
-          notification_type: string
-          related_asset_id?: string | null
-          tenant_id?: string | null
-          title: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_read?: boolean | null
-          message?: string
-          notification_type?: string
-          related_asset_id?: string | null
-          tenant_id?: string | null
-          title?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_related_asset_id_fkey"
-            columns: ["related_asset_id"]
-            isOneToOne: false
-            referencedRelation: "assets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notifications_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -465,9 +313,9 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
-          industry: string
+          industry: string | null
           name: string
-          organization_size: string
+          organization_size: string | null
           owner_id: string | null
           subscription_status: string | null
           updated_at: string
@@ -477,9 +325,9 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          industry: string
+          industry?: string | null
           name: string
-          organization_size: string
+          organization_size?: string | null
           owner_id?: string | null
           subscription_status?: string | null
           updated_at?: string
@@ -489,9 +337,9 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          industry?: string
+          industry?: string | null
           name?: string
-          organization_size?: string
+          organization_size?: string | null
           owner_id?: string | null
           subscription_status?: string | null
           updated_at?: string
@@ -522,119 +370,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      warehouse_items: {
-        Row: {
-          category: string
-          cost: number | null
-          created_at: string
-          description: string | null
-          id: string
-          location: string | null
-          name: string
-          quantity: number
-          reorder_level: number | null
-          status: string
-          supplier: string | null
-          tag: string
-          tenant_id: string | null
-          updated_at: string
-          user_id: string | null
-        }
-        Insert: {
-          category: string
-          cost?: number | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          location?: string | null
-          name: string
-          quantity?: number
-          reorder_level?: number | null
-          status?: string
-          supplier?: string | null
-          tag: string
-          tenant_id?: string | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Update: {
-          category?: string
-          cost?: number | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          location?: string | null
-          name?: string
-          quantity?: number
-          reorder_level?: number | null
-          status?: string
-          supplier?: string | null
-          tag?: string
-          tenant_id?: string | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "warehouse_items_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      warehouse_transactions: {
-        Row: {
-          created_at: string
-          id: string
-          notes: string | null
-          quantity: number
-          reason: string | null
-          tenant_id: string | null
-          transaction_type: string
-          user_id: string | null
-          warehouse_item_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          notes?: string | null
-          quantity: number
-          reason?: string | null
-          tenant_id?: string | null
-          transaction_type: string
-          user_id?: string | null
-          warehouse_item_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          notes?: string | null
-          quantity?: number
-          reason?: string | null
-          tenant_id?: string | null
-          transaction_type?: string
-          user_id?: string | null
-          warehouse_item_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "warehouse_transactions_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "warehouse_transactions_warehouse_item_id_fkey"
-            columns: ["warehouse_item_id"]
-            isOneToOne: false
-            referencedRelation: "warehouse_items"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {

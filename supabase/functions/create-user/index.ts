@@ -13,7 +13,6 @@ interface CreateUserPayload {
   role: string;
   active: boolean;
   tenant_id: string;
-  mark_email_verified?: boolean; // Add optional parameter to mark email as verified
 }
 
 serve(async (req) => {
@@ -33,9 +32,9 @@ serve(async (req) => {
       },
     });
 
-    // Get request payload
+    // Get request data
     const payload: CreateUserPayload = await req.json();
-    const { email, password, name, role, active, tenant_id, mark_email_verified } = payload;
+    const { email, password, name, role, active, tenant_id } = payload;
 
     // Validate required fields
     if (!email || !name || !role || !tenant_id) {
@@ -46,71 +45,29 @@ serve(async (req) => {
       );
     }
 
-    // First, check if the tenant exists
-    console.log("Checking if tenant exists:", tenant_id);
-    const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
-      .select('id')
-      .eq('id', tenant_id)
-      .single();
-
-    if (tenantError || !tenant) {
-      console.error("Tenant not found:", tenantError);
-      return new Response(
-        JSON.stringify({ error: "Invalid tenant_id" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Check if user already exists in auth system
-    console.log("Checking if user exists in auth system");
-    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    // First, check if the user already exists in auth system
+    const { data: existingUsers } = await supabase.auth.admin.listUsers({
+      filter: `email.eq.${email}`
+    });
     
     let userId;
-    let isNewUser = false;
     
-    if (existingUsers?.users?.length > 0) {
-      const existingUser = existingUsers.users.find(u => u.email === email);
-      if (existingUser) {
-        // User already exists, use the existing ID
-        userId = existingUser.id;
-        console.log("User already exists in auth system, using existing ID:", userId);
-
-        // If mark_email_verified is true, update the user to mark email as confirmed
-        if (mark_email_verified) {
-          console.log("Marking existing user's email as verified:", userId);
-          await supabase.auth.admin.updateUserById(userId, {
-            email_confirm: true,
-            app_metadata: { 
-              email_confirmed_at: new Date().toISOString(),
-              tenant_id: tenant_id 
-            }
-          });
-          
-          console.log("User email marked as verified");
-        }
-      } else {
-        isNewUser = true;
-      }
+    if (existingUsers?.users && existingUsers.users.length > 0) {
+      // User already exists, use the existing ID
+      userId = existingUsers.users[0].id;
+      console.log("User already exists in auth system, using existing ID:", userId);
     } else {
-      isNewUser = true;
-    }
-
-    if (isNewUser || !userId) {
       console.log("Creating new user in auth system");
       // Create the user in Supabase Auth with email confirmation required
       const { data: userData, error: createError } = await supabase.auth.admin.createUser({
         email,
         password,
-        email_confirm: mark_email_verified === true, // Set email as confirmed if specified
+        email_confirm: false,
         user_metadata: {
           full_name: name,
-          tenant_id: tenant_id
         },
         app_metadata: {
           active: active,
-          tenant_id: tenant_id,
-          email_confirmed_at: mark_email_verified ? new Date().toISOString() : null
         },
       });
 
@@ -127,177 +84,95 @@ serve(async (req) => {
       userId = userData.user.id;
       console.log("User created successfully:", userId);
       
-      // Send invitation email only if we're not marking the email as verified
-      if (!mark_email_verified) {
-        console.log("Sending invitation email to:", email);
-        const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email);
-        if (inviteError) {
-          console.error("Error sending invitation email:", inviteError);
-        } else {
-          console.log("Invitation email sent successfully to:", email);
-        }
+      // Send invitation email
+      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email);
+      if (inviteError) {
+        console.error("Error sending invitation email:", inviteError);
       } else {
-        console.log("Skipping invitation email as email is marked as verified");
+        console.log("Invitation email sent successfully to:", email);
       }
     }
 
-    // Create or update profile with tenant_id
-    console.log("Creating or updating user profile with tenant_id:", tenant_id);
-    try {
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .upsert({
-          id: userId,
-          email,
-          full_name: name,
-          tenant_id: tenant_id,
-          onboarding_completed: true // Set to true for invited users
-        });
+    // Check if profile already exists
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .single();
+    
+    if (!existingProfile) {
+      try {
+        // Add user to profiles table with tenant_id
+        console.log("Adding user to profiles table with tenant_id:", tenant_id);
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .insert({
+            id: userId,
+            email,
+            full_name: name,
+            tenant_id: tenant_id
+          });
 
-      if (profileError) {
-        console.error("Error upserting profile:", profileError);
-        throw profileError;
+        if (profileError) {
+          console.error("Error creating profile:", profileError);
+          // If it's a duplicate key error, try updating instead
+          if (profileError.message.includes("duplicate key")) {
+            const { error: updateError } = await supabase
+              .from("profiles")
+              .update({ 
+                tenant_id: tenant_id,
+                full_name: name,
+                email: email
+              })
+              .eq("id", userId);
+              
+            if (updateError) {
+              console.error("Error updating existing profile:", updateError);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Exception in profile creation:", error);
       }
-      console.log("Profile created or updated successfully for user:", userId);
-    } catch (error) {
-      console.error("Exception in profile upsert:", error);
-      throw error;
     }
 
-    // Create tenant membership
-    console.log("Creating tenant membership for user:", userId, "in tenant:", tenant_id);
-    try {
+    // Check if tenant membership exists
+    const { data: existingMembership } = await supabase
+      .from("tenant_memberships")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("tenant_id", tenant_id)
+      .single();
+    
+    if (!existingMembership) {
+      // Add tenant membership - Important: set is_primary and is_owner to false for new users
+      console.log("Creating tenant membership with tenant_id:", tenant_id);
       const { error: membershipError } = await supabase
         .from("tenant_memberships")
-        .upsert({
+        .insert({
           user_id: userId,
           tenant_id: tenant_id,
           role: role.toLowerCase(),
-          is_primary: true,  // Set this as primary since they're being invited directly to this tenant
+          is_primary: false,  // Never make new users primary by default
           is_owner: false    // Never make new users owners by default
         });
 
       if (membershipError) {
         console.error("Error creating tenant membership:", membershipError);
-        throw membershipError;
       }
-      console.log("Tenant membership created successfully for user:", userId);
-    } catch (error) {
-      console.error("Exception in tenant membership upsert:", error);
-      throw error;
     }
 
     // Add role to user_roles table
-    try {
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .upsert({
-          user_id: userId,
-          role: role.toLowerCase(),
-          updated_at: new Date().toISOString(),
-        });
+    const { error: roleError } = await supabase
+      .from("user_roles")
+      .upsert({
+        user_id: userId,
+        role: role.toLowerCase(),
+        updated_at: new Date().toISOString(),
+      });
 
-      if (roleError) {
-        console.error("Error setting user role:", roleError);
-        throw roleError;
-      }
-      console.log("User role set successfully for user:", userId);
-    } catch (error) {
-      console.error("Exception in user role upsert:", error);
-      throw error;
-    }
-
-    // Create a session for the user
-    if (mark_email_verified && isNewUser) {
-      try {
-        console.log("Creating session record for user:", userId);
-        const { error: sessionError } = await supabase.rpc('create_user_session_record', { user_id_param: userId });
-        
-        if (sessionError) {
-          console.error("Error creating session record:", sessionError);
-        } else {
-          console.log("Session record created successfully");
-        }
-      } catch (sessionError) {
-        console.error("Exception creating session record:", sessionError);
-      }
-    }
-
-    // Verify tenant associations - using separate queries to avoid join issues
-    console.log("Verifying tenant associations for user:", userId);
-    try {
-      // Check if profile exists with correct tenant_id
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('tenant_id')
-        .eq('id', userId)
-        .single();
-      
-      if (profileError) {
-        console.error("Error fetching profile during verification:", profileError);
-        throw new Error(`Failed to verify profile: ${profileError.message}`);
-      }
-      
-      if (!profileData) {
-        console.error("No profile found for user during verification");
-        throw new Error("No profile found during verification");
-      }
-      
-      if (profileData.tenant_id !== tenant_id) {
-        console.error("Profile tenant_id mismatch:", profileData.tenant_id, "expected:", tenant_id);
-        // Fix the tenant_id instead of throwing an error
-        const { error: fixProfileError } = await supabase
-          .from("profiles")
-          .update({ tenant_id: tenant_id })
-          .eq("id", userId);
-        
-        if (fixProfileError) {
-          console.error("Failed to fix profile tenant_id:", fixProfileError);
-          throw new Error(`Failed to fix profile tenant_id: ${fixProfileError.message}`);
-        }
-        console.log("Fixed profile tenant_id for user:", userId);
-      }
-      
-      // Check if tenant membership exists
-      const { data: membershipData, error: membershipError } = await supabase
-        .from('tenant_memberships')
-        .select('tenant_id')
-        .eq('user_id', userId)
-        .eq('tenant_id', tenant_id)
-        .single();
-      
-      if (membershipError && membershipError.code !== 'PGRST116') { // Ignore "no rows returned" error
-        console.error("Error fetching tenant membership during verification:", membershipError);
-        throw new Error(`Failed to verify tenant membership: ${membershipError.message}`);
-      }
-      
-      if (!membershipData) {
-        console.error("No tenant membership found, creating one");
-        // Create membership if it doesn't exist
-        const { error: createMembershipError } = await supabase
-          .from("tenant_memberships")
-          .insert({
-            user_id: userId,
-            tenant_id: tenant_id,
-            role: role.toLowerCase(),
-            is_primary: true,
-            is_owner: false
-          });
-        
-        if (createMembershipError) {
-          console.error("Failed to create missing tenant membership:", createMembershipError);
-          throw new Error(`Failed to create tenant membership: ${createMembershipError.message}`);
-        }
-        console.log("Created missing tenant membership for user:", userId);
-      }
-      
-      console.log("Tenant associations verified/fixed successfully for user:", userId);
-    } catch (error) {
-      console.error("Error in tenant associations verification:", error);
-      return new Response(
-        JSON.stringify({ error: "Failed to verify tenant associations: " + error.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (roleError) {
+      console.error("Error setting user role:", roleError);
     }
 
     return new Response(
@@ -308,8 +183,8 @@ serve(async (req) => {
         role,
         active,
         tenant_id,
-        message: isNewUser ? "User invited successfully" : "User added to organization successfully",
-        verification_status: isNewUser ? (mark_email_verified ? "email_verified" : "invitation_sent") : "existing_user"
+        message: "User created or updated successfully",
+        verification_status: existingUsers?.users?.length > 0 ? "existing_user" : "invitation_sent"
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

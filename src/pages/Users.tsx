@@ -10,11 +10,7 @@ import { useActivity } from "@/hooks/useActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { 
-  UserRole, isAdmin, updateUserRole, updateUserRoleByEmail, getAllUserRoles, 
-  createUser, transferTenantOwnership, canDeleteUser, deleteUser,
-  checkUserSessionStatus, getAuthUserStatus
-} from "@/lib/api/userRoles";
+import { UserRole, isAdmin, updateUserRole, updateUserRoleByEmail, getAllUserRoles, createUser } from "@/lib/api/userRoles";
 import { EnhancedUser } from "@/types/user";
 import { UserSearch } from "@/components/users/UserSearch";
 import { UsersTable } from "@/components/users/UsersTable";
@@ -23,7 +19,9 @@ import { useTenant } from "@/hooks/useTenant";
 import { UserActionButtons } from "@/components/users/UserActionButtons";
 import { UserList } from "@/components/users/UserList";
 import { UserDialogs } from "@/components/users/UserDialogs";
+import { transferTenantOwnership, canDeleteUser } from "@/lib/api/userRoles";
 import { UserDeleteDialog } from "@/components/users/UserDeleteDialog";
+import { deleteUser } from "@/lib/api/userRoles";
 
 const Users = () => {
   const { currentTenant } = useTenant();
@@ -89,12 +87,9 @@ const Users = () => {
       setIsLoading(true);
       
       if (!currentTenant) {
-        console.log("No current tenant, setting users to empty array");
         setUsers([]);
         return;
       }
-      
-      console.log("Fetching users for tenant:", currentTenant.id);
       
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
@@ -107,7 +102,6 @@ const Users = () => {
       }
       
       const ownerId = tenantData?.owner_id;
-      console.log("Tenant owner ID:", ownerId);
       
       const { data: memberships, error: membershipError } = await supabase
         .from('tenant_memberships')
@@ -116,10 +110,7 @@ const Users = () => {
         
       if (membershipError) {
         console.error('Error fetching memberships:', membershipError);
-        throw membershipError;
       }
-
-      console.log("Found memberships:", memberships);
       
       const ownershipMap = new Map();
       memberships?.forEach((membership) => {
@@ -134,49 +125,7 @@ const Users = () => {
         .eq('tenant_id', currentTenant.id);
       
       if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
         throw profilesError;
-      }
-
-      console.log("Found profiles:", profiles?.length || 0, "profiles for tenant:", currentTenant.id);
-      if (profiles?.length === 0) {
-        console.log("No profiles found with matching tenant_id:", currentTenant.id);
-        // Log the first few profiles regardless of tenant_id to debug
-        const { data: allProfiles } = await supabase
-          .from('profiles')
-          .select('id, email, tenant_id')
-          .limit(5);
-        console.log("Sample of all profiles:", allProfiles);
-      }
-      
-      if (!profiles || profiles.length === 0) {
-        console.log("No profiles found for tenant:", currentTenant.id);
-        setUsers([]);
-        return;
-      }
-
-      const userIds = profiles.map(profile => profile.id);
-      
-      const loggedInUsers = new Set();
-      
-      for (const userId of userIds) {
-        const hasActiveSession = await checkUserSessionStatus(userId);
-        if (hasActiveSession) {
-          loggedInUsers.add(userId);
-        }
-      }
-      
-      const authUsersMap = new Map<string, {
-        confirmed_at: string | null;
-        email_confirmed_at: string | null;
-        last_sign_in_at: string | null;
-      }>();
-      
-      for (const userId of userIds) {
-        const authUserData = await getAuthUserStatus(userId);
-        if (authUserData) {
-          authUsersMap.set(userId, authUserData);
-        }
       }
       
       const userRolesData = await getAllUserRoles();
@@ -188,32 +137,14 @@ const Users = () => {
       
       const formattedUsers: EnhancedUser[] = profiles.map(profile => {
         const isOwner = ownershipMap.get(profile.id) || profile.id === ownerId;
-        const authUserData = authUsersMap.get(profile.id);
-        
-        let invitationStatus: "active" | "pending" = "pending";
-        
-        if (isOwner) {
-          invitationStatus = "active";
-        } else if (loggedInUsers.has(profile.id)) {
-          invitationStatus = "active";
-        } else if (authUserData && 
-                (authUserData.confirmed_at || 
-                 authUserData.email_confirmed_at || 
-                 authUserData.last_sign_in_at)) {
-          invitationStatus = "active";
-        }
-        
-        const userDbRole = isOwner ? 'admin' as UserRole : (roleMap.get(profile.id) as UserRole || null);
-            
-        const user: EnhancedUser = {
+        const user = {
           id: profile.id,
           name: profile.full_name || 'Unnamed User',
           email: profile.email || 'No email provided',
           role: profile.id === currentUser?.id ? 'Admin' : 'User',
-          dbRole: userDbRole,
+          dbRole: roleMap.get(profile.id) as UserRole || null,
           active: true,
-          isOwner: isOwner,
-          invitationStatus: invitationStatus
+          isOwner: isOwner
         };
         
         if (isOwner) {
@@ -223,7 +154,6 @@ const Users = () => {
         return user;
       });
       
-      console.log("Formatted users:", formattedUsers.length);
       setUsers(formattedUsers);
     } catch (error: any) {
       console.error('Error fetching users:', error);
@@ -320,12 +250,10 @@ const Users = () => {
       
       if (error) throw error;
       
-      if (!selectedUser.isOwner) {
-        const newDbRole = formValues.role.toLowerCase() as UserRole;
-        if (selectedUser.dbRole !== newDbRole) {
-          const success = await updateUserRole(selectedUser.id, newDbRole);
-          if (!success) throw new Error("Failed to update role");
-        }
+      const newDbRole = formValues.role.toLowerCase() as UserRole;
+      if (selectedUser.dbRole !== newDbRole) {
+        const success = await updateUserRole(selectedUser.id, newRole);
+        if (!success) throw new Error("Failed to update role");
       }
       
       logActivity({
@@ -343,7 +271,7 @@ const Users = () => {
               ...user, 
               name: formValues.name, 
               email: formValues.email, 
-              dbRole: user.isOwner ? 'admin' : formValues.role.toLowerCase() as UserRole, 
+              dbRole: newDbRole, 
               active: formValues.active 
             } 
           : user
@@ -520,6 +448,7 @@ const Users = () => {
           fetchUsers(); // Refresh the list
         }
       }
+      
     } catch (error) {
       console.error('Error syncing users to tenant:', error);
       toast.error('Failed to sync users to organization');

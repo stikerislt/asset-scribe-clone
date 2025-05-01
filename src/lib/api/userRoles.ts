@@ -12,35 +12,6 @@ export interface UserRoleData {
   updated_at: string;
 }
 
-// Check if a user has admin access (admin role or is a tenant owner)
-export const checkAdminAccess = async (userId: string): Promise<boolean> => {
-  if (!userId) return false;
-  
-  try {
-    // Check if user is owner of any tenant
-    const { data: ownerData, error: ownerError } = await supabase
-      .from('tenant_memberships')
-      .select('is_owner')
-      .eq('user_id', userId)
-      .eq('is_owner', true)
-      .single();
-    
-    if (!ownerError && ownerData?.is_owner) return true;
-    
-    // Check if user has admin role
-    const { data: roleData, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .single();
-    
-    return roleData?.role === 'admin' || roleData?.role === 'manager';
-  } catch (error) {
-    console.error("Error checking admin access:", error);
-    return false;
-  }
-};
-
 // Check if a user has a specific role
 export const hasRole = async (userId: string, role: UserRole): Promise<boolean> => {
   if (!userId) return false;
@@ -142,6 +113,7 @@ export const createUser = async (
       throw new Error('No active session. Please sign in.');
     }
 
+    // Use a hardcoded URL instead of accessing protected property
     const supabaseUrl = "https://tbefdkwtjpbonuunxytk.supabase.co";
     if (!supabaseUrl) {
       throw new Error('Could not determine Supabase URL');
@@ -157,8 +129,7 @@ export const createUser = async (
       name,
       role,
       active,
-      tenant_id: tenantData,
-      mark_email_verified: true // Add this flag to mark email as verified upon creation
+      tenant_id: tenantData
     };
     
     console.log("Sending payload to edge function:", {
@@ -175,15 +146,29 @@ export const createUser = async (
       body: JSON.stringify(payload)
     });
 
-    const responseBody = await response.text();
-    console.log(`Edge function response (${response.status}):`, responseBody);
-
-    if (!response.ok) {
-      console.error("Error response from create-user function:", response.status, responseBody);
-      throw new Error(`Failed to create user: ${responseBody || `HTTP ${response.status}`}`);
+    const responseText = await response.text();
+    console.log("Raw response from edge function:", responseText);
+    
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      console.error("Error parsing JSON response:", e);
+      throw new Error(`Invalid response from server: ${responseText}`);
     }
 
-    const result = JSON.parse(responseBody);
+    if (!response.ok) {
+      // Handle the duplicate key constraint error differently
+      if (result.error && result.error.includes("duplicate key value")) {
+        console.log("User already exists in the system");
+        toast.info("User already exists in the system. Their information has been updated.");
+        return { success: true, data: { ...result, message: "User already exists and has been updated" } };
+      }
+      
+      console.error("Error response from create-user function:", result);
+      throw new Error(result.error || `Failed to create user: HTTP ${response.status}`);
+    }
+
     console.log("User creation successful:", result);
     
     if (result.verification_status === "invitation_sent") {
@@ -355,86 +340,5 @@ export const deleteUser = async (userId: string): Promise<boolean> => {
     console.error("Error deleting user:", error);
     toast.error(error.message || "Failed to delete user");
     return false;
-  }
-};
-
-// Function to check user's session status
-export const checkUserSessionStatus = async (userId: string): Promise<boolean> => {
-  try {
-    // Instead of using RPC, we'll call the Edge Function directly
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.error("No active session found");
-      return false;
-    }
-    
-    const supabaseUrl = "https://tbefdkwtjpbonuunxytk.supabase.co";
-    const getUserStatusEndpoint = `${supabaseUrl}/functions/v1/get-user-status`;
-    
-    const response = await fetch(getUserStatusEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify({ userId })
-    });
-    
-    if (!response.ok) {
-      console.error("Error response from get-user-status function:", response.status);
-      return false;
-    }
-    
-    const result = await response.json();
-    const userData = result.user;
-    
-    // Consider user active if they have any of these timestamps
-    return !!(userData && (
-      userData.confirmed_at || 
-      userData.email_confirmed_at || 
-      userData.last_sign_in_at
-    ));
-  } catch (error) {
-    console.error("Error in checkUserSessionStatus:", error);
-    return false;
-  }
-};
-
-// Function to get auth user status
-export const getAuthUserStatus = async (userId: string): Promise<{
-  confirmed_at: string | null;
-  email_confirmed_at: string | null;
-  last_sign_in_at: string | null;
-} | null> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.error("No active session found");
-      return null;
-    }
-    
-    const supabaseUrl = "https://tbefdkwtjpbonuunxytk.supabase.co";
-    const getUserStatusEndpoint = `${supabaseUrl}/functions/v1/get-user-status`;
-    
-    const response = await fetch(getUserStatusEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify({ userId })
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Error response from get-user-status function:", response.status, errorText);
-      return null;
-    }
-    
-    const result = await response.json();
-    return result.user || null;
-  } catch (error) {
-    console.error("Error getting auth user status:", error);
-    return null;
   }
 };

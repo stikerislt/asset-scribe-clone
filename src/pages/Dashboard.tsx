@@ -1,3 +1,4 @@
+
 import { Package, Users, Tag, Clock } from "lucide-react";
 import { StatsCard } from "@/components/StatsCard";
 import { Link } from "react-router-dom";
@@ -72,6 +73,7 @@ const Dashboard = () => {
     enabled: !!user && !!currentTenant?.id
   });
 
+  // Assets due count (assets with status 'maintenance')
   const { data: dueCount = 0, isLoading: dueLoading } = useQuery({
     queryKey: ['due-asset-count', user?.id, currentTenant?.id],
     queryFn: async () => {
@@ -93,9 +95,10 @@ const Dashboard = () => {
     enabled: !!user && !!currentTenant?.id
   });
 
+  // Filter activities to only show ones that match the current tenant
   const tenantActivities = currentTenant?.id
     ? activities.filter(activity => !activity.tenant_id || activity.tenant_id === currentTenant.id)
-    : [];
+    : activities;
 
   return (
     <div className="animate-fade-in">
@@ -163,7 +166,9 @@ const Dashboard = () => {
   );
 };
 
+// Helper function to render activity icons safely
 const renderActivityIcon = (icon: React.ReactNode) => {
+  // If icon is already a valid ReactNode, return it
   return icon;
 };
 

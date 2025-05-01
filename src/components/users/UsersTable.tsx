@@ -1,7 +1,7 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Users, ShieldCheck, ShieldX, Crown, Clock } from "lucide-react";
+import { Mail, Users, ShieldCheck, ShieldX, Crown } from "lucide-react";
 import { EnhancedUser } from "@/types/user";
 import { UserRoleBadge } from "./UserRoleBadge";
 import { UserActionsDropdown } from "./UserActionsDropdown";
@@ -88,12 +88,7 @@ export const UsersTable = ({
               <UserRoleBadge role={user.dbRole} isOwner={user.isOwner} />
             </TableCell>
             <TableCell>
-              {user.invitationStatus === 'pending' ? (
-                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100/80">
-                  <Clock className="h-3 w-3 mr-1" />
-                  Pending
-                </Badge>
-              ) : user.active ? (
+              {user.active ? (
                 <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80">
                   <ShieldCheck className="h-3 w-3 mr-1" />
                   Active

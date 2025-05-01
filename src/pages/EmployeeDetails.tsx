@@ -50,7 +50,7 @@ const EmployeeDetails = () => {
             Back
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">{employee.name || "Employee Details"}</h1>
+        <h1 className="text-3xl font-bold">{employee.name}</h1>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">

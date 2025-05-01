@@ -1,4 +1,3 @@
-
 import { RouteObject } from "react-router-dom";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
@@ -16,8 +15,6 @@ import NotFound from "@/pages/NotFound";
 import { AppLayout } from "@/components/AppLayout";
 import UpdatePassword from "@/pages/UpdatePassword";
 import Onboarding from "@/pages/Onboarding";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import Warehouse from "@/pages/Warehouse";
 
 /**
  * Public routes accessible to all users
@@ -75,35 +72,31 @@ export const protectedRoutes: RouteObject[] = [
       },
       {
         path: "assets/edit/:id",
-        element: <ProtectedRoute requiredRole="manager"><EditAsset /></ProtectedRoute>
-      },
-      {
-        path: "warehouse",
-        element: <Warehouse />
+        element: <EditAsset />
       },
       {
         path: "employees",
-        element: <ProtectedRoute requiredRole="manager"><Employees /></ProtectedRoute>
+        element: <Employees />
       },
       {
         path: "employees/:id",
-        element: <ProtectedRoute requiredRole="manager"><EmployeeDetails /></ProtectedRoute>
+        element: <EmployeeDetails />
       },
       {
         path: "categories",
-        element: <ProtectedRoute requiredRole="manager"><Categories /></ProtectedRoute>
+        element: <Categories />
       },
       {
         path: "analytics",
-        element: <ProtectedRoute requiredRole="manager"><Analytics /></ProtectedRoute>
+        element: <Analytics />
       },
       {
         path: "users",
-        element: <ProtectedRoute requiredRole="manager"><Users /></ProtectedRoute>
+        element: <Users />
       },
       {
         path: "settings",
-        element: <ProtectedRoute requiredRole="admin"><Settings /></ProtectedRoute>
+        element: <Settings />
       }
     ]
   }

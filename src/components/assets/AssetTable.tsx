@@ -21,82 +21,54 @@ import {
   DropdownMenuItem, 
   DropdownMenuLabel, 
   DropdownMenuSeparator, 
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger
+  DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Edit, Trash, UserPlus } from "lucide-react";
 import { useActivity } from "@/hooks/useActivity";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
-
-// Helper function to capitalize first letter
-const capitalizeFirstLetter = (string: string): string => {
-  return string.charAt(0).toUpperCase() + string.slice(1);
-};
-
-// Status color options array
-const statusColors: (StatusColor | null)[] = ['green', 'yellow', 'red', null];
 
 interface AssetTableProps {
   assets: Asset[];
   columns: ColumnDef[];
   onDeleteAsset: (asset: Asset) => void;
-  onStatusColorChange: (assetId: string, color: StatusColor) => void;
-  onCheckOut?: (asset: Asset) => void;
-  onCheckIn?: (asset: Asset) => void;
+  onStatusColorChange: (assetId: string, newColor: StatusColor) => void;
 }
 
 export const AssetTable = ({ 
   assets, 
   columns, 
   onDeleteAsset,
-  onStatusColorChange,
-  onCheckOut,
-  onCheckIn 
+  onStatusColorChange 
 }: AssetTableProps) => {
   const { toast } = useToast();
   const { logActivity } = useActivity();
-  const { user } = useAuth();
   const [localAssets, setLocalAssets] = useState<Asset[]>(assets);
   
-  const { data: userRole = 'user' } = useQuery({
-    queryKey: ['user-role', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return 'user';
-      
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (error || !data) return 'user';
-      return data.role;
-    },
-  });
-
-  const hasAdminPrivileges = userRole === 'admin' || userRole === 'manager';
-
+  // Sort assets to prioritize yellow status_color
   const sortAssetsByPriority = (assetsToSort: Asset[]): Asset[] => {
     return [...assetsToSort].sort((a, b) => {
+      // First prioritize yellow status
       if (a.status_color === 'yellow' && b.status_color !== 'yellow') return -1;
       if (a.status_color !== 'yellow' && b.status_color === 'yellow') return 1;
+      
+      // If both have same priority, maintain existing order
       return 0;
     });
   };
   
+  // Only update local assets on initial load or when the asset IDs change
+  // This prevents reordering when only the status colors change
   useEffect(() => {
+    // Check if the assets array has different items (not just different properties)
     const currentIds = localAssets.map(asset => asset.id).join(',');
     const newIds = assets.map(asset => asset.id).join(',');
     
     if (currentIds !== newIds || localAssets.length !== assets.length) {
+      // Sort the assets immediately when we get new data
       setLocalAssets(sortAssetsByPriority(assets));
     } else {
+      // Update properties of existing assets without changing order
+      // But then resort to ensure yellow items stay on top
       setLocalAssets(prevAssets => {
         const updatedAssets = prevAssets.map(prevAsset => {
           const updatedAsset = assets.find(a => a.id === prevAsset.id);
@@ -116,73 +88,19 @@ export const AssetTable = ({
   }
   
   const handleStatusColorChange = (assetId: string, newColor: StatusColor) => {
+    // Update the local state immediately to maintain order
     setLocalAssets(prevAssets => {
       const updatedAssets = prevAssets.map(asset => 
         asset.id === assetId ? { ...asset, status_color: newColor } : asset
       );
+      // Resort to maintain yellow assets at the top
       return sortAssetsByPriority(updatedAssets);
     });
     
+    // Call the parent function to update the database
     onStatusColorChange(assetId, newColor);
   };
   
-  const renderActions = (asset: Asset) => {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm">
-            <MoreHorizontal className="h-4 w-4" />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem asChild>
-            <Link to={`/assets/${asset.id}`}>View Details</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to={`/assets/edit/${asset.id}`}>Edit Asset</Link>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-
-          {/* Add check out and check in if the callbacks are provided */}
-          {onCheckOut && (
-            <DropdownMenuItem 
-              onClick={() => onCheckOut(asset)}
-              disabled={!asset.qty || asset.qty <= 0}
-            >
-              Check Out
-            </DropdownMenuItem>
-          )}
-          {onCheckIn && (
-            <DropdownMenuItem onClick={() => onCheckIn(asset)}>
-              Check In
-            </DropdownMenuItem>
-          )}
-          
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Set Status Color</DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {statusColors.map((color) => (
-                <DropdownMenuItem
-                  key={color}
-                  onClick={() => handleStatusColorChange(asset.id, color as StatusColor)}
-                >
-                  <StatusColorIndicator color={color} className="mr-2" />
-                  {color === null ? "Clear" : capitalizeFirstLetter(color)}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onDeleteAsset(asset)} className="text-red-600">
-            Delete Asset
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
-
   return (
     <div className="border rounded-md">
       <Table>
@@ -194,7 +112,7 @@ export const AssetTable = ({
               </TableHead>
             ))}
             <TableHead>Status</TableHead>
-            <TableHead>Condition</TableHead>
+            <TableHead>Status Color</TableHead>
             <TableHead className="w-[80px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -256,54 +174,85 @@ export const AssetTable = ({
               
               <TableCell>
                 <div className="flex items-center space-x-2">
-                  <StatusColorIndicator color={asset.status_color} size="md" />
-                  
-                  {hasAdminPrivileges && (
-                    <RadioGroup 
-                      value={asset.status_color || 'green'} 
-                      className="flex flex-row ml-2"
-                      onValueChange={(value) => handleStatusColorChange(asset.id, value as StatusColor)}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem 
-                          value="green" 
-                          id={`green-${asset.id}`}
-                          className="sr-only peer"
-                        />
-                        <label
-                          htmlFor={`green-${asset.id}`}
-                          className={`h-4 w-4 rounded-full bg-green-500 cursor-pointer ring-offset-background hover:bg-green-600 transition-colors ${asset.status_color === 'green' ? 'ring-2 ring-ring ring-offset-2' : ''}`}
-                        />
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem 
-                          value="yellow" 
-                          id={`yellow-${asset.id}`}
-                          className="sr-only peer"
-                        />
-                        <label
-                          htmlFor={`yellow-${asset.id}`}
-                          className={`h-4 w-4 rounded-full bg-yellow-500 cursor-pointer ring-offset-background hover:bg-yellow-600 transition-colors ${asset.status_color === 'yellow' ? 'ring-2 ring-ring ring-offset-2' : ''}`}
-                        />
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem 
-                          value="red" 
-                          id={`red-${asset.id}`}
-                          className="sr-only peer"
-                        />
-                        <label
-                          htmlFor={`red-${asset.id}`}
-                          className={`h-4 w-4 rounded-full bg-red-500 cursor-pointer ring-offset-background hover:bg-red-600 transition-colors ${asset.status_color === 'red' ? 'ring-2 ring-ring ring-offset-2' : ''}`}
-                        />
-                      </div>
-                    </RadioGroup>
-                  )}
+                  <RadioGroup 
+                    value={asset.status_color || 'green'} 
+                    className="flex flex-row"
+                    onValueChange={(value) => handleStatusColorChange(asset.id, value as StatusColor)}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <RadioGroupItem 
+                        value="green" 
+                        id={`green-${asset.id}`}
+                        className="sr-only peer"
+                      />
+                      <label
+                        htmlFor={`green-${asset.id}`}
+                        className={`h-4 w-4 rounded-full bg-green-500 cursor-pointer ring-offset-background hover:bg-green-600 transition-colors ${asset.status_color === 'green' ? 'ring-2 ring-ring ring-offset-2' : ''}`}
+                      />
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <RadioGroupItem 
+                        value="yellow" 
+                        id={`yellow-${asset.id}`}
+                        className="sr-only peer"
+                      />
+                      <label
+                        htmlFor={`yellow-${asset.id}`}
+                        className={`h-4 w-4 rounded-full bg-yellow-500 cursor-pointer ring-offset-background hover:bg-yellow-600 transition-colors ${asset.status_color === 'yellow' ? 'ring-2 ring-ring ring-offset-2' : ''}`}
+                      />
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <RadioGroupItem 
+                        value="red" 
+                        id={`red-${asset.id}`}
+                        className="sr-only peer"
+                      />
+                      <label
+                        htmlFor={`red-${asset.id}`}
+                        className={`h-4 w-4 rounded-full bg-red-500 cursor-pointer ring-offset-background hover:bg-red-600 transition-colors ${asset.status_color === 'red' ? 'ring-2 ring-ring ring-offset-2' : ''}`}
+                      />
+                    </div>
+                  </RadioGroup>
                 </div>
               </TableCell>
               
               <TableCell>
-                {renderActions(asset)}
+                <DropdownMenu>
+                  <DropdownMenuTrigger>
+                    <MoreHorizontal className="h-5 w-5" />
+                    <span className="sr-only">Open menu</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to={`/assets/${asset.id}`}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        View Details
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to={`/assets/${asset.id}/edit`}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Asset
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to={`/employees?assign=${asset.id}`}>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Assign
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className="text-red-600"
+                      onClick={() => onDeleteAsset(asset)}
+                    >
+                      <Trash className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </TableCell>
             </TableRow>
           ))}

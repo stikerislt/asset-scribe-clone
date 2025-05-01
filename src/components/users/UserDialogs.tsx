@@ -90,11 +90,6 @@ export function UserDialogs({
             <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>
               {selectedUser && `Update information for ${selectedUser.name}`}
-              {selectedUser && selectedUser.isOwner && (
-                <div className="mt-2 text-amber-600">
-                  This user is an organization owner and will always have Admin privileges.
-                </div>
-              )}
             </DialogDescription>
           </DialogHeader>
           {selectedUser && (
@@ -105,7 +100,6 @@ export function UserDialogs({
               error={updateUserError}
               defaultValues={editDefaultValues}
               isEditMode={true}
-              isOwner={selectedUser.isOwner}
             />
           )}
         </DialogContent>

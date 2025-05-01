@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -23,9 +24,10 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { AlertCircle, Crown } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+// Define the schema for form validation
 const userFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -36,8 +38,10 @@ const userFormSchema = z.object({
   active: z.boolean().default(true),
 });
 
+// Define the form values type
 type UserFormValues = z.infer<typeof userFormSchema>;
 
+// Define the user type
 export interface User {
   id: string;
   name: string;
@@ -46,6 +50,7 @@ export interface User {
   active: boolean;
 }
 
+// Props for the UserForm component
 interface UserFormProps {
   onSubmit: (values: UserFormValues) => void;
   onCancel: () => void;
@@ -53,10 +58,10 @@ interface UserFormProps {
   isSubmitting: boolean;
   defaultValues?: Partial<UserFormValues>;
   isEditMode?: boolean;
-  isOwner?: boolean;
 }
 
-export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValues, isEditMode = false, isOwner = false }: UserFormProps) {
+export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValues, isEditMode = false }: UserFormProps) {
+  // Define validation schema based on mode
   const schema = isEditMode 
     ? userFormSchema.omit({ password: true }).merge(
         z.object({
@@ -65,29 +70,20 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValue
       )
     : userFormSchema;
 
+  // Initialize the form
   const form = useForm<UserFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: isOwner && defaultValues 
-      ? { ...defaultValues, role: "Admin" }
-      : defaultValues || {
-          name: "",
-          email: "",
-          password: "",
-          role: "User",
-          active: true,
-        },
+    defaultValues: defaultValues || {
+      name: "",
+      email: "",
+      password: "",
+      role: "User",
+      active: true,
+    },
   });
 
-  const handleSubmit = async (values: UserFormValues) => {
-    try {
-      if (isOwner) {
-        values.role = "Admin";
-      }
-      await onSubmit(values);
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error('Failed to submit form');
-    }
+  const handleSubmit = (values: UserFormValues) => {
+    onSubmit(values);
   };
 
   return (
@@ -165,23 +161,14 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValue
           name="role"
           render={({ field }) => (
             <FormItem>
-              <div className="flex items-center justify-between">
-                <FormLabel>User Role</FormLabel>
-                {isOwner && (
-                  <span className="inline-flex items-center text-amber-600 text-sm">
-                    <Crown className="h-3.5 w-3.5 mr-1" />
-                    Organization Owner
-                  </span>
-                )}
-              </div>
+              <FormLabel>User Role</FormLabel>
               <Select 
                 onValueChange={field.onChange} 
                 defaultValue={field.value}
                 value={field.value}
-                disabled={isOwner}
               >
                 <FormControl>
-                  <SelectTrigger className={isOwner ? "bg-amber-50" : ""}>
+                  <SelectTrigger>
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                 </FormControl>
@@ -194,9 +181,7 @@ export function UserForm({ onSubmit, onCancel, error, isSubmitting, defaultValue
                 </SelectContent>
               </Select>
               <FormDescription>
-                {isOwner 
-                  ? "Organization owners automatically have Admin privileges." 
-                  : "The user's permission level in the system."}
+                The user's permission level in the system.
               </FormDescription>
               <FormMessage />
             </FormItem>

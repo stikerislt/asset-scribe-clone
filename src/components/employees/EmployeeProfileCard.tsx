@@ -18,7 +18,7 @@ export const EmployeeProfileCard = ({ employee, assetsCount }: EmployeeProfileCa
       <CardContent className="space-y-4">
         <div className="flex items-center space-x-2">
           <User className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">{employee.name || "Unnamed Employee"}</span>
+          <span className="font-medium">{employee.name}</span>
         </div>
         
         {employee.email && (
@@ -28,10 +28,12 @@ export const EmployeeProfileCard = ({ employee, assetsCount }: EmployeeProfileCa
           </div>
         )}
         
-        <div className="flex items-center space-x-2">
-          <Briefcase className="h-4 w-4 text-muted-foreground" />
-          <span>Role: {employee.role || "User"}</span>
-        </div>
+        {employee.role && (
+          <div className="flex items-center space-x-2">
+            <Briefcase className="h-4 w-4 text-muted-foreground" />
+            <span>{employee.role}</span>
+          </div>
+        )}
 
         {employee.department && (
           <div className="flex items-center space-x-2">

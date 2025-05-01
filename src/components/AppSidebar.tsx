@@ -19,33 +19,13 @@ import {
   Settings, 
   LogOut,
   BarChart3,
-  Shield,
-  Warehouse
+  Shield
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
-const getMenuItemsByRole = (role: string, isOwner: boolean) => {
-  // If the user is an owner, they should have admin access regardless of their role
-  if (isOwner) {
-    return getAdminMenuItems();
-  }
-  
-  switch (role) {
-    case 'admin':
-      return getAdminMenuItems();
-    case 'manager':
-      return getManagerMenuItems();
-    default: // user role
-      return getUserMenuItems();
-  }
-};
-
-// Base menu items available to all roles
-const getUserMenuItems = () => [
+const mainMenuItems = [
   {
     title: "Dashboard",
     path: "/dashboard",
@@ -57,40 +37,28 @@ const getUserMenuItems = () => [
     icon: Package,
   },
   {
-    title: "Warehouse",
-    path: "/warehouse",
-    icon: Warehouse,
-  },
-];
-
-// Additional items for managers
-const getManagerMenuItems = () => [
-  ...getUserMenuItems(),
-  {
     title: "Employees",
     path: "/employees",
     icon: Users,
-  },
-  {
-    title: "Categories",
-    path: "/categories",
-    icon: Tag,
   },
   {
     title: "Analytics",
     path: "/analytics",
     icon: BarChart3,
   },
+];
+
+const settingsMenuItems = [
+  {
+    title: "Categories",
+    path: "/categories",
+    icon: Tag,
+  },
   {
     title: "Users",
     path: "/users",
     icon: Shield,
   },
-];
-
-// All items for admins and owners
-const getAdminMenuItems = () => [
-  ...getManagerMenuItems(),
   {
     title: "Settings",
     path: "/settings",
@@ -99,37 +67,7 @@ const getAdminMenuItems = () => [
 ];
 
 export function AppSidebar() {
-  const { logout, user } = useAuth();
-
-  // Fetch user role and owner status
-  const { data: userInfo = { role: 'user', isOwner: false } } = useQuery({
-    queryKey: ['user-info', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return { role: 'user', isOwner: false };
-      
-      // Get user role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
-      
-      // Check if user is a tenant owner
-      const { data: ownerData, error: ownerError } = await supabase
-        .from('tenant_memberships')
-        .select('is_owner')
-        .eq('user_id', user.id)
-        .eq('is_owner', true)
-        .single();
-      
-      const isOwner = !ownerError && ownerData && ownerData.is_owner === true;
-      const role = roleError || !roleData ? 'user' : roleData.role;
-      
-      return { role, isOwner };
-    },
-  });
-
-  const menuItems = getMenuItemsByRole(userInfo.role, userInfo.isOwner);
+  const { logout } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -150,7 +88,24 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {mainMenuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <Link to={item.path}>
+                      <item.icon className="w-5 h-5" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Management</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {settingsMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <Link to={item.path}>

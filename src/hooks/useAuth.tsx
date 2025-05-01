@@ -25,52 +25,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
-        console.log("Auth state changed:", event, newSession?.user?.email);
+      async (event, newSession) => {
+        console.log("Auth state change:", event);
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
-        
-        // Handle password recovery and invite events
-        if (event === "PASSWORD_RECOVERY") {
+
+        if (event === "SIGNED_UP") {
+          const email = newSession?.user?.email;
+          if (email) {
+            localStorage.setItem('pendingVerificationEmail', email);
+          }
+        }
+
+        if (event === "SIGNED_IN") {
+          localStorage.removeItem('pendingVerificationEmail');
+          
+          // Clear any activity data on sign in to prevent seeing other users' activities
+          localStorage.removeItem('activities');
+          
+          // Check if this is right after email verification
+          const params = new URLSearchParams(window.location.hash);
+          if (params.get("type") === "recovery" || params.get("type") === "signup") {
+            toast.success("Email verified successfully!");
+            
+            // Direct to onboarding regardless of onboarding status to ensure user sets up tenant
+            navigate("/onboarding");
+          } else {
+            // Check if user has completed onboarding
+            const { data, error } = await supabase.rpc('has_completed_onboarding', {
+              user_id: newSession?.user?.id
+            });
+
+            if (error) {
+              console.error("Error checking onboarding status:", error);
+            }
+
+            // Always navigate to onboarding if not completed yet
+            if (!data && newSession?.user) {
+              console.log("User has not completed onboarding, redirecting...");
+              navigate("/onboarding");
+            }
+          }
+        }
+
+        if (
+          event === "PASSWORD_RECOVERY" ||
+          (newSession?.user && (newSession as any).type === 'PASSWORD_RECOVERY')
+        ) {
           navigate("/auth/update-password", { replace: true });
-        } else if (event === "USER_UPDATED") {
-          // After password is updated, redirect to dashboard
-          const redirectTo = location.pathname === "/auth/update-password" ? "/dashboard" : undefined;
-          if (redirectTo) {
-            setTimeout(() => navigate(redirectTo, { replace: true }), 1000);
-          }
-        } else if (event === "SIGNED_IN" && newSession?.user) {
-          // For existing sessions, check if accessing an invite link
-          const hash = window.location.hash;
-          if (hash.includes("type=recovery") || hash.includes("type=invite")) {
-            navigate("/auth/update-password", { replace: true });
-          }
         }
       }
     );
 
-    // Check for existing session and URL parameters
+    // Initial session check
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);
-      
-      // Check URL hash for recovery or invite tokens
       const hash = window.location.hash;
-      if ((hash.includes("type=recovery") || hash.includes("type=invite")) && currentSession?.user) {
-        console.log("Found recovery or invite token, redirecting to password update");
+      if (
+        (hash.includes("type=recovery") || hash.includes("type=invite")) &&
+        currentSession?.user
+      ) {
         navigate("/auth/update-password", { replace: true });
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate, location.pathname]);
+  }, [navigate]);
 
   const login = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      
+      // Clear any existing activities in localStorage to prevent seeing other users' data
+      localStorage.removeItem('activities');
       
       toast.success("Login successful");
       
@@ -92,25 +123,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = async (email: string, password: string, fullName: string) => {
     try {
+      localStorage.setItem('pendingVerificationEmail', email);
+      
+      // Clear any existing activities to ensure a fresh start
+      localStorage.removeItem('activities');
+      
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
-          }
+          },
+          emailRedirectTo: window.location.origin + '/auth/login'
         }
       });
       
       if (authError) throw authError;
       if (!authData.user) throw new Error("Signup failed. Please try again.");
 
-      toast.success(
-        "Signup successful! Please check your email to verify your account."
-      );
+      toast.success("Success! Please check your email to verify your account.");
+      toast("Verification email sent", {
+        description: `We've sent a verification link to ${email}. Please check your inbox and spam folder.`,
+        duration: 6000,
+      });
 
       navigate("/auth/login");
     } catch (error: any) {
+      localStorage.removeItem('pendingVerificationEmail');
       toast.error("Signup failed: " + error.message);
     }
   };
@@ -121,6 +161,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toast.error("Logout failed: " + error.message);
       return;
     }
+    
+    // Clear all activities on logout for security
+    localStorage.removeItem('activities');
+    
     toast.success("Logged out successfully");
     navigate("/auth/login");
   };

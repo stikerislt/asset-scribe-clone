@@ -42,34 +42,15 @@ export const getEmployees = async (): Promise<Employee[]> => {
     throw employeesError;
   }
   
-  return (employeesData || []).map(emp => {
-    // Handle case where profile might be missing
-    let name = emp.profiles?.full_name || '';
-    let email = emp.profiles?.email;
-    let role = emp.role || 'user';
-    let department = emp.department || '';
-    
-    // Clean up potential legacy data formats
-    // If role field contains "Asset assigned to:" format, clean it up
-    if (role && role.startsWith('Asset assigned to:')) {
-      role = 'user'; // Reset role to proper value
-    }
-    
-    // If department has auto-generated placeholder text, clear it
-    if (department && department.toLowerCase().includes('auto-generated')) {
-      department = '';
-    }
-    
-    return {
-      id: emp.id,
-      name,
-      role,
-      email,
-      avatar: emp.profiles?.avatar_url,
-      department,
-      hire_date: emp.hire_date
-    };
-  });
+  return (employeesData || []).map(emp => ({
+    id: emp.id,
+    name: emp.profiles?.full_name || '',
+    role: emp.role,
+    email: emp.profiles?.email,
+    avatar: emp.profiles?.avatar_url,
+    department: emp.department,
+    hire_date: emp.hire_date
+  }));
 };
 
 // Get employee by ID
@@ -100,27 +81,13 @@ export const getEmployeeById = async (id: string): Promise<Employee | null> => {
   
   if (!employeeData) return null;
   
-  // Clean up potential legacy data formats
-  let role = employeeData.role || 'user';
-  let department = employeeData.department || '';
-  
-  // If role field contains "Asset assigned to:" format, clean it up
-  if (role && role.startsWith('Asset assigned to:')) {
-    role = 'user'; // Reset role to proper value
-  }
-  
-  // If department has auto-generated placeholder text, clear it
-  if (department && department.toLowerCase().includes('auto-generated')) {
-    department = '';
-  }
-  
   return {
     id: employeeData.id,
     name: employeeData.profiles?.full_name || '',
-    role,
+    role: employeeData.role,
     email: employeeData.profiles?.email,
     avatar: employeeData.profiles?.avatar_url,
-    department,
+    department: employeeData.department,
     hire_date: employeeData.hire_date
   };
 };
@@ -141,19 +108,11 @@ export const addEmployee = async (employee: NewEmployee) => {
     
     // If user exists, create employee linked to that profile
     if (existingUserData?.id) {
-      // Update the profile's name if it's missing
-      if (fullName) {
-        await supabase
-          .from('profiles')
-          .update({ full_name: fullName })
-          .eq('id', existingUserData.id);
-      }
-      
       const { data: employeeData, error: employeeError } = await supabase
         .from('employees')
         .insert({
           profile_id: existingUserData.id,
-          role: role || 'user',
+          role: role,
           department: department || null,
           hire_date: hire_date || null
         })
@@ -167,40 +126,8 @@ export const addEmployee = async (employee: NewEmployee) => {
       return employeeData;
     }
     
-    // No existing profile with this email, create a new one
-    // Generate a UUID for the new profile
-    const newProfileId = crypto.randomUUID();
-    
-    // Create a new profile with the generated ID
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        id: newProfileId,  // Use the generated UUID
-        full_name: fullName,
-        email: email
-      });
-      
-    if (profileError) {
-      throw new Error("Failed to create profile: " + (profileError.message || "Unknown error"));
-    }
-    
-    // Create employee record linked to the new profile
-    const { data: newEmployee, error: employeeError } = await supabase
-      .from('employees')
-      .insert({
-        profile_id: newProfileId,
-        role: role || 'user',
-        department: department || null,
-        hire_date: hire_date || null
-      })
-      .select()
-      .single();
-      
-    if (employeeError || !newEmployee) {
-      throw new Error("Failed to create employee: " + (employeeError?.message || "Unknown error"));
-    }
-    
-    return newEmployee;
+    // No existing user, cannot create a profile without auth user
+    throw new Error("Cannot create employee: no user account exists with email " + email);
   } catch (error) {
     console.error("Error in addEmployee:", error);
     throw error;
@@ -210,7 +137,7 @@ export const addEmployee = async (employee: NewEmployee) => {
 // Update an employee
 export const updateEmployee = async (
   employeeId: string,
-  updates: {email?: string, role?: string, department?: string}
+  updates: Partial<NewEmployee>
 ) => {
   try {
     console.log("Updating employee:", employeeId, "with updates:", updates);
@@ -230,23 +157,30 @@ export const updateEmployee = async (
     const profileId = employeeRow.profile_id;
     console.log(`Found employee record with ID ${employeeId} and profile ID ${profileId}`);
 
-    // Update profile if email is present and profile ID exists
-    if (profileId && updates.email) {
-      const { error: profileUpdateErr } = await supabase
-        .from('profiles')
-        .update({ email: updates.email })
-        .eq('id', profileId);
+    // Update profile if relevant fields present and profile ID exists
+    if (profileId && (updates.fullName || updates.email)) {
+      let profileUpdate: any = {};
+      if (updates.fullName) profileUpdate.full_name = updates.fullName;
+      if (updates.email) profileUpdate.email = updates.email;
 
-      if (profileUpdateErr) {
-        throw new Error("Failed to update employee email: " + profileUpdateErr.message);
+      if (Object.keys(profileUpdate).length > 0) {
+        const { error: profileUpdateErr } = await supabase
+          .from('profiles')
+          .update(profileUpdate)
+          .eq('id', profileId);
+
+        if (profileUpdateErr) {
+          throw new Error("Failed to update employee profile: " + profileUpdateErr.message);
+        }
+        console.log(`Updated profile information for ${employeeId}`);
       }
-      console.log(`Updated profile email for ${employeeId}`);
     }
 
-    // Update employee record itself (role and department)
+    // Update employee record itself (role, department, hire_date, etc)
     let employeeUpdate: any = {};
-    if (updates.role !== undefined) employeeUpdate.role = updates.role;
-    if (updates.department !== undefined) employeeUpdate.department = updates.department;
+    if (updates.role) employeeUpdate.role = updates.role;
+    if (updates.department) employeeUpdate.department = updates.department;
+    if (updates.hire_date) employeeUpdate.hire_date = updates.hire_date;
 
     if (Object.keys(employeeUpdate).length > 0) {
       const { error: employeeUpdateErr } = await supabase
@@ -268,7 +202,7 @@ export const updateEmployee = async (
 };
 
 // Import employees from CSV
-export const importEmployeesFromCSV = async (headers: string[], data: string[][]): Promise<any[]> => {
+export const importEmployeesFromCSV = async (headers: string[], data: string[][]) => {
   const nameIndex = headers.findIndex(h => h.toLowerCase() === 'name');
   const emailIndex = headers.findIndex(h => h.toLowerCase() === 'email');
   const roleIndex = headers.findIndex(h => h.toLowerCase() === 'role');
@@ -303,85 +237,7 @@ export const importEmployeesFromCSV = async (headers: string[], data: string[][]
         .maybeSingle();
         
       if (!existingUserData?.id) {
-        // Check if there's a profile with a matching name (from auto-created ones)
-        const { data: matchingProfiles } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('full_name', name)
-          .limit(1);
-          
-        if (matchingProfiles && matchingProfiles.length > 0) {
-          // We found a matching profile by name, update its email
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ email: email })
-            .eq('id', matchingProfiles[0].id);
-            
-          if (updateError) {
-            throw new Error(`Failed to update placeholder profile: ${updateError.message}`);
-          }
-          
-          // Check if there's already an employee record for this profile
-          const { data: existingEmployeeData } = await supabase
-            .from('employees')
-            .select('id')
-            .eq('profile_id', matchingProfiles[0].id)
-            .maybeSingle();
-            
-          if (existingEmployeeData?.id) {
-            // Employee exists, update it
-            const { error: updateEmployeeError } = await supabase
-              .from('employees')
-              .update({
-                role: role || null,
-                department: department || null,
-                hire_date: hire_date || null
-              })
-              .eq('id', existingEmployeeData.id);
-              
-            if (updateEmployeeError) {
-              throw new Error(`Failed to update existing employee: ${updateEmployeeError.message}`);
-            }
-            
-            results.push({ 
-              name, 
-              email,
-              success: true, 
-              created: false,
-              id: existingEmployeeData.id,
-              message: "Updated existing placeholder profile"
-            });
-            continue;
-          } else {
-            // Create new employee record linked to existing profile
-            const { data: newEmployee, error: createError } = await supabase
-              .from('employees')
-              .insert({
-                profile_id: matchingProfiles[0].id,
-                role: role || null,
-                department: department || null,
-                hire_date: hire_date || null
-              })
-              .select('id')
-              .single();
-              
-            if (createError || !newEmployee) {
-              throw new Error(`Failed to create employee record for placeholder profile: ${createError?.message || "Unknown error"}`);
-            }
-            
-            results.push({ 
-              name, 
-              email,
-              success: true, 
-              created: true,
-              id: newEmployee.id,
-              message: "Created employee for existing placeholder profile"
-            });
-            continue;
-          }
-        }
-        
-        // No existing user and no matching placeholder profile
+        // Cannot create employee without existing user account
         results.push({
           name,
           email,

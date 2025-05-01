@@ -3,7 +3,6 @@ import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -26,8 +25,6 @@ const SignupForm = () => {
   const { toast } = useToast();
   const { signup } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [signupSuccess, setSignupSuccess] = useState(false);
-  const navigate = useNavigate();
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -43,11 +40,6 @@ const SignupForm = () => {
     setIsSubmitting(true);
     try {
       await signup(data.email, data.password, data.fullName);
-      
-      // Set signup success state
-      setSignupSuccess(true);
-      
-      // Toast message is already handled in useAuth
     } catch (error) {
       toast({
         title: "Signup Failed",
@@ -58,24 +50,6 @@ const SignupForm = () => {
       setIsSubmitting(false);
     }
   };
-
-  if (signupSuccess) {
-    return (
-      <div className="text-center space-y-4">
-        <h2 className="text-2xl font-semibold">Almost there!</h2>
-        <p className="text-muted-foreground">
-          We've sent a verification email to your address. 
-          Please check your inbox and click the verification link to complete your account setup.
-        </p>
-        <Button 
-          onClick={() => navigate('/auth/login')} 
-          className="w-full"
-        >
-          Go to Login
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <Form {...form}>
@@ -141,4 +115,3 @@ const SignupForm = () => {
 };
 
 export default SignupForm;
-

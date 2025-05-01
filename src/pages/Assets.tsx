@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { Package, AlertTriangle } from "lucide-react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "@/hooks/use-sonner-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivity } from "@/hooks/useActivity";
-import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, checkAuth } from "@/integrations/supabase/client";
 import { Asset, AssetStatus } from "@/lib/api/assets";
@@ -67,8 +66,6 @@ const Assets = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { hasAdminAccess } = useAdminAccess();
-  
   const { logActivity } = useActivity();
   const { currentTenant } = useTenant();
 
@@ -95,20 +92,13 @@ const Assets = () => {
   }, [currentTenant?.id]);
   
   const { data: assets = [], isLoading, error } = useQuery({
-    queryKey: ['assets', currentTenant?.id, user?.id, hasAdminAccess],
+    queryKey: ['assets', currentTenant?.id],
     queryFn: async () => {
       if (!currentTenant?.id) return [];
-      
-      let query = supabase
+      const { data, error } = await supabase
         .from('assets')
         .select('*')
         .eq('tenant_id', currentTenant.id);
-
-      if (!hasAdminAccess && user?.email) {
-        query = query.eq('assigned_to', user.email);
-      }
-
-      const { data, error } = await query;
 
       if (error) {
         sonnerToast.error("Failed to load assets", {
@@ -116,8 +106,7 @@ const Assets = () => {
         });
         throw new Error(error.message);
       }
-      
-      return data.map(asset => ({
+      const assetsWithProps = data?.map(asset => ({
         ...asset,
         notes: asset.notes || null,
         wear: asset.wear || null,
@@ -125,6 +114,7 @@ const Assets = () => {
         status_color: asset.status_color as StatusColor || null,
         status: asset.status as AssetStatus
       })) as Asset[];
+      return assetsWithProps;
     },
     enabled: !!currentTenant?.id,
     retry: 1,
@@ -397,26 +387,17 @@ const Assets = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Assets</h1>
-          <p className="text-muted-foreground mt-1">
-            {hasAdminAccess 
-              ? "Manage your hardware and device inventory"
-              : "View your assigned assets"}
-          </p>
+          <p className="text-muted-foreground mt-1">Manage your hardware and device inventory</p>
         </div>
-        {hasAdminAccess && (
-          <div className="flex gap-2 mt-4 sm:mt-0 flex-wrap">
-            <AssetImportExport 
-              assets={assets} 
-              onImportComplete={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}
-            />
-            <AssetActionButtons 
-              onDebug={handleDebug}
-              isDebugging={isDebugging}
-              onAddAsset={handleAddAsset}
-              onDeleteAllAssets={handleDeleteAllAssets}
-            />
-          </div>
-        )}
+        <div className="flex gap-2 mt-4 sm:mt-0 flex-wrap">
+          <AssetImportExport assets={assets} />
+          <AssetActionButtons 
+            onDebug={handleDebug}
+            isDebugging={isDebugging}
+            onAddAsset={handleAddAsset}
+            onDeleteAllAssets={handleDeleteAllAssets}
+          />
+        </div>
       </div>
       
       <DebugInfo debugInfo={debugInfo} />

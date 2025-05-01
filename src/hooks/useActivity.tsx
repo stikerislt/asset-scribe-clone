@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Package, Users, Tag, AlertTriangle } from 'lucide-react';
 import { useTenant } from '@/hooks/useTenant';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface Activity {
   id: string;
@@ -10,6 +11,8 @@ export interface Activity {
   icon?: React.ReactNode;
   category: 'asset' | 'user' | 'category' | 'license' | 'system';
   tenant_id?: string;
+  user_id?: string;
+  created_at?: string;
 }
 
 interface ActivityContextType {
@@ -30,27 +33,34 @@ const formatTimestamp = () => {
 export const ActivityProvider = ({ children }: { children: ReactNode }) => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const { currentTenant } = useTenant();
+  const { user } = useAuth();
 
   useEffect(() => {
-    try {
-      const savedActivities = localStorage.getItem('activities');
-      if (savedActivities) {
-        const parsedActivities = JSON.parse(savedActivities);
-        const filteredActivities = currentTenant?.id
-          ? parsedActivities.filter((act: Activity) => !act.tenant_id || act.tenant_id === currentTenant.id)
-          : [];
-        const activitiesWithIcons = filteredActivities.map((activity: Partial<Activity>) => ({
-          ...activity,
-          icon: activity.category ? getActivityIcon(activity.category) : undefined
-        }));
-        setActivities(activitiesWithIcons);
-      }
-    } catch (error) {
-      console.error('Failed to load activities from localStorage:', error);
+    if (!user) return;
+
+    const savedActivities = localStorage.getItem('activities');
+    if (savedActivities) {
+      const parsedActivities = JSON.parse(savedActivities);
+      
+      const filteredActivities = parsedActivities.filter((act: Activity) => {
+        const userMatches = !act.user_id || act.user_id === user.id;
+        const tenantMatches = !act.tenant_id || !currentTenant?.id || act.tenant_id === currentTenant?.id;
+        
+        return userMatches && tenantMatches;
+      });
+
+      const activitiesWithIcons = filteredActivities.map((activity: Partial<Activity>) => ({
+        ...activity,
+        icon: activity.category ? getActivityIcon(activity.category) : undefined
+      }));
+      
+      setActivities(activitiesWithIcons);
     }
-  }, [currentTenant?.id]);
+  }, [currentTenant?.id, user?.id]);
 
   useEffect(() => {
+    if (!user) return;
+
     try {
       const savedActivities = localStorage.getItem('activities');
       let allActivities = savedActivities ? JSON.parse(savedActivities) : [];
@@ -58,33 +68,40 @@ export const ActivityProvider = ({ children }: { children: ReactNode }) => {
       const currentActivitiesToStore = activities.map(({ icon, ...rest }) => rest);
       
       if (currentTenant?.id) {
-        const otherTenantActivities = allActivities.filter(
-          (act: Activity) => act.tenant_id && act.tenant_id !== currentTenant.id
+        const otherActivities = allActivities.filter(
+          (act: Activity) => 
+            (act.tenant_id && act.tenant_id !== currentTenant.id) || 
+            (act.user_id && act.user_id !== user.id)
         );
-        allActivities = [...otherTenantActivities, ...currentActivitiesToStore];
+        
+        allActivities = [...otherActivities, ...currentActivitiesToStore];
       } else {
-        allActivities = currentActivitiesToStore;
+        const otherUserActivities = allActivities.filter(
+          (act: Activity) => act.user_id && act.user_id !== user.id
+        );
+        
+        allActivities = [...otherUserActivities, ...currentActivitiesToStore];
       }
       
       localStorage.setItem('activities', JSON.stringify(allActivities));
     } catch (error) {
       console.error('Failed to save activities to localStorage:', error);
     }
-  }, [activities, currentTenant?.id]);
+  }, [activities, currentTenant?.id, user?.id]);
 
   const logActivity = (activity: Omit<Activity, 'id' | 'timestamp'>) => {
-    if (!currentTenant?.id) {
-      console.warn('Attempted to log activity without active tenant');
-      return;
-    }
-    
-    const tenant_id = currentTenant.id;
+    if (!user) return;
+
+    const tenant_id = currentTenant?.id;
+    const user_id = user?.id;
     
     const newActivity: Activity = {
       ...activity,
       tenant_id,
+      user_id,
       id: Date.now().toString(),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      created_at: new Date().toISOString()
     };
 
     setActivities(prev => [newActivity, ...prev].slice(0, 20));

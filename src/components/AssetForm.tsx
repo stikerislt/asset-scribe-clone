@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ import { useTenant } from "@/hooks/useTenant";
 
 interface AssetFormProps {
   initialData?: Partial<Asset>;
+  // Update type definition: tenant_id is handled by the parent component
   onSubmit: (data: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'tenant_id'>) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
@@ -64,7 +66,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        const fetchedCategories = await fetchCategories(currentTenant?.id);
+        const fetchedCategories = await fetchCategories();
         
         const categoriesWithIcons = fetchedCategories.map(cat => ({
           name: cat.name,
@@ -79,7 +81,7 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
     };
 
     loadCategories();
-  }, [currentTenant?.id]);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +90,8 @@ export const AssetForm = ({ initialData, onSubmit, onCancel, isSubmitting = fals
       return;
     }
     
+    // Pass the form data to onSubmit callback without tenant_id
+    // The parent component will handle tenant_id
     onSubmit({
       name,
       tag,
