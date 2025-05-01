@@ -62,17 +62,14 @@ export const createEmployeesFromAssetAssignments = async (
             .insert({
               profile_id: profileId,
               tenant_id: tenantId,
-              department: 'Imported from Assets'
+              role: 'user' // Default role to 'user'
+              // Department is intentionally left empty
             });
             
           if (createError) throw createError;
           result.created++;
         }
       } else {
-        // No matching profile found, create a placeholder profile
-        // Generate an email based on the name (this is just a placeholder)
-        const placeholderEmail = `${name.toLowerCase().replace(/\s+/g, '.')}@placeholder.com`;
-        
         // FIXED: Don't try to create profiles directly since they're linked to auth.users
         // Instead, just create employees with department and name info, without linking to profiles
         const { error: employeeError } = await supabase

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, Plus, Loader, X, Pencil, Save, RotateCcw } from "lucide-react";
@@ -40,7 +39,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
 
   // Filter employees based on search
   const filteredEmployees = employees?.filter(employee =>
-    employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    employee.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     employee.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     employee.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     employee.department?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -91,11 +90,10 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
       // Log the data being sent to help debug
       console.log("Updating employee:", employee.id, "with data:", updates);
       
-      // Fix: use employee.id (uuid) instead of employee.name
       await updateEmployee(employee.id, {
         email: updates.email,
-        role: updates.role,
-        department: updates.department
+        role: updates.role || 'user', // Set default role to 'user'
+        department: updates.department // Allow department to be empty
       });
       
       toast({
@@ -170,7 +168,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
               {filteredEmployees.map((employee) => (
                 <TableRow key={employee.id}>
                   <TableCell>
-                    <Link to={`/employees/${encodeURIComponent(employee.name)}`} className="hover:underline">
+                    <Link to={`/employees/${employee.id}`} className="hover:underline">
                       {employee.name}
                     </Link>
                   </TableCell>
@@ -189,7 +187,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
                   <TableCell>
                     {editingEmployeeId === employee.id ? (
                       <Select 
-                        value={editedValues[employee.id]?.role || ""}
+                        value={editedValues[employee.id]?.role || "user"}
                         onValueChange={(value) => handleRoleChange(employee.id, value)}
                       >
                         <SelectTrigger className="max-w-[200px]">
@@ -202,7 +200,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
                         </SelectContent>
                       </Select>
                     ) : (
-                      employee.role || "—"
+                      employee.role || "user"
                     )}
                   </TableCell>
                   <TableCell>
@@ -262,7 +260,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
                           size="sm" 
                           asChild
                         >
-                          <Link to={`/employees/${encodeURIComponent(employee.name)}`}>
+                          <Link to={`/employees/${employee.id}`}>
                             View
                           </Link>
                         </Button>
