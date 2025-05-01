@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Employee {
@@ -202,7 +201,7 @@ export const updateEmployee = async (
 };
 
 // Import employees from CSV
-export const importEmployeesFromCSV = async (headers: string[], data: string[][]) => {
+export const importEmployeesFromCSV = async (headers: string[], data: string[][]): Promise<any[]> => {
   const nameIndex = headers.findIndex(h => h.toLowerCase() === 'name');
   const emailIndex = headers.findIndex(h => h.toLowerCase() === 'email');
   const roleIndex = headers.findIndex(h => h.toLowerCase() === 'role');
@@ -237,7 +236,85 @@ export const importEmployeesFromCSV = async (headers: string[], data: string[][]
         .maybeSingle();
         
       if (!existingUserData?.id) {
-        // Cannot create employee without existing user account
+        // Check if there's a profile with a matching name (from auto-created ones)
+        const { data: matchingProfiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('full_name', name)
+          .limit(1);
+          
+        if (matchingProfiles && matchingProfiles.length > 0) {
+          // We found a matching profile by name, update its email
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ email: email })
+            .eq('id', matchingProfiles[0].id);
+            
+          if (updateError) {
+            throw new Error(`Failed to update placeholder profile: ${updateError.message}`);
+          }
+          
+          // Check if there's already an employee record for this profile
+          const { data: existingEmployeeData } = await supabase
+            .from('employees')
+            .select('id')
+            .eq('profile_id', matchingProfiles[0].id)
+            .maybeSingle();
+            
+          if (existingEmployeeData?.id) {
+            // Employee exists, update it
+            const { error: updateEmployeeError } = await supabase
+              .from('employees')
+              .update({
+                role: role || null,
+                department: department || null,
+                hire_date: hire_date || null
+              })
+              .eq('id', existingEmployeeData.id);
+              
+            if (updateEmployeeError) {
+              throw new Error(`Failed to update existing employee: ${updateEmployeeError.message}`);
+            }
+            
+            results.push({ 
+              name, 
+              email,
+              success: true, 
+              created: false,
+              id: existingEmployeeData.id,
+              message: "Updated existing placeholder profile"
+            });
+            continue;
+          } else {
+            // Create new employee record linked to existing profile
+            const { data: newEmployee, error: createError } = await supabase
+              .from('employees')
+              .insert({
+                profile_id: matchingProfiles[0].id,
+                role: role || null,
+                department: department || null,
+                hire_date: hire_date || null
+              })
+              .select('id')
+              .single();
+              
+            if (createError || !newEmployee) {
+              throw new Error(`Failed to create employee record for placeholder profile: ${createError?.message || "Unknown error"}`);
+            }
+            
+            results.push({ 
+              name, 
+              email,
+              success: true, 
+              created: true,
+              id: newEmployee.id,
+              message: "Created employee for existing placeholder profile"
+            });
+            continue;
+          }
+        }
+        
+        // No existing user and no matching placeholder profile
         results.push({
           name,
           email,
