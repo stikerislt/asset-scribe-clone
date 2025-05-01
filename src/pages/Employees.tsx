@@ -13,7 +13,7 @@ import { ImportEmployeesButton } from "@/components/employees/import/ImportEmplo
 const Employees = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  // Get unique employees from assets
+  // Get employees
   const { data: employees, isLoading, error, refetch } = useQuery({
     queryKey: ['employees'],
     queryFn: getEmployees

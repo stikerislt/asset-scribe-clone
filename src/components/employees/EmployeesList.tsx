@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, Plus, Loader, X, Pencil, Save, RotateCcw } from "lucide-react";
@@ -51,7 +52,7 @@ export const EmployeesList = ({ employees, isLoading, error, onAddEmployee }: Em
       ...editedValues,
       [employee.id]: { 
         email: employee.email || "", 
-        role: employee.role || "", 
+        role: employee.role || "user", 
         department: employee.department || "" 
       }
     });
